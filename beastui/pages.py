@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from .design_system import PRIMARY_PAGES
 from .customization import dashboard_widget_box
 from .widgets import (
     panel, metric, channel_bars, line_area, multiline, bars, stacked_bars, histogram,
@@ -9,7 +10,7 @@ from .widgets import (
 
 
 class Pages:
-    IDS=['home','overview','dashboard','recon','networks','spectrum','captures','map','expedition','beast','system']
+    IDS=list(PRIMARY_PAGES)
     TITLES={'home':'BEAST CORE','overview':'OVERVIEW','dashboard':'DASHBOARD','recon':'RECON','networks':'NETWORKS','spectrum':'SPECTRUM','captures':'CAPTURE VAULT','map':'FIELD MAP','expedition':'EXPEDITION','beast':'BEAST','system':'SYSTEM'}
     def __init__(self,face):self.face=face
     @staticmethod
