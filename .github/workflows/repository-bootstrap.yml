@@ -22,10 +22,16 @@ jobs:
           tar -xJf /tmp/beastagotchi-seed.tar.xz -C .
           rm -rf .bootstrap
           rm -f .github/workflows/repository-bootstrap.yml
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/tests.yml')
+          s = p.read_text()
+          s = s.replace("          cache: pip\n", "          cache: pip\n          cache-dependency-path: requirements-dev.txt\n")
+          p.write_text(s)
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-          cache: pip
       - name: Validate reconstructed repository
         run: |
           python -m pip install --upgrade pip
