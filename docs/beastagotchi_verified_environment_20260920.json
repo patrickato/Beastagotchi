@@ -1,0 +1,231 @@
+{
+  "probe_timestamp": "2026-09-20T02:22:25+01:00",
+  "hardware": {
+    "model": "Raspberry Pi 4 Model B Rev 1.5",
+    "ram_mb": 7820,
+    "root_storage_gb": 119.1
+  },
+  "os": {
+    "name": "Debian GNU/Linux 13 (trixie)",
+    "kernel": "6.18.39+rpt-rpi-v8",
+    "arch": "aarch64",
+    "python": "3.13.5"
+  },
+  "pwnagotchi": {
+    "version": "2.9.5.9",
+    "service": "pwnagotchi.service",
+    "config": "/etc/pwnagotchi/config.toml",
+    "web_port": 8080,
+    "handshake_dir": "/etc/pwnagotchi/handshakes",
+    "session_stats_dir": "/etc/pwnagotchi/sessions",
+    "iface": "wlan0mon"
+  },
+  "bettercap": {
+    "service": "bettercap.service",
+    "port": 8081,
+    "active_caplet": "pwnagotchi-auto",
+    "auth": true
+  },
+  "radio": {
+    "phy": "phy0",
+    "managed": "wlan0",
+    "monitor": "wlan0mon",
+    "sample_channel": 10,
+    "sample_frequency_mhz": 2457,
+    "supported_channels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60,
+      64,
+      100,
+      104,
+      108,
+      112,
+      116,
+      120,
+      124,
+      128,
+      132,
+      136,
+      140,
+      144,
+      149,
+      153,
+      157,
+      161,
+      165
+    ]
+  },
+  "gps": {
+    "service": "gpsd.service",
+    "socket": "127.0.0.1:2947",
+    "device": "/dev/ttyACM0",
+    "device_model": "u-blox 7 GPS/GNSS Receiver",
+    "baud": 9600,
+    "pwnagotchi_plugin_enabled": true,
+    "pwnagotchi_plugin_source": "direct serial"
+  },
+  "display": {
+    "framebuffer_primary": "/dev/fb1",
+    "framebuffer_driver": "fb_ili9486",
+    "width": 480,
+    "height": 320,
+    "depth": 16,
+    "touch": "ADS7846 Touchscreen",
+    "touch_event": "/dev/input/event0",
+    "rotation": 180,
+    "pwnagotchi_type": "waveshare35lcd"
+  },
+  "storage": {
+    "root_device": "/dev/mmcblk0p2",
+    "root_fs": "ext4",
+    "root_size_gb": 117,
+    "root_used_pct": 8,
+    "log_zram": "/dev/zram1",
+    "tmp_zram": "/dev/zram2"
+  },
+  "services": {
+    "pwnagotchi": "active",
+    "bettercap": "active",
+    "gpsd": "active",
+    "pwngrid-peer": "active",
+    "NetworkManager": "active",
+    "systemd-timesyncd": "active",
+    "failed": [
+      "dphys-swapfile.service"
+    ]
+  },
+  "thermal_sample": {
+    "cpu_c": 59.9,
+    "throttled": "0x0"
+  },
+  "clock": {
+    "synchronized": true,
+    "timezone": "Europe/London"
+  },
+  "plugins": [
+    {
+      "name": "auto-update",
+      "enabled": false
+    },
+    {
+      "name": "auto_backup",
+      "enabled": true
+    },
+    {
+      "name": "bt-tether",
+      "enabled": false
+    },
+    {
+      "name": "fix_services",
+      "enabled": false
+    },
+    {
+      "name": "gpio_buttons",
+      "enabled": false
+    },
+    {
+      "name": "gps",
+      "enabled": true
+    },
+    {
+      "name": "gps_listener",
+      "enabled": false
+    },
+    {
+      "name": "grid",
+      "enabled": true
+    },
+    {
+      "name": "logtail",
+      "enabled": false
+    },
+    {
+      "name": "memtemp",
+      "enabled": true
+    },
+    {
+      "name": "ohcapi",
+      "enabled": false
+    },
+    {
+      "name": "pisugarx",
+      "enabled": false
+    },
+    {
+      "name": "pwncrack",
+      "enabled": false
+    },
+    {
+      "name": "pwndroid",
+      "enabled": false
+    },
+    {
+      "name": "pwnstore_ui",
+      "enabled": true
+    },
+    {
+      "name": "session-stats",
+      "enabled": true
+    },
+    {
+      "name": "ups_hat_c",
+      "enabled": false
+    },
+    {
+      "name": "ups_lite",
+      "enabled": false
+    },
+    {
+      "name": "webcfg",
+      "enabled": true
+    },
+    {
+      "name": "webgpsmap",
+      "enabled": false
+    },
+    {
+      "name": "wigle",
+      "enabled": false
+    },
+    {
+      "name": "wpa-sec",
+      "enabled": false
+    }
+  ],
+  "legacy_beast_paths": [
+    "/opt/beastagotchi",
+    "/opt/beastagotchi-v1",
+    "/opt/beastagotchi-v1.2"
+  ],
+  "legacy_beast_service": {
+    "name": "beastagotchi.service",
+    "enabled": false
+  },
+  "known_patch": {
+    "file": "pwnagotchi/agent.py",
+    "purpose": "refresh supported channels from monitor interface with retry",
+    "installed_site_package": true
+  },
+  "probe_limitations": [
+    "Bettercap API schema probe returned 401 because v1.0 selected credentials across multiple caplets instead of the active caplet.",
+    "Capture probe omitted /etc/pwnagotchi/handshakes from its file scan; the configured path and AP cache were nevertheless confirmed.",
+    "No GPS TPV/SKY fix was seen during the short sample, so coordinate/satellite fields remain runtime-verified rather than sample-verified.",
+    "Custom plugin file inventory did not enumerate /etc/pwnagotchi/custom-plugins."
+  ]
+}

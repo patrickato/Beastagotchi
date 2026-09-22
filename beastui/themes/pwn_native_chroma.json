@@ -1,0 +1,5 @@
+{
+  "id":"pwn_native_chroma","label":"Pwnagotchi Native Chroma","geometry":"pwnclassic","background":"native","face_style":"pwn_native","footer_style":"minimal","reaction_style":"pulse","scanlines":false,"glow":"medium","motion":"low",
+  "colors":{"bg":"#020407","ink":"#020407","panel":"#060a10","panel2":"#0b1320","edge":"#2b3c55","grid":"#0b1522","primary":"#6cf8ff","secondary":"#b48cff","accent":"#ffcf57","info":"#7ae7ff","warn":"#ffd95d","danger":"#ff526a","text":"#f4f7ff","dim":"#71809b"},
+  "mood_colors":{"awake":"#6cf8ff","happy":"#6dff8b","excited":"#ffe95d","grateful":"#ffd166","motivated":"#ff9d42","sad":"#5b7cff","lonely":"#b18cff","bored":"#8a8a99","angry":"#ff3030","intense":"#ff8a3d","cool":"#00e5ff","sleep":"#4a5a7a","broken":"#ff2020","friend":"#ff67c8","alert":"#ff445c","curious":"#a6ffdf"}
+}

@@ -1,0 +1,5 @@
+pytest>=8
+Pillow>=10
+numpy>=1.26
+pypdf>=5
+PyMuPDF>=1.24

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation index
+    url: https://github.com/patrickato/Beastagotchi/blob/main/docs/README.md
+    about: Start here for architecture, installation, testing and roadmap documentation.

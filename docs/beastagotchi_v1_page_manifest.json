@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "main_carousel": [
+    {"id":"home","title":"Home","purpose":"Beast Core summary and immediate status"},
+    {"id":"recon","title":"Recon","purpose":"Live RF/radar and encounter activity"},
+    {"id":"networks","title":"Networks","purpose":"Searchable/sortable AP and client browser"},
+    {"id":"spectrum","title":"Spectrum","purpose":"Channel activity and visual RF analytics"},
+    {"id":"captures","title":"Captures","purpose":"Capture Vault and metadata"},
+    {"id":"map","title":"Map","purpose":"GPS route and encounter field map"},
+    {"id":"beast","title":"Beast","purpose":"Personality, progression, evolution and memories"},
+    {"id":"system","title":"System","purpose":"Health, services and hardware summary"}
+  ],
+  "apps": ["logs","diagnostics","plugins","services","hardware","storage","backup_restore","timeline","notifications","sessions","gps","performance","interfaces","config","themes_layouts_faces","terminal","developer","files_export","help"],
+  "optional_apps": ["bluetooth","scout_kismet","sdr","adsb","rf_objects","meshtastic","environment","power","imu","camera","nfc","gpio","dock","local_ai_voice"]
+}

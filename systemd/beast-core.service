@@ -1,0 +1,26 @@
+[Unit]
+Description=Beastagotchi Core Foundation
+After=network.target pwnagotchi.service bettercap.service gpsd.socket
+Wants=gpsd.socket
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/beast-core
+ExecStart=/usr/bin/python3 -m beastcore --host 127.0.0.1 --port 8090 --db /var/lib/beastagotchi/beast.db
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=beastagotchi
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+UMask=0027
+
+# Foundation hardening: read-mostly daemon with narrowly defined writable paths.
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/beastagotchi /run/beastagotchi
+
+[Install]
+WantedBy=multi-user.target

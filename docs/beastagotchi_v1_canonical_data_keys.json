@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "namespaces": {
+    "system": ["cpu.total","cpu.core0","cpu.core1","cpu.core2","cpu.core3","load.1m","load.5m","load.15m","memory.used_pct","memory.used_mb","memory.free_mb","swap.used_pct","temp.cpu_c","throttle.flags","uptime_sec","boot_time","clock.synced","hostname","model","ram_mb","kernel","beast_version"],
+    "storage": ["root.used_pct","root.free_bytes","root.readonly","mounts","captures.bytes","logs.bytes","database.bytes","backup.last_success","archive.status"],
+    "radio": ["interfaces","primary.name","primary.mode","primary.mac","primary.channel","primary.frequency_mhz","primary.band","primary.supported_channels","primary.tx_bytes","primary.rx_bytes","primary.state","hop.current","hop.rate","hop.history"],
+    "wifi": ["ap_count","client_count","hidden_count","vendor_count","new_ap_rate","aps","clients","channel_activity","channel_history","signal_history","encounters.session","encounters.lifetime"],
+    "captures": ["total","session","valid","pmkid","eapol","duplicates","storage_bytes","items"],
+    "gps": ["fix","satellites_visible","satellites_used","latitude","longitude","altitude_m","speed_mps","heading_deg","hdop","accuracy_m","trip_distance_m","session_distance_m","track"],
+    "pwnagotchi": ["mode","epoch","mood","peers","bonds","active","blind","sad","bored","missed","deauths","assocs","handshakes"],
+    "bettercap": ["state","uptime","api_latency_ms"],
+    "beast": ["name","level","xp","stage","mood","energy","curiosity","boredom","confidence","streak","badges","traits","memories","current_expression","current_animation"],
+    "platform": ["services","plugins","notifications","events","incidents","hardware"]
+  }
+}

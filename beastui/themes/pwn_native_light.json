@@ -1,0 +1,4 @@
+{
+  "id":"pwn_native_light","label":"Pwnagotchi Native Light","geometry":"pwnclassic","background":"native","face_style":"pwn_native","footer_style":"minimal","reaction_style":"soft","scanlines":false,"glow":"none","motion":"low",
+  "colors":{"bg":"#ffffff","ink":"#ffffff","panel":"#ffffff","panel2":"#f3f3f3","edge":"#999999","grid":"#e6e6e6","primary":"#000000","secondary":"#222222","accent":"#000000","info":"#000000","warn":"#222222","danger":"#000000","text":"#000000","dim":"#666666"}
+}

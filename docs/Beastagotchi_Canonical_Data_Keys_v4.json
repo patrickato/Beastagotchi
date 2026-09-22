@@ -1,0 +1,51 @@
+{
+  "version": 4,
+  "new_namespaces": {
+    "power": [
+      "power.ups.state",
+      "power.telemetry.available",
+      "power.battery.voltage_v",
+      "power.battery.percent_estimate",
+      "power.current_ma",
+      "power.power_w",
+      "power.charging",
+      "power.discharging",
+      "power.external_present",
+      "power.external_confidence",
+      "power.source"
+    ],
+    "dock": [
+      "dock.state",
+      "dock.docked",
+      "dock.external_power",
+      "dock.ethernet",
+      "dock.home_network",
+      "dock.home_enrolled",
+      "dock.reason"
+    ],
+    "network": [
+      "network.ethernet",
+      "network.ethernet.present",
+      "network.ethernet.carrier",
+      "network.ethernet.operstate",
+      "network.ethernet.speed_mbps",
+      "network.default.dev",
+      "network.default.gateway",
+      "network.default.gateway_mac"
+    ],
+    "capabilities": [
+      "capabilities.usb_devices",
+      "capabilities.present",
+      "capabilities.count",
+      "capabilities.awus036acm.present",
+      "capabilities.rtlsdr.present"
+    ],
+    "plugins": [
+      "plugins.custom_dir",
+      "plugins.custom_count",
+      "plugins.conf_d",
+      "plugins.dropins"
+    ]
+  },
+  "notes": "v4 extends the previously validated canonical state with power, dock, hardware capability and plugin inventory contracts. Existing keys remain valid."
+}

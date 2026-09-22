@@ -1,0 +1,30 @@
+{
+  "version": 5,
+  "new_namespaces": {
+    "progression": [
+      "progression.level",
+      "progression.max_level",
+      "progression.xp",
+      "progression.xp_current_level",
+      "progression.xp_next_level",
+      "progression.level_progress_pct",
+      "progression.stage",
+      "progression.aura",
+      "progression.session_unique",
+      "progression.achievements.count",
+      "progression.achievement.last",
+      "progression.vendors.count",
+      "progression.lifetime_runtime_sec",
+      "progression.profile_path"
+    ],
+    "encounters": [
+      "wifi.encounters.session_unique",
+      "wifi.encounters.lifetime_unique",
+      "wifi.encounters.lifetime_vendors"
+    ]
+  },
+  "read_only_api_additions": [
+    "/encounters"
+  ],
+  "notes": "v5 adds persistent Beast progression, achievement/aura state, and lifetime encounter/BeastDex foundation. v4 and earlier canonical keys remain valid."
+}

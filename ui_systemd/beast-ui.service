@@ -1,0 +1,18 @@
+[Unit]
+Description=Beastagotchi Touch UI
+After=beast-core.service pwnagotchi.service
+Wants=beast-core.service
+
+[Service]
+Type=simple
+User=pi
+SupplementaryGroups=video input beastagotchi
+Environment=PYTHONPATH=/opt/beast-ui
+ExecStartPre=/opt/beast-ui/bin/display_config.py --config /etc/pwnagotchi/config.toml require-disabled
+ExecStart=/opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --framebuffer /dev/fb1
+Restart=on-failure
+RestartSec=2
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

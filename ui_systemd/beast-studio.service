@@ -1,0 +1,17 @@
+[Unit]
+Description=Beastagotchi Studio Web Customizer
+After=beast-core.service network.target
+Wants=beast-core.service
+
+[Service]
+Type=simple
+User=pi
+SupplementaryGroups=beastagotchi
+Environment=PYTHONPATH=/opt/beast-ui
+ExecStart=/opt/.pwn/bin/python3 -m beaststudio --root /opt/beast-ui --host 0.0.0.0 --port 8091
+Restart=on-failure
+RestartSec=3
+Nice=8
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,35 @@
+# Repository Map
+
+## Runtime code
+
+### `beastcore/`
+Canonical state, persistence, events, collectors, actions, backup/recovery, progression, incidents, missions, operator policy/tools, plugin/service/container brokers and support bundles.
+
+### `beastui/`
+Physical UI engine, framebuffer writer, touch input, pages/apps, themes, native Pwnagotchi bridge presentation, reactions, responsive primitives and widget renderers.
+
+### `beaststudio/`
+Responsive local WebUI, action client and local library-file access surface.
+
+### `pwnagotchi_plugin/`
+`beast_bridge.py`, the deliberately small read-only callback bridge from Pwnagotchi into Beast Core state.
+
+## System integration
+
+- `config/` — Beast Core/touch reference configuration.
+- `systemd/` — Beast Core service.
+- `ui_systemd/` — Beast UI and Beast Studio services.
+- `display_handoff/` — physical display ownership claim/release/rollback validation.
+- `tools/` — diagnostics, render galleries, touch/calibration, display-conflict and support utilities.
+
+## Validation
+
+- `tests/` — source/unit/regression tests.
+- `validate_v*.sh` — target validation collectors for specific development milestones.
+- `docs/Beastagotchi_v*_Validation_*` — human-readable validation history.
+
+## Documentation
+
+The project currently keeps many versioned specifications directly in `docs/` because installers and historical packages reference exact names. Do not reorganize them casually without updating installers and reference-audit tests.
+
+Use `docs/README.md` as the navigation layer rather than assuming every old roadmap is current.

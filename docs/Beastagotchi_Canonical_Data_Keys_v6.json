@@ -1,0 +1,27 @@
+{
+  "version": 6,
+  "added_in_v0.9": [
+    "progression.achievements.catalog_count",
+    "progression.achievements.unlocked_ids",
+    "progression.achievements.unlocked",
+    "progression.achievements.rarity_counts",
+    "rare.engine.ready",
+    "rare.omen.active",
+    "rare.moment.active",
+    "rare.moment.id",
+    "rare.moment.rarity",
+    "rare.moment.sigil",
+    "rare.moment.remaining_sec",
+    "rare.seen_count",
+    "rare.acknowledged_count",
+    "rare.missed_count",
+    "ambient.season",
+    "ambient.day_phase",
+    "ambient.month",
+    "ambient.day",
+    "ambient.weekday",
+    "ambient.weather.source",
+    "celestial.moon.phase",
+    "celestial.moon.illumination_pct"
+  ]
+}

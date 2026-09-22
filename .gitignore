@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.env
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+# Runtime/private state must never be committed
+beast.db
+*.sqlite
+*.sqlite3
+*.pcap
+*.pcapng
+*.22000
+support-bundle-*
+beastagotchi-backup-*.tar.gz
+
+# Local validation/release output
+beast-*-validation/
+validation-output/
+dist/
+build/
+*.egg-info/

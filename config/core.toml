@@ -1,0 +1,15 @@
+[core]
+host = "127.0.0.1"
+port = 8090
+database = "/var/lib/beastagotchi/beast.db"
+
+[radio]
+primary = "wlan0mon"
+
+[gps]
+host = "127.0.0.1"
+port = 2947
+
+[pwnagotchi]
+config = "/etc/pwnagotchi/config.toml"
+bridge_state = "/run/beastagotchi/pwnagotchi_bridge.json"

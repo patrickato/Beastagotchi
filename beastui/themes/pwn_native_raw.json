@@ -1,0 +1,4 @@
+{
+  "id":"pwn_native_raw","label":"Pwnagotchi Native RAW","geometry":"pwnclassic","background":"native","face_style":"pwn_native","footer_style":"minimal","reaction_style":"soft","scanlines":false,"glow":"none","motion":"low",
+  "colors":{"bg":"#000000","ink":"#000000","panel":"#000000","panel2":"#080808","edge":"#555555","grid":"#111111","primary":"#ffffff","secondary":"#d9d9d9","accent":"#ffffff","info":"#ffffff","warn":"#ffffff","danger":"#ffffff","text":"#ffffff","dim":"#999999"}
+}
