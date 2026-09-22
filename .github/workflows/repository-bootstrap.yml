@@ -21,19 +21,7 @@ jobs:
           base64 -d /tmp/beastagotchi-seed.b64 > /tmp/beastagotchi-seed.tar.xz
           tar -xJf /tmp/beastagotchi-seed.tar.xz -C .
           rm -rf .bootstrap
-          rm -f .github/workflows/repository-bootstrap.yml
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/tests.yml')
-          s = p.read_text()
-          s = s.replace("          cache: pip\n", "          cache: pip\n          cache-dependency-path: requirements-dev.txt\n")
-          marker = "      - name: Unit and regression tests\n"
-          prep = "      - name: Prepare Beastagotchi runtime state directories\n        run: sudo install -d -o \"$USER\" -g \"$USER\" /var/lib/beastagotchi /var/lib/beastagotchi/secrets /var/lib/beastagotchi/ui\n"
-          if prep not in s:
-              s = s.replace(marker, prep + marker)
-          p.write_text(s)
-          PY
-      - uses: actions/setup-python@v5
+          # Keep the bootstrap workflow unchanged in this bot commit. GitHub Actions\n          # tokens cannot add/update workflow files without separate workflows permission.\n          rm -f .github/workflows/tests.yml\n      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - name: Validate reconstructed repository
