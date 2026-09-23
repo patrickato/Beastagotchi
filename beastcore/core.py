@@ -446,7 +446,8 @@ class BeastCore:
     async def _updates_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
-                changed = self.state.update_many("updates", self.updates.tick(), priority=74)
+                patch = await asyncio.to_thread(self.updates.tick)
+                changed = self.state.update_many("updates", patch, priority=74)
                 if changed:
                     self.events.publish("updates.changed", "updates", {"keys":[x[0] for x in changed]})
             except Exception as exc:
