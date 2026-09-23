@@ -204,6 +204,8 @@ class PackRegistryEngine:
             "packs.errors": errors,
             "packs.resource_counts": resource_counts,
             "packs.thermal_counts": thermal_counts,
-            "packs.executor_enabled": False,
-            "packs.executor_reason": "v0.19 catalog-only foundation; installs/removals require a future transactional Action Broker",
+            "packs.executor_enabled": True,
+            "packs.executor_scope": "verified_registry_install_only",
+            "packs.activation_enabled": False,
+            "packs.executor_reason": "verified packs may be transactionally installed into the inert registry; activation remains locked",
         }

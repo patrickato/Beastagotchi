@@ -11,6 +11,7 @@ from .container_broker import ContainerBroker, ContainerBrokerError
 from .support_bundle import SupportBundleManager
 from .operator_sessions import OperatorSessionManager
 from .pack_intake import PackIntakeManager, PackIntakeError
+from .pack_install import PackInstallManager, PackInstallError
 
 
 class ActionBroker:
@@ -32,6 +33,7 @@ class ActionBroker:
         self.support_manager = SupportBundleManager(state,store)
         self.operator_sessions = OperatorSessionManager()
         self.pack_intake = PackIntakeManager()
+        self.pack_installer = PackInstallManager(state)
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -58,6 +60,12 @@ class ActionBroker:
             return {"allowed":True,"operation":"pack.inspect","inspection":check,"blockers":[]}
         if action == "pack.stage":
             return self.pack_intake.plan_stage(str(payload.get("name") or ""),replace=bool(payload.get("replace",False)))
+        if action == "pack.install":
+            return self.pack_installer.plan_install(str(payload.get("id") or ""))
+        if action == "pack.rollback":
+            return self.pack_installer.plan_rollback(str(payload.get("transaction_id") or ""))
+        if action == "pack.history":
+            return {"allowed":True,"operation":"pack.history","items":self.pack_installer.history(int(payload.get("limit") or 30)),"blockers":[]}
         raise ValueError("unsupported action")
 
     def perform(self, action: str, payload: dict[str, Any], *, actor: str = "local") -> dict[str, Any]:
@@ -76,6 +84,10 @@ class ActionBroker:
                 result=self.pack_intake.inspect(str(requested.get("name") or ""))
             elif action == "pack.stage":
                 result=self.pack_intake.stage(str(requested.get("name") or ""),replace=bool(requested.get("replace",False)))
+            elif action == "pack.install":
+                result=self.pack_installer.install(str(requested.get("id") or ""))
+            elif action == "pack.rollback":
+                result=self.pack_installer.rollback(str(requested.get("transaction_id") or ""))
             elif action == "plugin.toggle":
                 result = self.plugin_broker.toggle(str(requested.get("name") or ""), bool(requested.get("enabled")), restart=True)
             elif action == "service.restart":
@@ -95,7 +107,7 @@ class ActionBroker:
             else:
                 raise ValueError("unsupported action")
             status = "success" if result.get("ok") else "rolled_back" if result.get("rolled_back") else "failed"
-        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, ValueError) as exc:
+        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, ValueError) as exc:
             plan = {}
             result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             status = "blocked" if isinstance(exc, PluginBrokerError) else "failed"

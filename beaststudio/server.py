@@ -24,6 +24,7 @@ from beastui.apps import AppRegistry
 from .action_client import BeastActionClient
 from .library_files import LibraryFileManager, LibraryFileError
 from .update_policies import UpdatePolicyStore, UpdatePolicyError
+from .pack_files import PackFileManager, PackFileError
 
 
 HTML=r'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -44,7 +45,7 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <section id="dashboard" class="section hidden"><h3>LIVE DASHBOARD COMPOSER</h3><div class="mini">Add, remove, drag, resize, overlap and hide real live instruments. The browser overlay and TFT share the same 12×8 grid; no fake data is introduced.</div><label>Composition</label><select id="boardSelect"></select><div class="composeTools"><button id="newBoard">+ NEW BOARD</button><button id="deleteBoard">DELETE BOARD</button></div><label>Board name</label><input id="boardLabel" maxlength="22" placeholder="Main Dashboard"><div class="composeTools"><button id="addWidget">+ ADD INSTRUMENT</button><button id="focusDashboard">EDIT ON PREVIEW</button></div><div id="dashWidgets"></div></section>
 <section id="decks" class="section hidden"><h3>CONTEXT DECKS</h3><div class="mini">Curated launcher views keep a large app universe clean. ALL always remains available; a deck never hides capability from the system.</div><label>Edit deck</label><select id="deckSelect"></select><label>Deck label</label><input id="deckLabel" maxlength="18"><label><input id="deckActive" type="checkbox" style="width:auto"> Preferred deck</label><div id="deckApps" class="group"></div></section>
 <section id="data" class="section hidden"><h3>CORRELATION LAB</h3><div class="mini">Compare the shape of two genuine persisted telemetry histories. Values are normalized only for plotting; source data is never altered.</div><label>Stream A</label><select id="corrA"></select><label>Stream B</label><select id="corrB"></select><div class="group"><h3>PROVENANCE</h3><div class="mini">On the TFT, long-press supported production instruments to open the Widget Inspector and see source, quality, age, units and history.</div></div></section>
-<section id="plugins" class="section hidden"><h3>PLUGIN INTEGRATION</h3><div class="mini">Enabled state, Beast integration and safe transactional toggles. Changes are snapshotted, verified and rolled back on failure.</div><button id="refreshPlugins" style="margin-top:9px">REFRESH CATALOG</button><div id="pluginList"></div></section><section id="packs" class="section hidden"><h3>BEAST PACKS / UPDATE CENTER</h3><div class="mini">Understand optional packs and record update intent here. v0.19 does not download or install updates in the background.</div><button id="refreshPacks" style="margin-top:9px">REFRESH CATALOG</button><div id="packSummary" class="group"></div><div id="packList" class="group"></div><div id="updateList" class="group"></div></section><section id="search" class="section hidden"><h3>UNIVERSAL BEAST SEARCH</h3><div class="mini">Search offline Field Library documents, BeastDex networks, Capture Vault, durable events and canonical telemetry from one place.</div><label>Search</label><input id="searchQuery" placeholder="GPS, display, network, capture…"><button id="runSearch" style="margin-top:8px">SEARCH BEAST</button><div class="group"><h3>FIELD LIBRARY IMPORT</h3><div class="mini">Import a manual, note, PDF, EPUB or ZIM into Beast’s offline library. Files are stored locally; indexing is automatic.</div><input id="libraryFile" type="file"><button id="uploadLibrary" style="margin-top:7px">IMPORT OFFLINE DOCUMENT</button></div><div id="searchResults" class="group"></div></section><section id="ops" class="section hidden"><h3>BEAST COMMAND CENTER</h3><div class="mini">Whole-platform state, services, tasks, displays and optional runtimes. Service restarts use the same audited Action Broker as the future Beast Operator.</div><button id="refreshOps" style="margin-top:9px">REFRESH OPERATIONS</button><div id="opsSummary" class="group"></div><div id="opsResources" class="group"></div><div id="opsPresentation" class="group"></div><div id="opsIncidents" class="group"></div><div id="opsServices" class="group"></div><div id="opsBackups" class="group"></div><div id="opsSupport" class="group"></div><div id="opsTasks" class="group"></div></section>
+<section id="plugins" class="section hidden"><h3>PLUGIN INTEGRATION</h3><div class="mini">Enabled state, Beast integration and safe transactional toggles. Changes are snapshotted, verified and rolled back on failure.</div><button id="refreshPlugins" style="margin-top:9px">REFRESH CATALOG</button><div id="pluginList"></div></section><section id="packs" class="section hidden"><h3>BEAST PACKS / UPDATE CENTER</h3><div class="mini">Local packages can be uploaded, verified, staged and transactionally installed into Beast's inert registry. Activation remains a separate locked gate.</div><div class="group"><h3>LOCAL PACK INTAKE</h3><input id="packFile" type="file" accept=".zip,.tgz,.tar.gz"><button id="uploadPack" style="margin-top:7px">UPLOAD + VERIFY + STAGE</button></div><button id="refreshPacks" style="margin-top:9px">REFRESH CATALOG</button><div id="packSummary" class="group"></div><div id="packList" class="group"></div><div id="packTransactions" class="group"></div><div id="updateList" class="group"></div></section><section id="search" class="section hidden"><h3>UNIVERSAL BEAST SEARCH</h3><div class="mini">Search offline Field Library documents, BeastDex networks, Capture Vault, durable events and canonical telemetry from one place.</div><label>Search</label><input id="searchQuery" placeholder="GPS, display, network, capture…"><button id="runSearch" style="margin-top:8px">SEARCH BEAST</button><div class="group"><h3>FIELD LIBRARY IMPORT</h3><div class="mini">Import a manual, note, PDF, EPUB or ZIM into Beast’s offline library. Files are stored locally; indexing is automatic.</div><input id="libraryFile" type="file"><button id="uploadLibrary" style="margin-top:7px">IMPORT OFFLINE DOCUMENT</button></div><div id="searchResults" class="group"></div></section><section id="ops" class="section hidden"><h3>BEAST COMMAND CENTER</h3><div class="mini">Whole-platform state, services, tasks, displays and optional runtimes. Service restarts use the same audited Action Broker as the future Beast Operator.</div><button id="refreshOps" style="margin-top:9px">REFRESH OPERATIONS</button><div id="opsSummary" class="group"></div><div id="opsResources" class="group"></div><div id="opsPresentation" class="group"></div><div id="opsIncidents" class="group"></div><div id="opsServices" class="group"></div><div id="opsBackups" class="group"></div><div id="opsSupport" class="group"></div><div id="opsTasks" class="group"></div></section>
 </aside>
 <section class="preview"><div class="device"><div id="displayBadge" class="deviceBadge">REFERENCE 480 × 320</div><div class="screenWrap"><img id="screen" alt="Exact Beastagotchi preview"><div id="layoutOverlay"></div></div></div><div class="hint"><span id="previewModeLabel">Exact Beast UI compositor</span><span id="previewMeta">draft not applied</span></div></section>
 <aside class="right"><section class="section"><h3>DRAFT CONTROL</h3><div class="mini">Everything here is a draft until Apply. Preview uses current Beast Core telemetry and the same renderer as the physical TFT.</div><div class="group"><div class="row"><button id="undo">UNDO</button><button id="redo">REDO</button></div><button id="apply" class="primary" style="margin-top:8px">APPLY TO BEAST</button><button id="reset" style="margin-top:7px">RESET DRAFT</button><div id="status" class="status"></div></div><div class="group"><h3>NAMED VARIANTS</h3><input id="variantName" placeholder="My Field Setup" maxlength="64"><button id="saveVariant" style="margin-top:7px">SAVE CURRENT DRAFT</button><select id="variantList" style="margin-top:7px"></select><div class="row" style="margin-top:7px"><button id="loadVariant">LOAD</button><button id="deleteVariant">DELETE</button></div></div><div class="group"><h3>COMPOSITION PIPELINE</h3><div class="arch"><span class="badge">Live Data</span><span class="badge">Widget</span><span class="badge">Renderer</span><span class="badge">Layout</span><span class="badge">Theme</span><span class="badge">Animation</span></div><p class="mini">Dashboard binding, palettes, decks and saved variants now share the same draft → exact preview → atomic Apply path. Arbitrary drag/resize composition builds on this model.</p></div></section></aside></main>
@@ -91,8 +92,12 @@ async function loadPlugins(){try{let x=await jfetch('/api/plugins');plugins=x.it
 function renderPlugins(){let box=$('pluginList');box.innerHTML='';plugins.forEach(p=>{let c=document.createElement('div');c.className='plugin';let top=document.createElement('div');top.className='pluginTop';let name=document.createElement('span');name.className='pluginName';name.textContent=p.name;let st=document.createElement('span');st.className='pill '+(p.enabled?'on':'');st.textContent=p.enabled?'ON':'OFF';let integ=document.createElement('span');integ.className='pill '+(!['config_only','isolated'].includes(p.integration)?'integrated':'');integ.textContent=p.integration||'config_only';top.append(name,st,integ);c.append(top);let meta=document.createElement('div');meta.className='mini';meta.textContent=`${p.role||'plugin'} · ${p.display_policy||''}${p.protected?' · protected':''}`;c.append(meta);let btn=document.createElement('button');btn.textContent=p.enabled?'DISABLE':'ENABLE';btn.disabled=!p.toggle_capable||p.protected||(p.legacy_display_owner&&!p.enabled);btn.onclick=()=>togglePlugin(p,btn);c.append(btn);box.append(c)});if(!plugins.length)box.innerHTML='<div class="status">No plugins reported yet.</div>'}
 async function togglePlugin(p,btn){let wanted=!p.enabled;btn.disabled=true;$('status').textContent='Planning plugin change…';try{let plan=await jfetch('/api/plugin-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:p.name,enabled:wanted})});let pp=plan.plan||{};if(!pp.allowed)throw Error((pp.blockers||['blocked']).join('; '));let msg=`${wanted?'Enable':'Disable'} ${p.name}?\n\nA config snapshot will be taken. Pwnagotchi will be restarted if required and the change will roll back automatically if health verification fails.`;if(!confirm(msg)){btn.disabled=false;return}let result=await jfetch('/api/plugin-toggle',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:p.name,enabled:wanted})});let row=result.action_row||{};$('status').textContent=`Plugin ${p.name}: ${row.status||result.error||'unknown'}`;await new Promise(r=>setTimeout(r,900));await loadPlugins()}catch(e){$('status').textContent='Plugin change failed: '+e;btn.disabled=false}}
 async function setUpdatePolicy(component,policy,select){select.disabled=true;try{await jfetch('/api/update-policy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({component,policy})});$('status').textContent=`Update policy saved: ${component} → ${policy}`;await new Promise(r=>setTimeout(r,250));await loadPacks()}catch(e){$('status').textContent='Policy save failed: '+e}finally{select.disabled=false}}
+async function uploadPack(){let f=$('packFile').files[0];if(!f){$('status').textContent='Choose a Beast Pack archive first.';return}let btn=$('uploadPack');btn.disabled=true;try{$('status').textContent='Uploading '+f.name+'…';let r=await fetch('/api/pack-upload?name='+encodeURIComponent(f.name),{method:'PUT',headers:{'X-Beast-Studio-Token':TOKEN},body:f});if(!r.ok)throw Error(await r.text());let up=await r.json();let inspect=await jfetch('/api/pack-inspect',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:up.name})});let row=inspect.action_row||{};if(row.status!=='success')throw Error(row.result?.error||'inspection failed');let m=row.result?.manifest||{};if(!confirm('Verified '+(m.label||m.id||up.name)+' v'+(m.version||'?')+'.\n\nStage this pack? Staging does not execute or install it.'))return;let staged=await jfetch('/api/pack-stage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:up.name,replace:true})});let sr=staged.action_row||{};$('status').textContent=sr.status==='success'?'Pack verified and staged.':'Pack staging failed.';await new Promise(r=>setTimeout(r,400));await loadPacks()}catch(e){$('status').textContent='Pack intake failed: '+e}finally{btn.disabled=false}}
+$('uploadPack').onclick=uploadPack;
+async function installPack(p,btn){btn.disabled=true;try{let x=await jfetch('/api/pack-install-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});let plan=x.plan||{};if(!plan.allowed)throw Error((plan.blockers||['blocked']).join('; '));let warning=(plan.warnings||[]).join('\n');if(!confirm('Install '+(p.label||p.id)+' v'+(p.version||'?')+' into Beast\'s managed registry?\n\nNo code will execute and no service will restart.'+(warning?'\n\n'+warning:'')))return;let r=await jfetch('/api/pack-install',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});let row=r.action_row||{};$('status').textContent=row.status==='success'?'Pack installed to inert registry.':'Pack install failed.';await new Promise(r=>setTimeout(r,500));await loadPacks()}catch(e){$('status').textContent='Pack install failed: '+e}finally{btn.disabled=false}}
+async function rollbackPack(tx,btn){btn.disabled=true;try{let x=await jfetch('/api/pack-rollback-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transaction_id:tx.id})});let plan=x.plan||{};if(!plan.allowed)throw Error((plan.blockers||['blocked']).join('; '));if(!confirm('Roll back '+(tx.pack_id||'this pack')+' transaction '+tx.id+'?'))return;let r=await jfetch('/api/pack-rollback',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transaction_id:tx.id})});let row=r.action_row||{};$('status').textContent=row.status==='success'?'Pack rollback complete.':'Pack rollback failed.';await new Promise(r=>setTimeout(r,500));await loadPacks()}catch(e){$('status').textContent='Rollback failed: '+e}finally{btn.disabled=false}}
 async function loadPacks(){try{
-  let [x,prefs]=await Promise.all([jfetch('/api/platform'),jfetch('/api/update-policies')]);
+  let [x,prefs,hist]=await Promise.all([jfetch('/api/platform'),jfetch('/api/update-policies'),jfetch('/api/pack-history')]);
   let packs=x.packs||{},updates=x.updates||{};
   let sum=$('packSummary');sum.innerHTML='';
   let c=document.createElement('div');c.className='widget';
@@ -100,8 +105,10 @@ async function loadPacks(){try{
   sum.append(c);
 
   let box=$('packList');box.innerHTML='<h3>LOCAL PACK CATALOG</h3>';
-  (packs.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${String(r.lifecycle||'unknown').toUpperCase()}</span></div><div class="mini">${r.pack_type||'pack'} · v${r.version||'?'} · resource ${r.resource_class||'--'} · thermal ${r.thermal_class||'--'}</div><div class="mini">${r.description||''}</div>`;if((r.blockers||[]).length){let b=document.createElement('div');b.className='status';b.style.color='var(--warn)';b.textContent=(r.blockers||[]).join(' · ');d.append(b)}box.append(d)});
+  (packs.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${String(r.lifecycle||'unknown').toUpperCase()}</span></div><div class="mini">${r.pack_type||'pack'} · v${r.version||'?'} · resource ${r.resource_class||'--'} · thermal ${r.thermal_class||'--'}</div><div class="mini">${r.description||''}</div>`;if((r.blockers||[]).length){let b=document.createElement('div');b.className='status';b.style.color='var(--warn)';b.textContent=(r.blockers||[]).join(' · ');d.append(b)}if(r.origin==='staged'&&String(r.lifecycle)==='verified'){let btn=document.createElement('button');btn.textContent='INSTALL TO MANAGED REGISTRY';btn.disabled=!ready;btn.onclick=()=>installPack(r,btn);d.append(btn)}box.append(d)});
   if(!(packs.items||[]).length)box.innerHTML+='<div class="status">No optional Beast Packs installed or staged yet. The base platform remains self-contained.</div>';
+
+  let tx=$('packTransactions');tx.innerHTML='<h3>INSTALL / ROLLBACK HISTORY</h3>';let txrows=(hist.items||[]);if(!txrows.length)tx.innerHTML+='<div class="status">No pack transactions yet.</div>';txrows.slice(0,8).forEach(r=>{let d=document.createElement('div');d.className='plugin';d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.pack_id||'pack'} · ${r.version||'?'}</span><span class="pill ${r.status==='installed'?'on':''}">${String(r.status||'unknown').toUpperCase()}</span></div><div class="mini">${r.id||''} · activation ${r.activation_performed?'yes':'no'}</div>`;if(r.status==='installed'&&r.rollback_payload_retained){let btn=document.createElement('button');btn.textContent='ROLL BACK';btn.onclick=()=>rollbackPack(r,btn);d.append(btn)}tx.append(d)});
 
   let up=$('updateList');up.innerHTML='<h3>UPDATE POLICIES</h3><div class="mini">These choices record intent only. Metadata checking and transactional update execution are still locked.</div>';
   let saved=(prefs||{}).policies||{};
@@ -370,6 +377,30 @@ class StudioState:
         enabled=bool(obj.get('enabled'))
         return self.actions.perform('plugin.toggle',{'name':name,'enabled':enabled})
 
+    def pack_upload(self,name: str,data: bytes)->dict:
+        return self.pack_files.save(name,data)
+
+    def pack_inspect(self,obj: dict)->dict:
+        return self.actions.perform('pack.inspect',{'name':str(obj.get('name') or '')})
+
+    def pack_stage(self,obj: dict)->dict:
+        return self.actions.perform('pack.stage',{'name':str(obj.get('name') or ''),'replace':bool(obj.get('replace',False))})
+
+    def pack_install_plan(self,obj: dict)->dict:
+        return self.actions.plan('pack.install',{'id':str(obj.get('id') or '')})
+
+    def pack_install(self,obj: dict)->dict:
+        return self.actions.perform('pack.install',{'id':str(obj.get('id') or '')})
+
+    def pack_rollback_plan(self,obj: dict)->dict:
+        return self.actions.plan('pack.rollback',{'transaction_id':str(obj.get('transaction_id') or '')})
+
+    def pack_rollback(self,obj: dict)->dict:
+        return self.actions.perform('pack.rollback',{'transaction_id':str(obj.get('transaction_id') or '')})
+
+    def pack_history(self)->dict:
+        return self.actions.plan('pack.history',{'limit':30})
+
     def update_policy_snapshot(self)->dict:
         return self.update_policies.load()
 
@@ -379,7 +410,7 @@ class StudioState:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version='BeastStudio/0.17'
+    server_version='BeastStudio/0.19'
     def log_message(self,fmt,*args):return
     @property
     def st(self)->StudioState:return self.server.studio
@@ -399,6 +430,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/plugins':return self._send(200,self.st.plugins())
         if path=='/api/platform':return self._send(200,self.st.platform())
         if path=='/api/update-policies':return self._send(200,self.st.update_policy_snapshot())
+        if path=='/api/pack-history':return self._send(200,self.st.pack_history())
         if path=='/api/backup-inspect':
             name=parse_qs(urlsplit(self.path).query).get('name',[''])[0]
             return self._send(200,self.st.backup_inspect(name))
@@ -419,16 +451,17 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404,{'error':'not found'})
     def do_PUT(self):
         path=urlsplit(self.path).path
-        if path!='/api/library-upload':return self._send(404,{'error':'not found'})
+        if path not in {'/api/library-upload','/api/pack-upload'}:return self._send(404,{'error':'not found'})
         if not self._auth():return self._send(403,{'error':'paired Studio token required'})
         try:
             n=int(self.headers.get('Content-Length','0') or 0)
-            if n<0 or n>64*1024*1024:raise LibraryFileError('invalid or oversized upload')
+            limit=128*1024*1024 if path=='/api/pack-upload' else 64*1024*1024
+            if n<0 or n>limit:raise ValueError('invalid or oversized upload')
             name=parse_qs(urlsplit(self.path).query).get('name',[''])[0]
             data=self.rfile.read(n)
-            if len(data)!=n:raise LibraryFileError('incomplete upload')
-            return self._send(200,self.st.library_upload(name,data))
-        except LibraryFileError as exc:return self._send(400,{'error':str(exc)})
+            if len(data)!=n:raise ValueError('incomplete upload')
+            return self._send(200,self.st.pack_upload(name,data) if path=='/api/pack-upload' else self.st.library_upload(name,data))
+        except (LibraryFileError,PackFileError,ValueError) as exc:return self._send(400,{'error':str(exc)})
         except Exception as exc:return self._send(500,{'error':type(exc).__name__})
 
     def do_POST(self):
@@ -437,7 +470,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -452,6 +485,12 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/variant-load':return self._send(200,self.st.load_variant(str(obj.get('id') or '')))
             if path=='/api/variant-delete':return self._send(200,self.st.delete_variant(str(obj.get('id') or '')))
             if path=='/api/update-policy':return self._send(200,self.st.set_update_policy(obj))
+            if path=='/api/pack-inspect':return self._send(200,self.st.pack_inspect(obj))
+            if path=='/api/pack-stage':return self._send(200,self.st.pack_stage(obj))
+            if path=='/api/pack-install-plan':return self._send(200,self.st.pack_install_plan(obj))
+            if path=='/api/pack-install':return self._send(200,self.st.pack_install(obj))
+            if path=='/api/pack-rollback-plan':return self._send(200,self.st.pack_rollback_plan(obj))
+            if path=='/api/pack-rollback':return self._send(200,self.st.pack_rollback(obj))
         except (ValueError,UpdatePolicyError) as exc:return self._send(400,{'error':str(exc)})
         except Exception as exc:return self._send(500,{'error':type(exc).__name__})
         return self._send(404,{'error':'not found'})
