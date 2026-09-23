@@ -10,6 +10,7 @@ from .backup import BackupManager, BackupError
 from .container_broker import ContainerBroker, ContainerBrokerError
 from .support_bundle import SupportBundleManager
 from .operator_sessions import OperatorSessionManager
+from .pack_intake import PackIntakeManager, PackIntakeError
 
 
 class ActionBroker:
@@ -30,6 +31,7 @@ class ActionBroker:
         self.backup_manager = BackupManager(str(store.path))
         self.support_manager = SupportBundleManager(state,store)
         self.operator_sessions = OperatorSessionManager()
+        self.pack_intake = PackIntakeManager()
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -51,6 +53,11 @@ class ActionBroker:
         if action == "backup.stage":
             name=str(payload.get("name") or "");inspect=self.backup_manager.inspect(name)
             return {"allowed":bool(inspect.get("ready_to_stage")),"operation":"backup.stage","name":name,"inspection":inspect,"blockers":list(inspect.get("blockers") or [])}
+        if action == "pack.inspect":
+            check=self.pack_intake.inspect(str(payload.get("name") or ""))
+            return {"allowed":True,"operation":"pack.inspect","inspection":check,"blockers":[]}
+        if action == "pack.stage":
+            return self.pack_intake.plan_stage(str(payload.get("name") or ""),replace=bool(payload.get("replace",False)))
         raise ValueError("unsupported action")
 
     def perform(self, action: str, payload: dict[str, Any], *, actor: str = "local") -> dict[str, Any]:
@@ -65,6 +72,10 @@ class ActionBroker:
                 result=self.operator_sessions.revoke()
             elif action == "backup.stage":
                 result=self.backup_manager.stage(str(requested.get("name") or ""))
+            elif action == "pack.inspect":
+                result=self.pack_intake.inspect(str(requested.get("name") or ""))
+            elif action == "pack.stage":
+                result=self.pack_intake.stage(str(requested.get("name") or ""),replace=bool(requested.get("replace",False)))
             elif action == "plugin.toggle":
                 result = self.plugin_broker.toggle(str(requested.get("name") or ""), bool(requested.get("enabled")), restart=True)
             elif action == "service.restart":
@@ -84,7 +95,7 @@ class ActionBroker:
             else:
                 raise ValueError("unsupported action")
             status = "success" if result.get("ok") else "rolled_back" if result.get("rolled_back") else "failed"
-        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, ValueError) as exc:
+        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, ValueError) as exc:
             plan = {}
             result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             status = "blocked" if isinstance(exc, PluginBrokerError) else "failed"
