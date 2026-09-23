@@ -33,6 +33,7 @@ from .presentation import PresentationBroker
 from .missions import MissionPackEngine
 from .packs import PackRegistryEngine
 from .updates import UpdatePolicyEngine
+from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .actions import ActionBroker
@@ -83,6 +84,7 @@ class BeastCore:
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
         self.actions = ActionBroker(self.state, self.store, self.events)
+        self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)
         self.api.backup_manager = self.actions.backup_manager
         self.api.operator_tools = self.operator_tools
@@ -457,6 +459,32 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
             except asyncio.TimeoutError: pass
 
+    async def _update_automation_loop(self) -> None:
+        # Policy-selected staging is intentionally much slower than telemetry.
+        while not self.stop_event.is_set():
+            try:
+                patch = await asyncio.to_thread(self.update_automation.tick)
+                changed = self.state.update_many("update_automation", patch, priority=75)
+                if changed:
+                    self.events.publish(
+                        "update_automation.changed",
+                        "update_automation",
+                        {"keys": [x[0] for x in changed]},
+                    )
+            except Exception as exc:
+                log.exception("update automation failed")
+                ev = self.events.publish(
+                    "update_automation.error",
+                    "update_automation",
+                    {"error": repr(exc)},
+                    "warning",
+                )
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=60.0)
+            except asyncio.TimeoutError:
+                pass
+
     async def _plugin_integration_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -562,6 +590,7 @@ class BeastCore:
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
             asyncio.create_task(self._packs_loop(), name="packs"),
             asyncio.create_task(self._updates_loop(), name="updates"),
+            asyncio.create_task(self._update_automation_loop(), name="update-automation"),
             asyncio.create_task(self._presentation_loop(), name="presentation"),
             asyncio.create_task(self._records_loop(), name="records"),
             asyncio.create_task(self._overview_loop(), name="overview"),
