@@ -131,7 +131,7 @@ class BeastRoster:
     def get(self, beast_id: str) -> dict[str, Any]:
         row = self.conn.execute(
             """SELECT b.id,b.name,b.kind,b.lineage_id,b.status,b.active,b.generation,b.created_at,b.updated_at,b.trait_seed,
-                      b.identity_json,b.appearance_json,b.preferences_json,
+                      b.identity_json,b.appearance_json,b.preferences_json,b.legend_at,
                       p.xp,p.max_level,p.lifetime_runtime_sec,p.runtime_award_remainder_sec,p.counters_json,p.seen_vendors_json
                FROM beasts b JOIN beast_progress p ON p.beast_id=b.id WHERE b.id=?""",
             (str(beast_id),),
@@ -140,11 +140,12 @@ class BeastRoster:
             raise BeastRosterError("Beast not found")
         keys = [
             "id","name","kind","lineage_id","status","active","generation","created_at","updated_at","trait_seed",
-            "identity_json","appearance_json","preferences_json","xp","max_level","lifetime_runtime_sec",
+            "identity_json","appearance_json","preferences_json","legend_at","xp","max_level","lifetime_runtime_sec",
             "runtime_award_remainder_sec","counters_json","seen_vendors_json",
         ]
         out = dict(zip(keys, row))
         out["active"] = bool(out["active"])
+        out["legend"] = out.get("legend_at") is not None
         out["identity"] = _loads(out.pop("identity_json"), {})
         out["appearance"] = _loads(out.pop("appearance_json"), {})
         out["preferences"] = _loads(out.pop("preferences_json"), {})
@@ -245,6 +246,44 @@ class BeastRoster:
         row=prefs.get("presentation")
         return dict(row) if isinstance(row,dict) else {}
 
+    def set_legend(self, beast_id: str, enabled: bool = True) -> dict[str, Any]:
+        beast=self.get(str(beast_id))
+        if enabled and int(beast.get("level") or 1)<100:
+            raise BeastRosterError("Hall of Legends induction requires level 100")
+        now=float(self.clock())
+        with self.conn:
+            self.conn.execute("UPDATE beasts SET legend_at=?,updated_at=? WHERE id=?", (now if enabled else None,now,str(beast_id)))
+        return self.get(str(beast_id))
+
+    def ancestry_graph(self) -> dict[str, Any]:
+        creatures=self.list()
+        nodes=[]
+        for b in creatures:
+            nodes.append({
+                "id":b["id"],"name":b["name"],"kind":b["kind"],"lineage_id":b["lineage_id"],
+                "generation":int(b.get("generation") or 0),"level":int(b.get("level") or 1),
+                "stage":b.get("stage"),"legend":bool(b.get("legend")),"legend_at":b.get("legend_at"),
+                "active":bool(b.get("active")),"mutation":((b.get("appearance") or {}).get("mutation")),
+            })
+        edges=[{"child_id":r[0],"parent_id":r[1],"role":r[2]} for r in self.conn.execute(
+            "SELECT child_id,parent_id,parent_role FROM beast_ancestry ORDER BY child_id,parent_role,parent_id"
+        ).fetchall()]
+        children={}
+        child_ids=set()
+        for e in edges:
+            children.setdefault(e["parent_id"],[]).append(e["child_id"]);child_ids.add(e["child_id"])
+        for n in nodes:n["children"]=list(children.get(n["id"],[]))
+        return {"nodes":nodes,"edges":edges,"root_count":sum(1 for n in nodes if n["id"] not in child_ids)}
+
+    def hall_of_legends(self) -> dict[str, Any]:
+        rows=self.list()
+        inductees=[b for b in rows if b.get("legend")]
+        candidates=[b for b in rows if int(b.get("level") or 1)>=100 and not b.get("legend")]
+        return {
+            "inductees":inductees,"candidates":candidates,"inductee_count":len(inductees),
+            "candidate_count":len(candidates),"level_100_count":sum(1 for b in rows if int(b.get("level") or 1)>=100),
+            "graph":self.ancestry_graph(),
+        }
     def synthesis_plan(self, parent_a: str, parent_b: str) -> dict[str, Any]:
         if str(parent_a) == str(parent_b):
             return {"allowed": False, "blockers": ["Lineage Synthesis requires two distinct Beasts"]}

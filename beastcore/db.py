@@ -170,7 +170,8 @@ CREATE TABLE IF NOT EXISTS beasts (
   trait_seed TEXT,
   identity_json TEXT NOT NULL DEFAULT '{}',
   appearance_json TEXT NOT NULL DEFAULT '{}',
-  preferences_json TEXT NOT NULL DEFAULT '{}'
+  preferences_json TEXT NOT NULL DEFAULT '{}',
+  legend_at REAL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_beasts_single_active ON beasts(active) WHERE active=1;
 CREATE INDEX IF NOT EXISTS idx_beasts_kind_status ON beasts(kind,status,updated_at DESC);
@@ -324,6 +325,9 @@ class Store:
         }
         for name,decl in additions.items():
             if name not in cols:self.conn.execute(f"ALTER TABLE wifi_encounters ADD COLUMN {name} {decl}")
+        beast_cols={r[1] for r in self.conn.execute("PRAGMA table_info(beasts)").fetchall()}
+        if beast_cols and "legend_at" not in beast_cols:
+            self.conn.execute("ALTER TABLE beasts ADD COLUMN legend_at REAL")
         # FTS5 is available in normal Raspberry Pi / Python SQLite builds, but
         # Field Library must remain usable if a custom build omits it.
         try:
