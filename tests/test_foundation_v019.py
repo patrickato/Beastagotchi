@@ -114,3 +114,51 @@ def test_v019_home_visual_smoke_across_theme_families(tmp_path):
         with Image.open(out) as im:
             assert im.size == (480, 320)
             assert im.getbbox() == (0, 0, 480, 320)
+
+
+def test_platform_bundle_exposes_resource_and_presentation_truth():
+    from beastcore.api import LocalAPI
+
+    class Store:
+        def library_summary(self, limit): return {"total": 2, "items": []}
+        def recent_jobs(self, limit): return []
+        def recent_incidents(self, limit): return [{"title": "Recovered restart", "status": "resolved"}]
+
+    state = _S({
+        "overview.state": "healthy",
+        "platform.services": [{"unit": "beast-ui.service", "active": "active"}],
+        "performance.processes": [{"id": "beast_ui", "label": "Beast UI", "cpu_pct": 4.5, "rss_mb": 72.0, "pids": [101]}],
+        "performance.beast.cpu_pct": 7.0,
+        "performance.platform_services.cpu_pct": 11.0,
+        "performance.tracked.rss_mb": 155.0,
+        "performance.process_count": 3,
+        "performance.ui.avg_render_ms": 12.5,
+        "performance.fb.write_ratio_pct": 21.0,
+        "system.temp.cpu_c": 58.5,
+        "system.cpu.total": 23.0,
+        "system.memory.used_pct": 31.0,
+        "system.throttle.flags": "0x0",
+        "system.clock.arm_mhz": 1800.0,
+        "governor.mode": "FULL",
+        "governor.budget_pct": 100,
+        "governor.throttle_current": False,
+        "presentation.desired_owner": "beast",
+        "presentation.active_owner": "beast",
+        "presentation.status": "stable",
+        "presentation.available_owners": ["native", "theme_manager", "beast"],
+        "presentation.theme_manager.installed": True,
+        "presentation.theme_manager.enabled": False,
+        "presentation.conflict_count": 0,
+        "presentation.executor_enabled": False,
+    })
+    api = LocalAPI(state, object(), Store())
+    bundle = api.platform_bundle()
+
+    assert bundle["thermal"]["cpu_temp_c"] == 58.5
+    assert bundle["performance"]["beast_cpu_pct"] == 7.0
+    assert bundle["performance"]["processes"][0]["id"] == "beast_ui"
+    assert bundle["governor"]["mode"] == "FULL"
+    assert bundle["presentation"]["active_owner"] == "beast"
+    assert bundle["presentation"]["theme_manager_installed"] is True
+    assert bundle["presentation"]["executor_enabled"] is False
+    assert bundle["incidents"]["items"][0]["status"] == "resolved"

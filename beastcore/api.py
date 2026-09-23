@@ -37,6 +37,125 @@ class LocalAPI:
                 k,v = line.split(":",1); headers[k.strip().lower()] = v.strip()
         return method, target, headers
 
+    def platform_bundle(self) -> dict[str, Any]:
+        """Return the high-value whole-platform snapshot used by Beast Studio.
+
+        This bundle is intentionally curated. It exposes enough live state to
+        understand health, heat/resource cost, presentation ownership, recovery,
+        and service topology without forcing the browser to download every
+        canonical state key.
+        """
+        performance = {
+            "processes": self.state.get("performance.processes", []) or [],
+            "beast_cpu_pct": self.state.get("performance.beast.cpu_pct"),
+            "platform_services_cpu_pct": self.state.get("performance.platform_services.cpu_pct"),
+            "tracked_rss_mb": self.state.get("performance.tracked.rss_mb"),
+            "process_count": int(self.state.get("performance.process_count", 0) or 0),
+            "ui": {
+                "avg_render_ms": self.state.get("performance.ui.avg_render_ms"),
+                "avg_compose_ms": self.state.get("performance.ui.avg_compose_ms"),
+                "avg_fb_write_ms": self.state.get("performance.ui.avg_fb_write_ms"),
+                "target_fps": self.state.get("performance.ui.target_fps"),
+                "lifetime_fps": self.state.get("performance.ui.lifetime_fps"),
+                "theme": self.state.get("performance.ui.theme"),
+                "page": self.state.get("performance.ui.page"),
+            },
+            "framebuffer": {
+                "changed_rows": self.state.get("performance.fb.changed_rows"),
+                "bytes_written": self.state.get("performance.fb.bytes_written"),
+                "frame_bytes": self.state.get("performance.fb.frame_bytes"),
+                "full_write": self.state.get("performance.fb.full_write"),
+                "write_ratio_pct": self.state.get("performance.fb.write_ratio_pct"),
+                "saved_bytes": self.state.get("performance.fb.saved_bytes"),
+                "total_frames": self.state.get("performance.fb.total_frames"),
+                "total_bytes_written": self.state.get("performance.fb.total_bytes_written"),
+                "total_full_writes": self.state.get("performance.fb.total_full_writes"),
+                "total_saved_bytes": self.state.get("performance.fb.total_saved_bytes"),
+            },
+        }
+        thermal = {
+            "cpu_temp_c": self.state.get("system.temp.cpu_c"),
+            "cpu_total_pct": self.state.get("system.cpu.total"),
+            "memory_used_pct": self.state.get("system.memory.used_pct"),
+            "load_1m": self.state.get("system.load.1m"),
+            "load_5m": self.state.get("system.load.5m"),
+            "load_15m": self.state.get("system.load.15m"),
+            "throttle_flags": self.state.get("system.throttle.flags"),
+            "arm_clock_mhz": self.state.get("system.clock.arm_mhz"),
+            "core_clock_mhz": self.state.get("system.clock.core_mhz"),
+            "gpu_mem_mb": self.state.get("system.gpu.mem_mb"),
+        }
+        governor = {
+            "mode": self.state.get("governor.mode"),
+            "level": self.state.get("governor.level"),
+            "reason": self.state.get("governor.reason"),
+            "reasons": self.state.get("governor.reasons", []) or [],
+            "budget_pct": self.state.get("governor.budget_pct"),
+            "fps_cap": self.state.get("governor.ui.fps_cap"),
+            "detail": self.state.get("governor.ui.detail"),
+            "ambient_allowed": self.state.get("governor.ui.ambient_allowed"),
+            "foreground_allowed": self.state.get("governor.ui.foreground_allowed"),
+            "rare_cinematic_allowed": self.state.get("governor.rare.cinematic_allowed"),
+            "recovery_pending": self.state.get("governor.recovery_pending"),
+            "recovery_target": self.state.get("governor.recovery_target"),
+            "throttle_current": self.state.get("governor.throttle_current"),
+            "throttle_history_seen": self.state.get("governor.throttle_history_seen"),
+        }
+        presentation = {
+            "desired_owner": self.state.get("presentation.desired_owner"),
+            "active_owner": self.state.get("presentation.active_owner"),
+            "status": self.state.get("presentation.status"),
+            "available_owners": self.state.get("presentation.available_owners", []) or [],
+            "conflicts": self.state.get("presentation.conflicts", []) or [],
+            "conflict_count": int(self.state.get("presentation.conflict_count", 0) or 0),
+            "executor_enabled": bool(self.state.get("presentation.executor_enabled", False)),
+            "executor_reason": self.state.get("presentation.executor_reason"),
+            "native_available": bool(self.state.get("presentation.native.available", False)),
+            "beast_available": bool(self.state.get("presentation.beast.available", True)),
+            "beast_service_active": bool(self.state.get("presentation.beast.service_active", False)),
+            "theme_manager_installed": bool(self.state.get("presentation.theme_manager.installed", False)),
+            "theme_manager_enabled": bool(self.state.get("presentation.theme_manager.enabled", False)),
+            "theme_manager_managed_handoff_supported": bool(self.state.get("presentation.theme_manager.managed_handoff_supported", False)),
+            "last_error": self.state.get("presentation.last_error"),
+        }
+        return {
+            "library": self.store.library_summary(12),
+            "jobs": {"items": self.store.recent_jobs(20)},
+            "incidents": {
+                "items": self.store.recent_incidents(20),
+                "open_count": int(self.state.get("incidents.open_count",0) or 0),
+            },
+            "overview": {
+                "state": self.state.get("overview.state"),
+                "attention": self.state.get("overview.attention", []) or [],
+                "cards": self.state.get("overview.cards", []) or [],
+            },
+            "topology": {
+                "nodes": self.state.get("topology.nodes", []) or [],
+                "edges": self.state.get("topology.edges", []) or [],
+                "failures": self.state.get("topology.failures", []) or [],
+            },
+            "services": self.state.get("platform.services", []) or [],
+            "displays": {
+                "framebuffers": self.state.get("display.framebuffers", []) or [],
+                "outputs": self.state.get("display.outputs", []) or [],
+            },
+            "containers": {
+                "available": bool(self.state.get("containers.runtime.available")),
+                "runtime": self.state.get("containers.runtime"),
+                "items": self.state.get("containers.items", []) or [],
+            },
+            "backups": {
+                "count": int(self.state.get("backups.count",0) or 0),
+                "items": self.state.get("backups.items", []) or [],
+                "last": self.state.get("backups.last"),
+            },
+            "performance": performance,
+            "thermal": thermal,
+            "governor": governor,
+            "presentation": presentation,
+        }
+
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             raw = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=2)
@@ -100,36 +219,7 @@ class LocalAPI:
                 items = self.store.recent_actions(limit)
                 body = {"count": len(items), "items": items}
             elif parsed.path == "/platform-bundle":
-                body = {
-                    "library": self.store.library_summary(12),
-                    "jobs": {"items": self.store.recent_jobs(20)},
-                    "incidents": {"items": self.store.recent_incidents(20), "open_count": int(self.state.get("incidents.open_count",0) or 0)},
-                    "overview": {
-                        "state": self.state.get("overview.state"),
-                        "attention": self.state.get("overview.attention", []) or [],
-                        "cards": self.state.get("overview.cards", []) or [],
-                    },
-                    "topology": {
-                        "nodes": self.state.get("topology.nodes", []) or [],
-                        "edges": self.state.get("topology.edges", []) or [],
-                        "failures": self.state.get("topology.failures", []) or [],
-                    },
-                    "services": self.state.get("platform.services", []) or [],
-                    "displays": {
-                        "framebuffers": self.state.get("display.framebuffers", []) or [],
-                        "outputs": self.state.get("display.outputs", []) or [],
-                    },
-                    "containers": {
-                        "available": bool(self.state.get("containers.runtime.available")),
-                        "runtime": self.state.get("containers.runtime"),
-                        "items": self.state.get("containers.items", []) or [],
-                    },
-                    "backups": {
-                        "count": int(self.state.get("backups.count",0) or 0),
-                        "items": self.state.get("backups.items", []) or [],
-                        "last": self.state.get("backups.last"),
-                    },
-                }
+                body = self.platform_bundle()
             elif parsed.path == "/library-item":
                 q = urllib.parse.parse_qs(parsed.query)
                 doc_id = str(q.get("id", [""])[0])
