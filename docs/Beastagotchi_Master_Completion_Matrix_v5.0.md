@@ -329,7 +329,7 @@ approved scope.
 - [ ] Audio Pack consumer
 - [ ] Data Pack consumer
 - [ ] Map Pack consumer
-- [ ] Depot browser/search/filter UI
+- [~] Depot browser/search/filter UI — persistent local catalog import/browser complete; remote refresh/acquire pending
 - [ ] Pack remove/uninstall UX
 - [ ] Pack update UX with compatibility comparison
 - [ ] code-bearing App Pack activation adapter

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -141,4 +143,121 @@ class DepotCatalog:
             "error_count": len(errors),
             "grants_trust": False,
             "installs_packs": False,
+        }
+
+
+
+class DepotCatalogStore:
+    """Persistent local/cache layer for untrusted Depot discovery metadata."""
+
+    def __init__(
+        self,
+        root: str | Path = "/var/lib/beastagotchi/depot/catalogs",
+        *,
+        max_bytes: int = 1024 * 1024,
+        max_entries: int = 512,
+        clock=time.time,
+    ) -> None:
+        self.root = Path(root)
+        self.max_bytes = int(max_bytes)
+        self.max_entries = int(max_entries)
+        self.clock = clock
+
+    @staticmethod
+    def _safe_name(name: str) -> str:
+        base = Path(str(name or "").strip()).name
+        if not base.lower().endswith(".json"):
+            raise DepotCatalogError("Depot catalog filename must end in .json")
+        stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(base).stem).strip(".-_")[:80]
+        if not stem:
+            raise DepotCatalogError("invalid Depot catalog filename")
+        return stem + ".json"
+
+    def save(self, name: str, data: bytes) -> dict[str, Any]:
+        if not isinstance(data, (bytes, bytearray)):
+            raise DepotCatalogError("Depot catalog upload must be bytes")
+        if len(data) > self.max_bytes:
+            raise DepotCatalogError("Depot catalog exceeds size limit")
+        self.root.mkdir(parents=True, exist_ok=True)
+        safe = self._safe_name(name)
+        incoming = self.root / (safe + ".incoming")
+        incoming.write_bytes(bytes(data))
+        try:
+            parsed = DepotCatalog(incoming, max_bytes=self.max_bytes, max_entries=self.max_entries).load()
+            normalized = {
+                "schema": 1,
+                "channel": parsed.get("channel") or "stable",
+                "generated_at": parsed.get("generated_at"),
+                "imported_at": float(self.clock()),
+                "packs": parsed.get("items") or [],
+            }
+            target = self.root / safe
+            out_tmp = target.with_suffix(".json.tmp")
+            out_tmp.write_text(json.dumps(normalized, indent=2, sort_keys=True) + "\n")
+            os.chmod(out_tmp, 0o600)
+            out_tmp.replace(target)
+            return {
+                "ok": True, "name": safe, "path": str(target),
+                "count": parsed.get("count", 0),
+                "source_error_count": parsed.get("error_count", 0),
+                "grants_trust": False, "installs_packs": False,
+            }
+        finally:
+            incoming.unlink(missing_ok=True)
+
+    def catalogs(self) -> list[dict[str, Any]]:
+        try:
+            files = sorted(self.root.glob("*.json"))
+        except OSError:
+            return []
+        out = []
+        for fp in files[:64]:
+            try:
+                parsed = DepotCatalog(fp, max_bytes=self.max_bytes, max_entries=self.max_entries).load()
+                out.append({
+                    "name": fp.name, "channel": parsed.get("channel"),
+                    "count": parsed.get("count", 0), "error_count": parsed.get("error_count", 0),
+                    "mtime": fp.stat().st_mtime,
+                })
+            except Exception as exc:
+                out.append({"name": fp.name, "count": 0, "error": f"{type(exc).__name__}: {exc}"[:240]})
+        return out
+
+    def combined(self, query: str = "", pack_type: str = "") -> dict[str, Any]:
+        query = str(query or "").strip().lower()[:120]
+        pack_type = str(pack_type or "").strip().lower()[:32]
+        catalogs = self.catalogs()
+        items = []
+        errors = []
+        by_id: dict[str, list[str]] = {}
+        for meta in catalogs:
+            name = str(meta.get("name") or "")
+            fp = self.root / name
+            try:
+                parsed = DepotCatalog(fp, max_bytes=self.max_bytes, max_entries=self.max_entries).load()
+                for row in parsed.get("items") or []:
+                    if pack_type and str(row.get("pack_type") or "") != pack_type:
+                        continue
+                    hay = " ".join([
+                        str(row.get("id") or ""), str(row.get("label") or ""),
+                        str(row.get("description") or ""), str(row.get("author") or ""),
+                        " ".join(row.get("tags") or []),
+                    ]).lower()
+                    if query and query not in hay:
+                        continue
+                    items.append({**row, "catalog": name, "catalog_channel": parsed.get("channel")})
+                    by_id.setdefault(str(row.get("id") or ""), []).append(name)
+                errors.extend({"catalog": name, **x} for x in (parsed.get("errors") or []))
+            except Exception as exc:
+                errors.append({"catalog": name, "error": f"{type(exc).__name__}: {exc}"[:240]})
+        conflicts = [
+            {"id": pack_id, "catalogs": names}
+            for pack_id, names in sorted(by_id.items()) if len(set(names)) > 1
+        ]
+        return {
+            "ok": True, "items": items, "count": len(items),
+            "catalogs": catalogs, "catalog_count": len(catalogs),
+            "conflicts": conflicts, "errors": errors[:128],
+            "grants_trust": False, "installs_packs": False,
+            "remote_refresh_enabled": False,
         }
