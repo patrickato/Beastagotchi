@@ -101,14 +101,14 @@ async function loadPacks(){try{
   let packs=x.packs||{},updates=x.updates||{};
   let sum=$('packSummary');sum.innerHTML='';
   let c=document.createElement('div');c.className='widget';
-  c.innerHTML=`<div class="widgetHead"><b>DEPOT FOUNDATION</b><span class="pill">${packs.count||0} PACKS</span></div><div class="mini">${packs.enabled_count||0} enabled · ${packs.staged_count||0} staged · ${packs.compatible_count||0} requirements-ready · ${packs.error_count||0} manifest errors</div><div class="mini">Installer: ${packs.executor_enabled?'ENABLED':'LOCKED'} · ${packs.executor_reason||''}</div>`;
+  c.innerHTML=`<div class="widgetHead"><b>DEPOT FOUNDATION</b><span class="pill">${packs.count||0} PACKS</span></div><div class="mini">${packs.enabled_count||0} enabled · ${packs.staged_count||0} staged · ${packs.compatible_count||0} requirements-ready · ${packs.error_count||0} manifest errors</div><div class="mini">Registry install: ${packs.executor_enabled?'ENABLED':'LOCKED'} · activation ${packs.activation_enabled?'ENABLED':'LOCKED'} · ${packs.executor_reason||''}</div>`;
   sum.append(c);
 
   let box=$('packList');box.innerHTML='<h3>LOCAL PACK CATALOG</h3>';
   (packs.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${String(r.lifecycle||'unknown').toUpperCase()}</span></div><div class="mini">${r.pack_type||'pack'} · v${r.version||'?'} · resource ${r.resource_class||'--'} · thermal ${r.thermal_class||'--'}</div><div class="mini">${r.description||''}</div>`;if((r.blockers||[]).length){let b=document.createElement('div');b.className='status';b.style.color='var(--warn)';b.textContent=(r.blockers||[]).join(' · ');d.append(b)}if(r.origin==='staged'&&String(r.lifecycle)==='verified'){let btn=document.createElement('button');btn.textContent='INSTALL TO MANAGED REGISTRY';btn.disabled=!ready;btn.onclick=()=>installPack(r,btn);d.append(btn)}box.append(d)});
   if(!(packs.items||[]).length)box.innerHTML+='<div class="status">No optional Beast Packs installed or staged yet. The base platform remains self-contained.</div>';
 
-  let tx=$('packTransactions');tx.innerHTML='<h3>INSTALL / ROLLBACK HISTORY</h3>';let txrows=(hist.items||[]);if(!txrows.length)tx.innerHTML+='<div class="status">No pack transactions yet.</div>';txrows.slice(0,8).forEach(r=>{let d=document.createElement('div');d.className='plugin';d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.pack_id||'pack'} · ${r.version||'?'}</span><span class="pill ${r.status==='installed'?'on':''}">${String(r.status||'unknown').toUpperCase()}</span></div><div class="mini">${r.id||''} · activation ${r.activation_performed?'yes':'no'}</div>`;if(r.status==='installed'&&r.rollback_payload_retained){let btn=document.createElement('button');btn.textContent='ROLL BACK';btn.onclick=()=>rollbackPack(r,btn);d.append(btn)}tx.append(d)});
+  let tx=$('packTransactions');tx.innerHTML='<h3>INSTALL / ROLLBACK HISTORY</h3>';let txrows=(hist.items||[]);if(!txrows.length)tx.innerHTML+='<div class="status">No pack transactions yet.</div>';txrows.slice(0,8).forEach(r=>{let d=document.createElement('div');d.className='plugin';d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.pack_id||'pack'} · ${r.version||'?'}</span><span class="pill ${r.status==='installed'?'on':''}">${String(r.status||'unknown').toUpperCase()}</span></div><div class="mini">${r.id||''} · activation ${r.activation_performed?'yes':'no'}</div>`;if(r.status==='installed'&&(!r.had_previous||r.rollback_payload_retained)){let btn=document.createElement('button');btn.textContent='ROLL BACK';btn.onclick=()=>rollbackPack(r,btn);d.append(btn)}tx.append(d)});
 
   let up=$('updateList');up.innerHTML='<h3>UPDATE POLICIES</h3><div class="mini">These choices record intent only. Metadata checking and transactional update execution are still locked.</div>';
   let saved=(prefs||{}).policies||{};
@@ -399,7 +399,8 @@ class StudioState:
         return self.actions.perform('pack.rollback',{'transaction_id':str(obj.get('transaction_id') or '')})
 
     def pack_history(self)->dict:
-        return self.actions.plan('pack.history',{'limit':30})
+        row=self.actions.plan('pack.history',{'limit':30})
+        return row.get('plan',row) if isinstance(row,dict) else {'items':[]}
 
     def update_policy_snapshot(self)->dict:
         return self.update_policies.load()

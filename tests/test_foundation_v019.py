@@ -191,7 +191,9 @@ def test_pack_registry_validates_and_reports_capability_blockers(tmp_path):
     assert row["requirements_met"] is False
     assert row["missing_capabilities"] == ["rtl_sdr"]
     assert "secret@" not in row["source"]["url"]
-    assert patch["packs.executor_enabled"] is False
+    assert patch["packs.executor_enabled"] is True
+    assert patch["packs.executor_scope"] == "verified_registry_install_only"
+    assert patch["packs.activation_enabled"] is False
 
 
 def test_update_policy_engine_records_intent_without_enabling_executor(tmp_path):
