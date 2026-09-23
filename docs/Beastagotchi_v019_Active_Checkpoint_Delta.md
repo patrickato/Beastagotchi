@@ -220,3 +220,38 @@ Synchronization corrections made alongside this checkpoint include:
 
 This is documentation/preservation synchronization only. It does not constitute a
 new physical TFT, target-runtime or presentation-owner validation.
+
+## Pinned-chat recovery reconciliation — 2026-09-23
+
+A six-batch private screenshot recovery reconstructed the inaccessible tail of the
+final pinned Beastagotchi development conversation far enough to strongly overlap
+the repository's existing v0.19 history.
+
+Sanitized durable decisions are preserved in:
+
+`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
+
+Newly reinforced continuity includes:
+- roadmap-as-memory/execution-system development philosophy;
+- Lightbulb Reviews and proactive adjacent-ecosystem exploration;
+- context-aware Pack/Experience/hardware composition;
+- the Experience-system design rationale;
+- Device/User → Beast Roster → Experience separation;
+- device-global versus per-Beast progression and Rare Moment ownership;
+- Beast-first versus device-first discovery/anti-farming behavior;
+- origin of the multi-Beast/Monster/Monstergotchi lineage architecture;
+- deterministic heredity + curated mutation direction;
+- privacy-safe Lineage Capsules;
+- ordinary Pwnagotchi peer interoperability and PeerDex/social progression;
+- Nearby / Friends / Global separation;
+- exact PUBLIC SNAPSHOT Global privacy rule.
+
+Current source also confirms that Beast Bridge emits richer peer callback payloads
+and PeerDex persists/querys the richer identity/encounter metadata. The remaining
+social-layer gap is user-facing progression/presentation and the richer
+Beast-to-Beast descriptor/capsule layer.
+
+This reconciliation is documentation/provenance work only. It does not add a new
+target-runtime or physical TFT acceptance result and does not change the rule
+that PR #9 remains unmerged until the visible/physical v0.19 gates are complete.
+
