@@ -76,7 +76,7 @@ def test_auto_stage_waits_until_docked_online(tmp_path: Path):
     assert broker.calls == []
 
 
-def test_auto_install_policy_stages_but_does_not_apply(tmp_path: Path):
+def test_auto_install_policy_for_core_stages_but_does_not_apply(tmp_path: Path):
     state = FakeState({
         "updates.components": [update_row(policy="auto_install")],
         "updates.auto_trigger_ready": True,
@@ -86,8 +86,20 @@ def test_auto_install_policy_stages_but_does_not_apply(tmp_path: Path):
         state, broker, path=tmp_path / "automation.json", clock=lambda: 1000.0
     ).tick()
     assert patch["update_automation.last"]["install_pending"] is True
-    assert patch["update_automation.auto_install_executor_enabled"] is False
+    assert patch["update_automation.auto_install_scope"] == "inert_beast_packs_only"
     assert [x[0] for x in broker.calls] == ["update.stage"]
+
+
+def test_auto_install_policy_applies_beast_pack_transaction(tmp_path: Path):
+    row=update_row(policy="auto_install")
+    row["id"]="pack:demo-theme"
+    state=FakeState({"updates.components":[row],"updates.auto_trigger_ready":True})
+    broker=FakeBroker()
+    patch=UpdateAutomationEngine(state,broker,path=tmp_path/"automation.json",clock=lambda:1000.0).tick()
+    assert [x[0] for x in broker.calls] == ["update.pack_apply"]
+    assert patch["update_automation.last"]["status"] == "installed"
+    assert patch["update_automation.last"]["pack_auto_installed"] is True
+    assert patch["update_automation.last"]["install_pending"] is False
 
 
 def test_ineligible_update_is_blocked_not_downloaded(tmp_path: Path):

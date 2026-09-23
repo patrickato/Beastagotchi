@@ -98,8 +98,10 @@ class UpdateAutomationEngine:
             # predictable even if several components become eligible together.
             row, version = candidates[0]
             cid = str(row.get("id"))
+            apply_pack = bool(str(row.get("policy")) == "auto_install" and cid.startswith("pack:"))
+            action_name = "update.pack_apply" if apply_pack else "update.stage"
             action = self.action_broker.perform(
-                "update.stage",
+                action_name,
                 {"component": cid},
                 actor="automation:update",
             )
@@ -110,12 +112,14 @@ class UpdateAutomationEngine:
                 "version": version,
                 "policy": str(row.get("policy")),
                 "attempted_at": now,
-                "status": "staged" if ok else "failed",
+                "status": ("installed" if ok and apply_pack else "staged" if ok else "failed"),
                 "action_id": action.get("id"),
                 "path": action_result.get("path") if ok else None,
                 "sha256": action_result.get("sha256") if ok else None,
+                "transaction_id": ((action_result.get("install") or {}).get("transaction_id") if isinstance(action_result.get("install"), dict) else action_result.get("transaction_id")) if ok else None,
                 "error": None if ok else action_result.get("error"),
-                "install_pending": bool(ok and row.get("policy") == "auto_install"),
+                "install_pending": bool(ok and row.get("policy") == "auto_install" and not apply_pack),
+                "pack_auto_installed": bool(ok and apply_pack),
             }
             records[cid] = result
             ledger["updated_at"] = now
@@ -149,9 +153,10 @@ class UpdateAutomationEngine:
             "update_automation.last": result or (recent[0] if recent else None),
             "update_automation.history": recent,
             "update_automation.auto_stage_executor_enabled": True,
-            "update_automation.auto_install_executor_enabled": False,
+            "update_automation.auto_install_executor_enabled": True,
+            "update_automation.auto_install_scope": "inert_beast_packs_only",
             "update_automation.auto_install_reason": (
-                "verified artifacts may be staged automatically, but applying an update "
-                "requires a component-specific backup/probation/rollback adapter"
+                "Beast Packs may use verified transactional auto-install with rollback; "
+                "core, Theme Manager and Pwnagotchi remain stage-only until dedicated adapters pass validation"
             ),
         }
