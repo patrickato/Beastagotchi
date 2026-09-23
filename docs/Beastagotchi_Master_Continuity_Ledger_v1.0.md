@@ -180,3 +180,34 @@ Raw private chat transcripts are not required as a source of truth. When a
 conversation produces a durable architectural decision, physical-hardware truth,
 scope commitment or validation result, that decision should be promoted into the
 repository before the chat becomes the only surviving record.
+
+## Recovered permanent development method — 2026-09-23
+
+The pinned-chat recovery made several project-process commitments explicit enough
+to preserve here because they affect every future milestone:
+
+- the roadmap is a **memory and execution system, not a cage**;
+- approved ideas never silently disappear: they remain implemented, active,
+  planned, experimental, reserved, or explicitly retired with a reason;
+- periodically perform **Lightbulb Reviews** of adjacent Raspberry Pi,
+  Pwnagotchi, embedded-device, RF, mapping, offline-AI and interaction ecosystems
+  for ideas worth adapting;
+- proactively propose useful connections the user may not know to ask for;
+- challenge our own design when a materially better architecture/workflow/UI or
+  integration appears, even when that requires redesign;
+- use **modularity by default** so optional/exotic capabilities increasingly
+  become Packs/modules instead of permanent base-image load;
+- “all-in-one” means discoverable, coherent, integrated and reachable, **not**
+  every control on one screen;
+- prefer real Beast/Pi/environment information over decorative fake telemetry;
+- keep delight—secrets, rares, unusual animation, collectibles, personality and
+  special modes—as real product scope;
+- optimize duplicate polling/rendering/services before cutting features or
+  degrading visuals;
+- pair new powers with recovery, rollback and health-checking;
+- continue evolving from a one-reference-device project into something usable
+  by first-time/community users without weakening the Pi 4 reference target.
+
+The sanitized recovered chronology and design provenance are retained in
+`Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`.
+
