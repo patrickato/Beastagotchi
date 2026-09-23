@@ -81,3 +81,40 @@ def test_presentation_broker_refuses_unknown_owner(tmp_path: Path):
         pass
     else:
         raise AssertionError("unknown owner must be rejected")
+
+
+def test_v019_home_visual_smoke_across_theme_families(tmp_path: Path):
+    from PIL import Image
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    state = {
+        "progression.level": 27,
+        "progression.max_level": 100,
+        "progression.stage": "Stalker",
+        "progression.aura": "spark",
+        "progression.level_progress_pct": 63.0,
+        "progression.xp_current_level": 420,
+        "progression.xp_next_level": 245,
+        "pwnagotchi.mood": "awake",
+        "context.mode.effective": "pwn",
+        "wifi.ap_count": 18,
+        "wifi.encounters.session_unique": 42,
+        "wifi.encounters.lifetime_unique": 1337,
+        "radio.primary.channel": 11,
+        "system.temp.cpu_c": 58.0,
+        "pwnagotchi.handshakes": 3,
+        "gps.fix": True,
+        "health.core.state": "healthy",
+        "governor.mode": "FULL",
+    }
+    for theme in ("classic", "blackice", "hunter", "synthwave", "lcars"):
+        out = tmp_path / f"home-{theme}.png"
+        ui = BeastUI(root=root, output=str(out), theme_id=theme)
+        ui.state = dict(state)
+        ui.page = ui.pages.IDS.index("home")
+        ui.render()
+        assert out.is_file(), theme
+        with Image.open(out) as im:
+            assert im.size == (480, 320)
+            assert im.getbbox() == (0, 0, 480, 320)
