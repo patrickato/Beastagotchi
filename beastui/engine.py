@@ -26,6 +26,7 @@ from .rare_overlay import render_rare_overlay, acknowledge_rare_event
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
+from .ui_components import status_dot
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
 from .customization import (
     validate_dashboard_widgets, dashboard_history_keys, validate_context_decks,
@@ -870,38 +871,77 @@ class BeastUI:
         return False
 
     def _header(self,d,title):
+        """Quiet global chrome: identity + page + only persistent essentials."""
         t=self.theme; f=self.fonts
-        d.rectangle((0,0,480,34),fill=t.c('ink')); d.line((0,33,480,33),fill=t.c('edge'))
+        d.rectangle((0,0,480,34),fill=t.c('ink'))
+        d.line((0,33,480,33),fill=t.c('edge'))
+
         if t.id in {'pwn_dark','pwn_light','pwn_chroma'}:
-            d.text((8,7),'PWNAGOTCHI',font=f['title'],fill=t.c('primary'))
-            d.text((142,11),title,font=f['small'],fill=t.c('text'))
-        elif t.geometry=='lcars':d.rounded_rectangle((3,4,89,29),radius=10,fill=t.c('secondary'));d.text((13,8),'BEAST',font=f['medium'],fill=t.c('ink'));d.text((94,11),title,font=f['small'],fill=t.c('text'))
+            brand='PWN'
         else:
-            d.text((8,7),'BEAST',font=f['title'],fill=t.c('primary'))
-            d.text((94,11),title,font=f['small'],fill=t.c('text'))
+            brand='BEAST'
+        d.text((8,7),brand,font=f['title'],fill=t.c('primary'))
+        title_x=60 if brand=='PWN' else 82
+        d.text((title_x,11),str(title)[:22],font=f['small'],fill=t.c('text'))
+
+        # Deliberately reduce the old five-item header status strip. Detailed
+        # telemetry belongs on pages; global chrome should orient, not compete.
         level=self.state.get('progression.level')
-        if isinstance(level,(int,float)):d.text((276,11),f'L{int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
-        d.text((326,11),f"CH{self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
-        if self.state.get('dock.docked'): d.text((366,11),'DOCK',font=f['tiny'],fill=t.c('accent'))
+        if isinstance(level,(int,float)):
+            d.text((332,11),f'L{int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
+        d.text((370,11),f"CH{self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
+
+        if self.state.get('dock.docked'):
+            power='DCK'
         elif self.state.get('power.telemetry.available'):
-            pct=self.state.get('power.battery.percent_estimate'); d.text((366,11),f"BAT {pct:.0f}%" if isinstance(pct,(int,float)) else 'BAT',font=f['tiny'],fill=t.c('accent'))
-        health=str(self.state.get('health.core.state','--')).upper(); col=t.c('accent') if health=='HEALTHY' else t.c('warn'); d.text((426,11),health[:7],font=f['tiny'],fill=col)
+            pct=self.state.get('power.battery.percent_estimate')
+            power=f'{pct:.0f}%' if isinstance(pct,(int,float)) else 'BAT'
+        else:
+            power=''
+        if power:d.text((411,11),power,font=f['tiny'],fill=t.c('accent'))
+
+        health=str(self.state.get('health.core.state','unknown')).lower()
+        status_dot(d,(466,16),t,health)
 
     def _footer(self,d,idx=None):
-        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx;count=len(self.pages.IDS);name=self.pages.TITLES[self.pages.IDS[idx]]
-        if self.pages.IDS[idx]=='dashboard' and self.active_board_id:
+        """Visible navigation matches the measured physical touch zones."""
+        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx
+        count=len(self.pages.IDS);page_id=self.pages.IDS[idx];name=self.pages.TITLES[page_id]
+        if page_id=='dashboard' and self.active_board_id:
             name=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),name)
-        d.rectangle((0,278,480,320),fill=t.c('ink'));d.line((0,278,480,278),fill=t.c('edge'))
+
+        d.rectangle((0,278,480,320),fill=t.c('ink'))
+        d.line((0,278,480,278),fill=t.c('edge'))
         flash=self.button_flash if time.monotonic()-self.button_flash_at<.28 else None
-        lp=t.c('accent') if flash=='prev' else t.c('panel2');rp=t.c('accent') if flash=='next' else t.c('panel2');lc=t.c('ink') if flash=='prev' else t.c('primary');rc=t.c('ink') if flash=='next' else t.c('primary')
-        if t.footer_style=='minimal':
-            d.text((20,290),'‹',font=f['large'],fill=lc);d.text((446,290),'›',font=f['large'],fill=rc);d.text((205,288),name,font=f['small'],fill=t.c('text'))
-        else:
-            d.rounded_rectangle((4,281,92,317),radius=7,fill=lp,outline=t.c('primary'),width=2);d.text((39,289),'<',font=f['large'],fill=lc)
-            d.rounded_rectangle((388,281,476,317),radius=7,fill=rp,outline=t.c('primary'),width=2);d.text((423,289),'>',font=f['large'],fill=rc)
-            d.text((104,288),name,font=f['small'],fill=t.c('accent') if flash=='home' else t.c('text'));d.text((342,289),f'{idx+1}/{count}',font=f['small'],fill=t.c('dim'))
-        start=240-(count*7)//2
-        for i in range(count):d.rectangle((start+i*9,307,start+i*9+5,311),fill=t.c('accent') if i==idx else t.c('edge'))
+
+        # These rectangles now closely match the actual left/center/right touch
+        # regions. The old artwork showed narrow 88 px arrows over much larger
+        # invisible hit zones.
+        left_fill=t.c('accent') if flash=='prev' else t.c('panel2')
+        right_fill=t.c('accent') if flash=='next' else t.c('panel2')
+        left_ink=t.c('ink') if flash=='prev' else t.c('primary')
+        right_ink=t.c('ink') if flash=='next' else t.c('primary')
+        center_edge=t.c('accent') if flash=='home' else t.c('edge')
+
+        d.rounded_rectangle((4,282,118,317),radius=7,fill=left_fill,outline=t.c('primary'),width=1)
+        d.text((54,287),'‹',font=f['large'],fill=left_ink)
+        d.rounded_rectangle((362,282,476,317),radius=7,fill=right_fill,outline=t.c('primary'),width=1)
+        d.text((412,287),'›',font=f['large'],fill=right_ink)
+
+        d.rounded_rectangle((124,282,356,317),radius=7,fill=t.c('panel2'),outline=center_edge,width=1)
+        action='APPS' if idx==0 else 'HOME'
+        d.text((136,287),str(name)[:20],font=f['small'],fill=t.c('text'))
+        d.text((310,287),action,font=f['tiny'],fill=t.c('accent'))
+        d.text((314,301),f'{idx+1}/{count}',font=f['micro'],fill=t.c('dim'))
+
+        # Compact page rail remains useful for spatial orientation without
+        # becoming a second navigation bar.
+        rail_w=count*8-3;start=240-rail_w//2
+        for i in range(count):
+            w=6 if i==idx else 4
+            x=start+i*8
+            d.rectangle((x,309,x+w,312),fill=t.c('accent') if i==idx else t.c('edge'))
+
         if flash and str(flash).startswith('renderer:'):
             d.rectangle((126,281,354,303),fill=t.c('panel2'),outline=t.c('accent'))
             d.text((153,288),f"SPECTRUM -> {str(flash).split(':',1)[1].upper()}",font=f['small'],fill=t.c('accent'))
