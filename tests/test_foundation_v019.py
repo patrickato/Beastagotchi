@@ -1,32 +1,22 @@
-from __future__ import annotations
-
 from pathlib import Path
 
-from beastcore.presentation_broker import PresentationBroker, PresentationBrokerError
-from beastui.design_system import PAGE_GROUPS, PRIMARY_PAGES, TOKENS
+from beastcore.presentation import PresentationBroker, normalize_owner
+from beastui.design import TOKENS, PRIMARY_PAGES, PAGE_GROUPS
 
 
-class FakePresentation:
-    def __init__(self, *, fail_acquire=False, fail_health=False):
-        self.active = False
-        self.fail_acquire = fail_acquire
-        self.fail_health = fail_health
+class _S:
+    def __init__(self, d=None):
+        self.d = dict(d or {})
 
-    def prepare_release(self):
-        return {"ok": True}
+    def get(self, key, default=None):
+        return self.d.get(key, default)
 
-    def release(self):
-        self.active = False
-        return {"ok": True}
 
-    def acquire(self):
-        if self.fail_acquire:
-            return {"ok": False, "error": "simulated acquire failure"}
-        self.active = True
-        return {"ok": True}
-
-    def health(self):
-        return {"ok": self.active and not self.fail_health}
+def test_v019_design_tokens_preserve_validated_reference_geometry():
+    assert (TOKENS.canvas_w, TOKENS.canvas_h) == (480, 320)
+    assert TOKENS.header_h == 34 and TOKENS.footer_y == 278
+    assert TOKENS.touch_min >= 48 and TOKENS.touch_primary >= TOKENS.touch_normal
+    assert TOKENS.motion_page_s > TOKENS.motion_fast_s > 0
 
 
 def test_v019_page_model_preserves_beast_and_operational_pages():
@@ -36,54 +26,55 @@ def test_v019_page_model_preserves_beast_and_operational_pages():
     assert "map" in PRIMARY_PAGES
     assert "system" in PRIMARY_PAGES
     assert PAGE_GROUPS["identity"] == ("home", "beast")
-    assert TOKENS.touch_preferred >= TOKENS.touch_min >= 34
 
 
-def test_presentation_broker_switch_persists(tmp_path: Path):
-    state = tmp_path / "presentation.json"
-    broker = PresentationBroker(str(state))
-    beast = FakePresentation()
-    korrie = FakePresentation()
-    broker.register("beast-ui", beast)
-    broker.register("korrie-theme-manager", korrie)
-    beast.active = True
-
-    result = broker.switch("korrie-theme-manager")
-    assert result["ok"] is True
-    assert result["changed"] is True
-    assert broker.status()["lease"]["owner"] == "korrie-theme-manager"
-
-    reloaded = PresentationBroker(str(state))
-    assert reloaded.status()["lease"]["owner"] == "korrie-theme-manager"
+def test_presentation_owner_aliases_are_explicit():
+    assert normalize_owner("pwn-native") == "native"
+    assert normalize_owner("theme-manager") == "theme_manager"
+    assert normalize_owner("beast-ui") == "beast"
 
 
-def test_presentation_broker_rolls_back_failed_handoff(tmp_path: Path):
-    broker = PresentationBroker(str(tmp_path / "presentation.json"))
-    beast = FakePresentation()
-    bad = FakePresentation(fail_acquire=True)
-    broker.register("beast-ui", beast)
-    broker.register("korrie-theme-manager", bad)
-    beast.active = True
+def test_presentation_broker_persists_requested_owner_without_executing_handoff(tmp_path):
+    p = tmp_path / "presentation.json"
+    s = _S({"pwnagotchi.service.state": "active", "platform.services": [], "plugins.catalog": []})
+    b = PresentationBroker(s, path=str(p), clock=lambda: 100.0)
+    first = b.tick()
+    assert first["presentation.desired_owner"] == "native"
+    assert first["presentation.executor_enabled"] is False
 
-    result = broker.switch("korrie-theme-manager")
-    assert result["ok"] is False
-    assert result["owner"] == "beast-ui"
-    assert result["rollback"]["ok"] is True
-    assert beast.active is True
-    assert broker.status()["lease"]["owner"] == "beast-ui"
+    row = b.request("beast-ui", requested_by="test")
+    assert row["desired_owner"] == "beast"
+    assert row["status"] == "requested"
 
-
-def test_presentation_broker_refuses_unknown_owner(tmp_path: Path):
-    broker = PresentationBroker(str(tmp_path / "presentation.json"))
-    try:
-        broker.plan_switch("mystery-ui")
-    except PresentationBrokerError:
-        pass
-    else:
-        raise AssertionError("unknown owner must be rejected")
+    reloaded = PresentationBroker(s, path=str(p), clock=lambda: 101.0).tick()
+    assert reloaded["presentation.desired_owner"] == "beast"
+    assert reloaded["presentation.executor_enabled"] is False
 
 
-def test_v019_home_visual_smoke_across_theme_families(tmp_path: Path):
+def test_presentation_broker_surfaces_legacy_theme_manager_conflict(tmp_path):
+    s = _S({
+        "pwnagotchi.service.state": "active",
+        "platform.services": [{"unit": "beast-ui.service", "active": "active"}],
+        "plugins.catalog": [{"name": "theme_manager", "enabled": True}],
+    })
+    b = PresentationBroker(s, path=str(tmp_path / "p.json"), clock=lambda: 1.0)
+    b.mark_active("beast")
+    row = b.tick()
+    assert row["presentation.theme_manager.installed"] is True
+    assert row["presentation.theme_manager.enabled"] is True
+    assert row["presentation.conflict_count"] == 1
+    assert row["presentation.executor_enabled"] is False
+
+
+def test_presentation_state_file_is_private(tmp_path):
+    p = tmp_path / "p.json"
+    b = PresentationBroker(_S(), path=str(p), clock=lambda: 1.0)
+    b.request("native")
+    assert p.exists()
+    assert (p.stat().st_mode & 0o777) == 0o600
+
+
+def test_v019_home_visual_smoke_across_theme_families(tmp_path):
     from PIL import Image
     from beastui.engine import BeastUI
 
@@ -96,18 +87,23 @@ def test_v019_home_visual_smoke_across_theme_families(tmp_path: Path):
         "progression.level_progress_pct": 63.0,
         "progression.xp_current_level": 420,
         "progression.xp_next_level": 245,
+        "beast.expression": "curious",
         "pwnagotchi.mood": "awake",
         "context.mode.effective": "pwn",
         "wifi.ap_count": 18,
+        "wifi.client_count": 4,
         "wifi.encounters.session_unique": 42,
         "wifi.encounters.lifetime_unique": 1337,
         "radio.primary.channel": 11,
+        "system.cpu.total": 21.0,
         "system.temp.cpu_c": 58.0,
         "pwnagotchi.handshakes": 3,
         "gps.fix": True,
         "health.core.state": "healthy",
+        "dock.state": "field",
         "governor.mode": "FULL",
     }
+
     for theme in ("classic", "blackice", "hunter", "synthwave", "lcars"):
         out = tmp_path / f"home-{theme}.png"
         ui = BeastUI(root=root, output=str(out), theme_id=theme)
