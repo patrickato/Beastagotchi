@@ -105,12 +105,36 @@ class ActionBroker:
                     "has_preferred_presentation":bool(self.roster.presentation_preferences(b["id"])),
                     "preferred_presentation":self.roster.presentation_preferences(b["id"]),
                     "memory_summary":self.memories.summary(b["id"]),
+                    "legend":bool(b.get("legend")),"legend_at":b.get("legend_at"),
                 })
             active=next((x for x in items if x.get("active")),None)
             return {
                 "allowed":True,"operation":"roster.snapshot","active_id":active.get("id") if active else None,
                 "items":items,"count":len(items),"blockers":[]
             }
+        if action == "roster.hall":
+            hall=self.roster.hall_of_legends()
+            def clean(b):
+                return {
+                    "id":b["id"],"name":b["name"],"kind":b["kind"],"lineage_id":b["lineage_id"],
+                    "level":b["level"],"stage":b["stage"],"generation":b["generation"],
+                    "active":b["active"],"legend":b.get("legend"),"legend_at":b.get("legend_at"),
+                    "achievement_count":len(b.get("achievements") or []),"memory_summary":self.memories.summary(b["id"]),
+                    "parents":list(b.get("parents") or []),
+                    "children":[e["child_id"] for e in hall["graph"]["edges"] if e["parent_id"]==b["id"]],
+                    "mutation":((b.get("appearance") or {}).get("mutation")),
+                }
+            return {"allowed":True,"operation":"roster.hall","inductees":[clean(b) for b in hall["inductees"]],
+                    "candidates":[clean(b) for b in hall["candidates"]],"level_100_count":hall["level_100_count"],
+                    "graph":hall["graph"],"blockers":[]}
+        if action == "roster.legend_set":
+            beast=self.roster.get(str(payload.get("id") or ""));enabled=bool(payload.get("enabled",True))
+            blockers=[]
+            if enabled and int(beast.get("level") or 1)<100:blockers.append("Hall of Legends induction requires level 100")
+            return {"allowed":not blockers,"operation":"roster.legend_set","id":beast["id"],"name":beast["name"],
+                    "enabled":enabled,"current":bool(beast.get("legend")),
+                    "warnings":["Hall membership is separate from active/resting state and never changes XP or progression."],
+                    "blockers":blockers}
         if action == "roster.synthesis_plan":
             parent_a=str(payload.get("parent_a") or "")
             parent_b=str(payload.get("parent_b") or "")
@@ -213,6 +237,15 @@ class ActionBroker:
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
             elif action == "pack.deactivate":
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
+            elif action == "roster.legend_set":
+                before=self.roster.get(str(requested.get("id") or ""))
+                after=self.roster.set_legend(before["id"],bool(requested.get("enabled",True)))
+                enabled=bool(after.get("legend"))
+                if enabled and not before.get("legend"):
+                    self.memories.record_custom(after["id"],"legend","Inducted into the Hall of Legends",
+                        {"level":after["level"],"stage":after["stage"]},rarity="mythic",memory_id=f"legend:{after['id']}")
+                result={"ok":True,"id":after["id"],"legend":enabled,"legend_at":after.get("legend_at"),
+                        "active":after["active"],"level":after["level"]}
             elif action == "roster.synthesize":
                 result=self.roster.synthesize(
                     str(requested.get("parent_a") or ""),
