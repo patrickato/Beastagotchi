@@ -116,18 +116,21 @@ Implemented foundation:
 - parents preserved after synthesis;
 - first Monster unlocks the future `monstergotchi.core` layer.
 
-Now implemented:
+Implemented after the foundation:
 - live progression is bound to the active roster creature with Founder legacy rollback mirroring;
 - Beast Studio Roster shows persistent creatures and provides audited active-creature switching;
+- global versus per-Beast achievement/collection split;
+- Beast-first versus device-first encounter rewards with anti-farming cap;
+- per-Beast preferred presentation memory + preview restore;
+- deterministic inheritance foundation;
+- per-Beast milestone/Expedition/Rare/personality memory timeline;
+- procedural Monster synthesis reveal ceremony;
+- Hall of Legends + ancestry graph/Studio viewer foundation.
 
 Next:
-- global versus per-Beast achievement/collection split — implemented;
-- Beast-first versus device-first encounter rewards with anti-farming cap — implemented;
-- per-Beast preferred presentation memory + preview restore — implemented;
-- deterministic inheritance foundation — implemented; curated lineage-pair mutation rules remain;
-- per-Beast milestone/Expedition/Rare/personality memory timeline — implemented;
-- procedural Monster synthesis reveal ceremony — implemented; lineage-specific/authored reveal variants remain;
-- Hall of Legends + ancestry graph/Studio viewer — implemented foundation; dedicated visual renderer pending;
+- curated lineage-pair mutation rules;
+- lineage-specific/authored Monster reveal variants;
+- dedicated visual ancestry renderer;
 - later evaluate additional generations and privacy-safe cross-device Lineage Capsules.
 
 ### Gate 7A — Peer encounters / Beast social layer
@@ -142,8 +145,9 @@ Direction:
 - no cloud service is required.
 
 Current foundation:
-- persistent PeerDex storage/query implementation exists and accepts ordinary Pwnagotchi peer identities;
-- canonical Beast Bridge event wiring and user-facing social presentation remain incomplete.
+- Beast Bridge emits richer peer_detected/peer_lost payloads from Pwnagotchi peer objects;
+- persistent PeerDex storage/query implementation accepts ordinary Pwnagotchi peer identities and retains encounter/RSSI/channel/version/face/counter/session metadata;
+- user-facing social progression/presentation and the richer Beast-to-Beast descriptor layer remain incomplete.
 
 Next:
 - canonical peer events through Beast Bridge;
@@ -228,8 +232,23 @@ GitHub Releases are updated only for meaningful validated milestones.
 - Active checkpoint: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
 - UX gate: `docs/UX_POLISH_MILESTONE_v0.19.md`
 - Development/release workflow: `docs/Beastagotchi_Development_Release_Workflow.md`
+- Recovered design/provenance: `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
 
 
 ## Preservation checkpoint — 2026-09-23
 
 The recovered cross-chat/Library/repository state is preserved in `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`. That document records current branch/SHA provenance, superseded physical decisions, validation boundaries and recovered historical artifacts. Raw private chats are not required to reconstruct the engineering state.
+
+
+## Development method recovered from continuity work
+
+The roadmap is intentionally a **memory/execution system, not a rigid cage**.
+Approved ideas must not silently disappear. Beastagotchi should periodically
+perform Lightbulb Reviews, challenge its own designs when better paths appear,
+prefer modular Packs for optional/exotic capabilities, keep real information
+ahead of decoration, preserve delight/rarity/personality systems, optimize
+duplicate work before degrading features, and pair new powers with recovery and
+rollback.
+
+The detailed recovered rationale is preserved in
+`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`.
