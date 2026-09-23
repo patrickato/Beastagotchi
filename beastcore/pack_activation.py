@@ -109,6 +109,20 @@ class PackActivationManager:
             blockers.append("content-only Packs may not request privileged permissions")
         blockers.extend(self._content_scan(path))
 
+        if ptype in {"board", "layout"}:
+            folder = "boards" if ptype == "board" else "layouts"
+            files = sorted((path / folder).glob("*.json")) if (path / folder).is_dir() else []
+            if not files:
+                blockers.append(f"{ptype} Pack contains no {folder}/*.json files")
+            for fp in files[:64]:
+                try:
+                    obj = json.loads(fp.read_text())
+                    rows = obj.get(folder) if isinstance(obj, dict) and isinstance(obj.get(folder), list) else [obj]
+                    if not rows or not all(isinstance(x, dict) and isinstance(x.get("widgets"), list) and x.get("widgets") for x in rows):
+                        blockers.append(f"{ptype} JSON must define non-empty widgets: {fp.name}")
+                except Exception:
+                    blockers.append(f"{ptype} JSON is unreadable: {fp.name}")
+
         if ptype == "theme":
             theme_dir = path / "themes"
             themes = sorted(theme_dir.glob("*.json")) if theme_dir.is_dir() else []

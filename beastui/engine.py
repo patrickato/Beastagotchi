@@ -22,6 +22,7 @@ from .input import TouchInput
 from .pages import Pages
 from .reactions import ReactionGovernor
 from .theme import load_theme, discover_enabled_pack_themes
+from .pack_content import discover_enabled_pack_boards
 from .rare_overlay import render_rare_overlay, acknowledge_rare_event
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
@@ -68,6 +69,7 @@ class BeastUI:
         self.theme_options=dict(pref.get('theme_options') or {})
         self.dashboard_widgets=validate_dashboard_widgets(pref.get('dashboard_widgets'))
         self.custom_boards=validate_custom_boards(pref.get('custom_boards'))
+        self.pack_boards=discover_enabled_pack_boards()
         self.face=FaceEngine(); self.pages=Pages(self.face); self.page=0; self.phase=0.0
         self.apps=self._build_app_registry()
         _app_ids=[a.id for a in self.apps.all()]
@@ -139,6 +141,9 @@ class BeastUI:
             payload=dict(payload);payload['physical_x']=payload.get('x');payload['physical_y']=payload.get('y');payload['x'],payload['y']=mapped
         self.on_input(kind,payload)
 
+    def _all_boards(self):
+        return list(getattr(self,'custom_boards',[]) or []) + list(getattr(self,'pack_boards',[]) or [])
+
     def _build_app_registry(self):
         extras=[]
         st=getattr(self,'state',{}) or {}
@@ -148,15 +153,16 @@ class BeastUI:
             extras.append(OPTIONAL_APPS['ai_operator'])
         if st.get('display.external_connected'):
             extras.append(OPTIONAL_APPS['command_center'])
-        for board in getattr(self,'custom_boards',[]) or []:
+        for board in self._all_boards():
             bid=str(board.get('id') or '')
             if not bid:continue
-            extras.append(AppDefinition(f'board:{bid}',str(board.get('label') or bid),'Boards','board',bid,'User-composed live telemetry board','info'))
+            desc='Read-only Beast Pack live telemetry board' if board.get('source_pack') else 'User-composed live telemetry board'
+            extras.append(AppDefinition(f'board:{bid}',str(board.get('label') or bid),'Boards','board',bid,desc,'info'))
         return AppRegistry((*APPS,*extras))
 
     def _active_dashboard_widgets(self):
         if self.active_board_id:
-            for board in self.custom_boards:
+            for board in self._all_boards():
                 if str(board.get('id'))==self.active_board_id:return list(board.get('widgets') or [])
         return list(self.dashboard_widgets or [])
 
@@ -195,8 +201,9 @@ class BeastUI:
             if isinstance(opts,dict):self.theme_options=opts
             self.dashboard_widgets=validate_dashboard_widgets(obj.get('dashboard_widgets'))
             self.custom_boards=validate_custom_boards(obj.get('custom_boards'))
+            self.pack_boards=discover_enabled_pack_boards()
             self.apps=self._build_app_registry()
-            if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self.custom_boards}:self.active_board_id=''
+            if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self._all_boards()}:self.active_board_id=''
             self.context_decks=validate_context_decks(obj.get('context_decks'),app_ids=[a.id for a in self.apps.all()])
             self.active_context_deck=str(obj.get('active_context_deck') or '')
             if self.active_context_deck not in {d['id'] for d in self.context_decks}:self.active_context_deck=''
@@ -849,9 +856,11 @@ class BeastUI:
         st,ev,hist,aux,err=self.feed.snapshot()
         if st:
             self.state=st
-            theme_pack_sig=tuple(sorted((str(r.get('id') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '')=='theme'))
-            if theme_pack_sig!=getattr(self,'_theme_pack_sig',None):
-                self._theme_pack_sig=theme_pack_sig;self._refresh_theme_catalog()
+            content_pack_sig=tuple(sorted((str(r.get('id') or ''),str(r.get('pack_type') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '') in {'theme','board','layout'}))
+            if content_pack_sig!=getattr(self,'_content_pack_sig',None):
+                self._content_pack_sig=content_pack_sig
+                self._refresh_theme_catalog();self.pack_boards=discover_enabled_pack_boards();self.apps=self._build_app_registry()
+                if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self._all_boards()}:self.active_board_id=''
             sig=(bool(st.get('containers.runtime.available')),bool(st.get('capabilities.rtlsdr.present')),int(st.get('display.connected_outputs') or 0))
             if sig!=self._capability_app_sig:
                 self._capability_app_sig=sig;self.apps=self._build_app_registry()
@@ -939,7 +948,7 @@ class BeastUI:
         t=self.theme;f=self.fonts;idx=self.page if idx is None else idx;count=len(self.pages.IDS)
         cur_id=self.pages.IDS[idx];name=self.pages.TITLES[cur_id]
         if cur_id=='dashboard' and self.active_board_id:
-            name=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),name)
+            name=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),name)
         prev_name=self.pages.TITLES[self.pages.IDS[max(0,idx-1)]] if idx>0 else ''
         next_name=self.pages.TITLES[self.pages.IDS[min(count-1,idx+1)]] if idx<count-1 else ''
 
@@ -1779,7 +1788,7 @@ class BeastUI:
             return self._compose_native()
         self.phase=time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
         page_id=self.pages.IDS[page_idx];title=self.pages.TITLES[page_id]
-        if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),title)
+        if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),title)
         self._header(d,title);getattr(self.pages,page_id)(d,self.state,self)
         im=draw_foreground_effects(im,self.theme,self.phase,self.render_options_for_theme(self.theme.id));d=ImageDraw.Draw(im)
         self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
