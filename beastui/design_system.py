@@ -21,8 +21,8 @@ class UXTokens:
     gap_sm: int = 6
     gap_md: int = 10
     gap_lg: int = 16
-    touch_min: int = 34
-    touch_preferred: int = 42
+    touch_min: int = 48
+    touch_preferred: int = 56
     radius_sm: int = 3
     radius_md: int = 6
     stroke_normal: int = 1
