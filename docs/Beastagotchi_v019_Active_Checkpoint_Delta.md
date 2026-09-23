@@ -143,3 +143,29 @@ Implemented:
 The live ProgressionEngine has deliberately not been cut over yet. That remains
 the next migration gate so current v0.19 behavior is not risked before the roster
 storage path is proven lossless.
+
+
+## Active-Beast progression + Roster control milestone
+
+v0.19 now binds the live ProgressionEngine to the active persistent roster
+creature rather than the old single JSON save slot.
+
+Validated behavior:
+- existing legacy profile migrates into the Founder Beast;
+- existing progression state keys remain compatible with current UI consumers;
+- each Beast/Monster persists XP/history independently;
+- switching active creature redirects subsequent progression without overwriting
+  resting creatures;
+- restarting Core reloads the currently active creature;
+- Founder progression maintains the old profile JSON as a rollback-compatibility
+  mirror;
+- non-Founder creatures never overwrite that legacy Founder mirror;
+- Beast Studio now includes a Roster surface with active/resting status,
+  level/stage/lineage/generation, achievement count, ancestry hint and
+  lineage-eligibility visibility;
+- active-creature switching is an audited Action Broker mutation;
+- switching does not silently change the current Experience.
+
+The first cutover CI run exposed an active-binding bug at the mutation boundary.
+That defect was fixed before promotion. The current full source gate is
+**297 tests passing**, Python compile green and shell syntax green.
