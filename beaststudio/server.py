@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 from beastui.api_client import BeastAPI
 from beastui.responsive import render_responsive_board
 from beastui.engine import BeastUI
-from beastui.theme import load_theme
+from beastui.theme import load_theme, discover_enabled_pack_themes
 from beastui.customization import (
     validate_dashboard_widgets, scalar_catalog, dashboard_history_keys, WIDGET_STYLES,
     validate_context_decks, validate_palette_overrides, validate_correlation_keys, validate_custom_boards,
@@ -105,6 +105,16 @@ async function setUpdatePolicy(component,policy,select){select.disabled=true;try
 async function uploadPack(){let f=$('packFile').files[0];if(!f){$('status').textContent='Choose a Beast Pack archive first.';return}let btn=$('uploadPack');btn.disabled=true;try{$('status').textContent='Uploading '+f.name+'…';let r=await fetch('/api/pack-upload?name='+encodeURIComponent(f.name),{method:'PUT',headers:{'X-Beast-Studio-Token':TOKEN},body:f});if(!r.ok)throw Error(await r.text());let up=await r.json();let inspect=await jfetch('/api/pack-inspect',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:up.name})});let row=inspect.action_row||{};if(row.status!=='success')throw Error(row.result?.error||'inspection failed');let m=row.result?.manifest||{};if(!confirm('Verified '+(m.label||m.id||up.name)+' v'+(m.version||'?')+'.\n\nStage this pack? Staging does not execute or install it.'))return;let staged=await jfetch('/api/pack-stage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:up.name,replace:true})});let sr=staged.action_row||{};$('status').textContent=sr.status==='success'?'Pack verified and staged.':'Pack staging failed.';await new Promise(r=>setTimeout(r,400));await loadPacks()}catch(e){$('status').textContent='Pack intake failed: '+e}finally{btn.disabled=false}}
 $('uploadPack').onclick=uploadPack;
 async function installPack(p,btn){btn.disabled=true;try{let x=await jfetch('/api/pack-install-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});let plan=x.plan||{};if(!plan.allowed)throw Error((plan.blockers||['blocked']).join('; '));let warning=(plan.warnings||[]).join('\n');if(!confirm('Install '+(p.label||p.id)+' v'+(p.version||'?')+' into Beast\'s managed registry?\n\nNo code will execute and no service will restart.'+(warning?'\n\n'+warning:'')))return;let r=await jfetch('/api/pack-install',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});let row=r.action_row||{};$('status').textContent=row.status==='success'?'Pack installed to inert registry.':'Pack install failed.';await new Promise(r=>setTimeout(r,500));await loadPacks()}catch(e){$('status').textContent='Pack install failed: '+e}finally{btn.disabled=false}}
+async function togglePackActivation(p,btn){btn.disabled=true;let wanted=!p.enabled;try{
+  let endpoint=wanted?'/api/pack-activate-plan':'/api/pack-deactivate-plan';
+  let execEndpoint=wanted?'/api/pack-activate':'/api/pack-deactivate';
+  let x=await jfetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});
+  let plan=x.plan||{};if(!plan.allowed)throw Error((plan.blockers||['blocked']).join('; '));
+  if(!confirm((wanted?'Enable ':'Disable ')+(p.label||p.id)+'?\n\nThis content-only activation does not execute Pack code or restart services.'))return;
+  let out=await jfetch(execEndpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id})});
+  let row=out.action_row||{};$('status').textContent=row.status==='success'?(wanted?'Pack enabled.':'Pack disabled.'):'Pack activation change failed.';
+  await new Promise(q=>setTimeout(q,500));await loadPacks();
+}catch(e){$('status').textContent='Pack activation failed: '+e}finally{btn.disabled=false}}
 async function rollbackPack(tx,btn){btn.disabled=true;try{let x=await jfetch('/api/pack-rollback-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transaction_id:tx.id})});let plan=x.plan||{};if(!plan.allowed)throw Error((plan.blockers||['blocked']).join('; '));if(!confirm('Roll back '+(tx.pack_id||'this pack')+' transaction '+tx.id+'?'))return;let r=await jfetch('/api/pack-rollback',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transaction_id:tx.id})});let row=r.action_row||{};$('status').textContent=row.status==='success'?'Pack rollback complete.':'Pack rollback failed.';await new Promise(r=>setTimeout(r,500));await loadPacks()}catch(e){$('status').textContent='Rollback failed: '+e}finally{btn.disabled=false}}
 async function loadPacks(){try{
   let [x,prefs,hist]=await Promise.all([jfetch('/api/platform'),jfetch('/api/update-policies'),jfetch('/api/pack-history')]);
@@ -115,7 +125,7 @@ async function loadPacks(){try{
   sum.append(c);
 
   let box=$('packList');box.innerHTML='<h3>LOCAL PACK CATALOG</h3>';
-  (packs.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${String(r.lifecycle||'unknown').toUpperCase()}</span></div><div class="mini">${r.pack_type||'pack'} · v${r.version||'?'} · resource ${r.resource_class||'--'} · thermal ${r.thermal_class||'--'}</div><div class="mini">${r.description||''}</div>`;if((r.blockers||[]).length){let b=document.createElement('div');b.className='status';b.style.color='var(--warn)';b.textContent=(r.blockers||[]).join(' · ');d.append(b)}if(r.origin==='staged'&&String(r.lifecycle)==='verified'){let btn=document.createElement('button');btn.textContent='INSTALL TO MANAGED REGISTRY';btn.disabled=!ready;btn.onclick=()=>installPack(r,btn);d.append(btn)}box.append(d)});
+  (packs.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${String(r.lifecycle||'unknown').toUpperCase()}</span></div><div class="mini">${r.pack_type||'pack'} · v${r.version||'?'} · resource ${r.resource_class||'--'} · thermal ${r.thermal_class||'--'}</div><div class="mini">${r.description||''}</div>`;if((r.blockers||[]).length){let b=document.createElement('div');b.className='status';b.style.color='var(--warn)';b.textContent=(r.blockers||[]).join(' · ');d.append(b)}if(r.origin==='staged'&&String(r.lifecycle)==='verified'){let btn=document.createElement('button');btn.textContent='INSTALL TO MANAGED REGISTRY';btn.disabled=!ready;btn.onclick=()=>installPack(r,btn);d.append(btn)}if(r.origin!=='staged'&&['theme','face','animation','audio','layout','board','data','map'].includes(String(r.pack_type||''))){let ab=document.createElement('button');ab.textContent=r.enabled?'DISABLE CONTENT PACK':'ENABLE CONTENT PACK';ab.onclick=()=>togglePackActivation(r,ab);d.append(ab)}box.append(d)});
   if(!(packs.items||[]).length)box.innerHTML+='<div class="status">No optional Beast Packs installed or staged yet. The base platform remains self-contained.</div>';
 
   let tx=$('packTransactions');tx.innerHTML='<h3>INSTALL / ROLLBACK HISTORY</h3>';let txrows=(hist.items||[]);if(!txrows.length)tx.innerHTML+='<div class="status">No pack transactions yet.</div>';txrows.slice(0,8).forEach(r=>{let d=document.createElement('div');d.className='plugin';d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.pack_id||'pack'} · ${r.version||'?'}</span><span class="pill ${r.status==='installed'?'on':''}">${String(r.status||'unknown').toUpperCase()}</span></div><div class="mini">${r.id||''} · activation ${r.activation_performed?'yes':'no'}</div>`;if(r.status==='installed'&&(!r.had_previous||r.rollback_payload_retained)){let btn=document.createElement('button');btn.textContent='ROLL BACK';btn.onclick=()=>rollbackPack(r,btn);d.append(btn)}tx.append(d)});
@@ -218,16 +228,17 @@ class StudioState:
         decks=validate_context_decks(obj.get('context_decks'),app_ids=app_ids)
         active=str(obj.get('active_context_deck') or '')
         if active not in {d['id'] for d in decks}:active=''
-        return {'theme':str(obj.get('theme') or 'classic'),'page':'home','preview_output':'480x320','renderers':renderers,'theme_options':dict(obj.get('theme_options') or {}),'dashboard_widgets':validate_dashboard_widgets(obj.get('dashboard_widgets')),'custom_boards':validate_custom_boards(obj.get('custom_boards')),'preview_board_id':'','context_decks':decks,'active_context_deck':active,'palette_overrides':validate_palette_overrides(obj.get('palette_overrides'),theme_ids=BeastUI.THEMES),'correlation_keys':validate_correlation_keys(obj.get('correlation_keys'))}
+        theme_ids=list(BeastUI.THEMES)+[x for x in discover_enabled_pack_themes() if x not in BeastUI.THEMES]
+        return {'theme':str(obj.get('theme') or 'classic'),'page':'home','preview_output':'480x320','renderers':renderers,'theme_options':dict(obj.get('theme_options') or {}),'dashboard_widgets':validate_dashboard_widgets(obj.get('dashboard_widgets')),'custom_boards':validate_custom_boards(obj.get('custom_boards')),'preview_board_id':'','context_decks':decks,'active_context_deck':active,'palette_overrides':validate_palette_overrides(obj.get('palette_overrides'),theme_ids=theme_ids),'correlation_keys':validate_correlation_keys(obj.get('correlation_keys'))}
 
     def validate(self,obj: dict)->dict:
         if not isinstance(obj,dict):raise ValueError('draft must be an object')
-        theme=str(obj.get('theme') or 'classic');tp=self.root/'themes'/f'{theme}.json'
-        if not tp.exists():raise ValueError('unknown theme')
+        theme=str(obj.get('theme') or 'classic')
         page=str(obj.get('page') or 'home')
         preview_output=str(obj.get('preview_output') or '480x320')
         if preview_output not in {'480x320','640x480','800x480'}:preview_output='480x320'
         probe=BeastUI(root=str(self.root),output=str(Path(tempfile.gettempdir())/'beast-studio-probe.png'),theme_id=theme)
+        if theme not in probe.THEMES:raise ValueError('unknown theme')
         if page not in probe.pages.IDS:raise ValueError('unknown page')
         renderers={}
         incoming=obj.get('renderers') or {}
@@ -236,7 +247,7 @@ class StudioState:
         options={};raw=obj.get('theme_options') or {}
         if isinstance(raw,dict):
             for tid,tvals in raw.items():
-                if not (self.root/'themes'/f'{tid}.json').exists() or not isinstance(tvals,dict):continue
+                if not probe._theme_path(tid) or not isinstance(tvals,dict):continue
                 allowed={k:set(map(str,vals)) for k,_lab,vals in probe._theme_option_rows(tid)}
                 clean={}
                 for k,v in tvals.items():
@@ -260,15 +271,15 @@ class StudioState:
         probe=BeastUI(root=str(self.root),output=str(Path(tempfile.gettempdir())/'beast-studio-schema.png'),theme_id='classic')
         themes=[];opts={}
         for tid in probe.THEMES:
-            fp=self.root/'themes'/f'{tid}.json'
-            if not fp.exists():continue
+            fp=probe._theme_path(tid)
+            if not fp or not fp.exists():continue
             th=load_theme(fp);themes.append({'id':tid,'label':th.label})
             defaults=probe.options_for_theme(tid);opts[tid]=[{'key':k,'label':lab,'values':vals,'default':defaults.get(k)} for k,lab,vals in probe._theme_option_rows(tid)]
         telemetry=scalar_catalog(self.api.telemetry())
         apps=[{'id':a.id,'title':a.title,'category':a.category,'description':a.description} for a in AppRegistry().all()]
         theme_colors={}
         for row in themes:
-            th=load_theme(self.root/'themes'/f"{row['id']}.json")
+            th=load_theme(probe._theme_path(row["id"]))
             theme_colors[row['id']]={slot:'#%02x%02x%02x'%th.c(slot) for slot in PALETTE_SLOTS if slot in th.colors}
         return {'version':'0.18.0','themes':themes,'preview_outputs':[{'id':'480x320','label':'REFERENCE · 480 × 320','width':480,'height':320,'reference':True},{'id':'640x480','label':'COMPATIBILITY · 640 × 480','width':640,'height':480,'reference':False},{'id':'800x480','label':'COMPATIBILITY · 800 × 480','width':800,'height':480,'reference':False}],'pages':[{'id':x,'title':probe.pages.TITLES[x]} for x in probe.pages.IDS],'renderers':probe.RENDERER_CHOICES,'theme_options':opts,'dashboard_keys':telemetry,'widget_styles':list(WIDGET_STYLES),'palette_slots':list(PALETTE_SLOTS),'theme_colors':theme_colors,'apps':apps,'default_context_decks':[dict(x) for x in DEFAULT_CONTEXT_DECKS],'max_dashboard_widgets':MAX_DASHBOARD_WIDGETS}
 
@@ -408,6 +419,18 @@ class StudioState:
     def pack_rollback(self,obj: dict)->dict:
         return self.actions.perform('pack.rollback',{'transaction_id':str(obj.get('transaction_id') or '')})
 
+    def pack_activate_plan(self,obj: dict)->dict:
+        return self.actions.plan('pack.activate',{'id':str(obj.get('id') or '')})
+
+    def pack_activate(self,obj: dict)->dict:
+        return self.actions.perform('pack.activate',{'id':str(obj.get('id') or '')})
+
+    def pack_deactivate_plan(self,obj: dict)->dict:
+        return self.actions.plan('pack.deactivate',{'id':str(obj.get('id') or '')})
+
+    def pack_deactivate(self,obj: dict)->dict:
+        return self.actions.perform('pack.deactivate',{'id':str(obj.get('id') or '')})
+
     def pack_history(self)->dict:
         row=self.actions.plan('pack.history',{'limit':30})
         return row.get('plan',row) if isinstance(row,dict) else {'items':[]}
@@ -496,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -517,6 +540,10 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/pack-install':return self._send(200,self.st.pack_install(obj))
             if path=='/api/pack-rollback-plan':return self._send(200,self.st.pack_rollback_plan(obj))
             if path=='/api/pack-rollback':return self._send(200,self.st.pack_rollback(obj))
+            if path=='/api/pack-activate-plan':return self._send(200,self.st.pack_activate_plan(obj))
+            if path=='/api/pack-activate':return self._send(200,self.st.pack_activate(obj))
+            if path=='/api/pack-deactivate-plan':return self._send(200,self.st.pack_deactivate_plan(obj))
+            if path=='/api/pack-deactivate':return self._send(200,self.st.pack_deactivate(obj))
             if path=='/api/update-stage-plan':return self._send(200,self.st.update_stage_plan(obj))
             if path=='/api/update-stage':return self._send(200,self.st.update_stage(obj))
             if path=='/api/update-pack-plan':return self._send(200,self.st.update_pack_plan(obj))

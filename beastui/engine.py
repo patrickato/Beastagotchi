@@ -21,7 +21,7 @@ from .display import DisplayTransform
 from .input import TouchInput
 from .pages import Pages
 from .reactions import ReactionGovernor
-from .theme import load_theme
+from .theme import load_theme, discover_enabled_pack_themes
 from .rare_overlay import render_rare_overlay, acknowledge_rare_event
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
@@ -55,7 +55,13 @@ class BeastUI:
         # preferences between tests/renders.
         pref=self._load_prefs() if self.pref_path is not None else {}
         theme_id=str(pref.get('theme') or theme_id)
-        self.theme=load_theme(self.root/'themes'/f'{theme_id}.json')
+        self._builtin_theme_ids=list(type(self).THEMES)
+        self.theme_paths={tid:self.root/'themes'/f'{tid}.json' for tid in self._builtin_theme_ids if (self.root/'themes'/f'{tid}.json').is_file()}
+        for tid,path in discover_enabled_pack_themes().items():
+            if tid not in self.theme_paths:self.theme_paths[tid]=path
+        self.THEMES=list(self.theme_paths)
+        if theme_id not in self.theme_paths:theme_id='classic'
+        self.theme=load_theme(self.theme_paths[theme_id])
         self.renderers=dict(pref.get('renderers') or {})
         for _pid,_choices in self.RENDERER_CHOICES.items():
             self.renderers.setdefault(_pid,_choices[0])
@@ -104,6 +110,23 @@ class BeastUI:
         self._render_samples=[]; self._compose_samples=[]; self._write_samples=[]; self._frame_count=0; self._runtime_started=time.monotonic()
         self.reactions=ReactionGovernor(); self._last_reaction_id=None
         self._bg_cache=None;self._bg_cache_key=None;self._bg_cache_at=0.0
+
+    def _theme_path(self,theme_id):
+        return self.theme_paths.get(str(theme_id))
+
+    def _refresh_theme_catalog(self):
+        paths={tid:self.root/'themes'/f'{tid}.json' for tid in self._builtin_theme_ids if (self.root/'themes'/f'{tid}.json').is_file()}
+        for tid,path in discover_enabled_pack_themes().items():
+            if tid not in paths:paths[tid]=path
+        changed=tuple(paths)!=tuple(getattr(self,'theme_paths',{}))
+        current=getattr(getattr(self,'theme',None),'id',None)
+        self.theme_paths=paths;self.THEMES=list(paths)
+        if changed and hasattr(self,'palette_overrides'):
+            self.palette_overrides=validate_palette_overrides(self.palette_overrides,theme_ids=self.THEMES)
+        if current and current not in paths and paths.get('classic'):
+            self.theme=load_theme(paths['classic']);self._bg_cache=None;self._bg_cache_key=None
+            if getattr(self,'pref_path',None) is not None:self._save_prefs()
+        return changed
 
     def _on_physical_input(self, kind, payload):
         """Translate physical touch coordinates into the logical Beast canvas."""
@@ -161,7 +184,8 @@ class BeastUI:
             if sig==self._pref_sig:return
             obj=json.loads(self.pref_path.read_text())
             tid=str(obj.get('theme') or self.theme.id)
-            if (self.root/'themes'/f'{tid}.json').exists():self.theme=load_theme(self.root/'themes'/f'{tid}.json');self._bg_cache=None;self._bg_cache_key=None
+            self._refresh_theme_catalog();tp=self._theme_path(tid)
+            if tp and tp.exists():self.theme=load_theme(tp);self._bg_cache=None;self._bg_cache_key=None
             incoming=obj.get('renderers') or {}
             if isinstance(incoming,dict):
                 for pid,choices in self.RENDERER_CHOICES.items():
@@ -206,8 +230,8 @@ class BeastUI:
             except Exception:continue
 
     def set_theme(self,theme_id,persist=True):
-        p=self.root/'themes'/f'{theme_id}.json'
-        if p.exists():
+        self._refresh_theme_catalog();p=self._theme_path(theme_id)
+        if p and p.exists():
             self.theme=load_theme(p);self._apply_palette_overrides();self._bg_cache=None;self._bg_cache_key=None
             if persist:self._save_prefs()
             self.button_flash=f'theme:{theme_id}'; self.button_flash_at=time.monotonic(); self.dirty.set()
@@ -825,6 +849,9 @@ class BeastUI:
         st,ev,hist,aux,err=self.feed.snapshot()
         if st:
             self.state=st
+            theme_pack_sig=tuple(sorted((str(r.get('id') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '')=='theme'))
+            if theme_pack_sig!=getattr(self,'_theme_pack_sig',None):
+                self._theme_pack_sig=theme_pack_sig;self._refresh_theme_catalog()
             sig=(bool(st.get('containers.runtime.available')),bool(st.get('capabilities.rtlsdr.present')),int(st.get('display.connected_outputs') or 0))
             if sig!=self._capability_app_sig:
                 self._capability_app_sig=sig;self.apps=self._build_app_registry()
@@ -1474,7 +1501,7 @@ class BeastUI:
         for i,(y1,y2) in enumerate(rows):
             idx=self.theme_library_offset+i
             if idx>=len(self.THEMES):continue
-            tid=self.THEMES[idx];th=load_theme(self.root/'themes'/f'{tid}.json');active=tid==self.theme.id
+            tid=self.THEMES[idx];tp=self._theme_path(tid);th=load_theme(tp) if tp else self.theme;active=tid==self.theme.id
             d.rounded_rectangle((18,y1,458,y2),radius=9,fill=th.c('panel2'),outline=th.c('accent') if active else th.c('primary'),width=3 if active else 2)
             # Larger preview block and bigger text make the entire card obvious.
             d.rounded_rectangle((30,y1+11,112,y2-11),radius=6,fill=th.c('bg'),outline=th.c('accent'))

@@ -15,6 +15,7 @@ from .pack_install import PackInstallManager, PackInstallError
 from .update_downloads import VerifiedUpdateStager, UpdateStageError
 from .presentation_transition import PresentationTransitionPlanner
 from .update_orchestrator import PackUpdateOrchestrator, UpdateOrchestrationError
+from .pack_activation import PackActivationManager, PackActivationError
 
 
 class ActionBroker:
@@ -40,6 +41,7 @@ class ActionBroker:
         self.update_stager = VerifiedUpdateStager(state)
         self.presentation_planner = PresentationTransitionPlanner(state)
         self.update_orchestrator = PackUpdateOrchestrator(state, stager=self.update_stager, intake=self.pack_intake, installer=self.pack_installer)
+        self.pack_activation = PackActivationManager(state)
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -80,6 +82,10 @@ class ActionBroker:
             return self.update_orchestrator.plan(str(payload.get("component") or ""))
         if action == "update.auto_candidates":
             return {"allowed":True,"operation":"update.auto_candidates","items":self.update_orchestrator.auto_candidates(),"blockers":[]}
+        if action == "pack.activate":
+            return self.pack_activation.plan(str(payload.get("id") or ""),True)
+        if action == "pack.deactivate":
+            return self.pack_activation.plan(str(payload.get("id") or ""),False)
         raise ValueError("unsupported action")
 
     def perform(self, action: str, payload: dict[str, Any], *, actor: str = "local") -> dict[str, Any]:
@@ -106,6 +112,10 @@ class ActionBroker:
                 result=self.update_stager.stage(str(requested.get("component") or ""),asset_name=str(requested.get("asset_name") or ""))
             elif action == "update.pack_apply":
                 result=self.update_orchestrator.apply(str(requested.get("component") or ""))
+            elif action == "pack.activate":
+                result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
+            elif action == "pack.deactivate":
+                result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
             elif action == "plugin.toggle":
                 result = self.plugin_broker.toggle(str(requested.get("name") or ""), bool(requested.get("enabled")), restart=True)
             elif action == "service.restart":
@@ -125,7 +135,7 @@ class ActionBroker:
             else:
                 raise ValueError("unsupported action")
             status = "success" if result.get("ok") else "rolled_back" if result.get("rolled_back") else "failed"
-        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, ValueError) as exc:
+        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, PackActivationError, ValueError) as exc:
             plan = {}
             result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             status = "blocked" if isinstance(exc, PluginBrokerError) else "failed"
