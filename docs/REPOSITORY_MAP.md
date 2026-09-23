@@ -37,4 +37,4 @@ belong under `docs/archive/` so the active documentation root stays readable.
 Do not archive a file merely because its version number is old: if current runtime,
 installers, tests or active documentation still depend on its exact path, keep it
 active until those references are migrated safely. Use `docs/README.md` as the
-navigation/source-of-truth layer.
+navigation/source-of-truth layer. See `docs/REPOSITORY_HYGIENE.md` for the living cleanup/archive policy and unresolved consolidation candidates.
