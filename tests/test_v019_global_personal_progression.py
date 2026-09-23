@@ -59,7 +59,9 @@ def test_new_beast_gets_small_capped_familiar_world_xp(tmp_path):
     # bonuses may make total XP larger, which is intentional.
     assert progression.profile["counters"]["familiar_discovery_xp_day"]==20
     assert first_xp>=20
-    progression.on_event(event({"beast_new_count":60,"device_new_count":0,"aps":[]}))
+    # A later distinct batch can continue personal collection progress, but the
+    # familiar-world base XP budget cannot exceed 20 for the UTC day.
+    progression.on_event(event({"beast_new_count":30,"device_new_count":0,"aps":[]}))
     assert progression.profile["counters"]["familiar_discovery_xp_day"]==20
     assert pstore.roster.get(other["id"])["xp"]==first_xp
 
