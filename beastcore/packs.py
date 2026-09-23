@@ -205,7 +205,7 @@ class PackRegistryEngine:
             "packs.resource_counts": resource_counts,
             "packs.thermal_counts": thermal_counts,
             "packs.executor_enabled": True,
-            "packs.executor_scope": "verified_registry_install_plus_scoped_content_activation",
+            "packs.executor_scope": "verified_registry_install_only",
             "packs.activation_enabled": True,
             "packs.activation_scope": "content_only_no_code_no_services",
             "packs.activation_types": ["theme","face","animation","audio","layout","board","data","map"],
