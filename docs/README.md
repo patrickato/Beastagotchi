@@ -6,9 +6,11 @@ The project intentionally preserves historical specifications and roadmaps becau
 
 - `Beastagotchi_Design_Architecture_Bible_v1.0.md` — product/architecture principles.
 - `Beastagotchi_Master_Continuity_Ledger_v1.0.md` — explicit anti-forgetting ledger.
-- `Beastagotchi_Master_Completion_Matrix_v4.7.md` — current implementation/deferred status.
-- `Beastagotchi_Foundation_Roadmap_v2.9.md` — current detailed roadmap.
-- `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX milestone.
+- `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
+- `Beastagotchi_v019_Active_Checkpoint_Delta.md` — active v0.19 implementation checkpoint.
+- `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — recovered chats/Library/repository continuity and supersession record.
+- `../ROADMAP.md` — current execution order.
+- `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX acceptance milestone.
 - `GLOSSARY.md` — common terms used across the project.
 - `REPOSITORY_MAP.md` — where code and docs live.
 
@@ -57,7 +59,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 
 ## Historical roadmaps and matrices
 
-Older `Beastagotchi_Foundation_Roadmap_v*` and `Beastagotchi_Master_Completion_Matrix_v*` files are retained deliberately. The highest-numbered file is the current one unless a newer README/ledger says otherwise.
+Older `Beastagotchi_Foundation_Roadmap_v*` and `Beastagotchi_Master_Completion_Matrix_v*` files are retained deliberately as historical evidence. For current status, follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`; do not assume an old roadmap's final paragraph is still current merely because the document is preserved.
 
 ## Validation history
 
