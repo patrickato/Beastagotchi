@@ -157,6 +157,78 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 CREATE INDEX IF NOT EXISTS idx_incidents_status_seen ON incidents(status,last_seen DESC);
 CREATE INDEX IF NOT EXISTS idx_incidents_kind_seen ON incidents(kind,last_seen DESC);
+CREATE TABLE IF NOT EXISTS beasts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'beast',
+  lineage_id TEXT NOT NULL DEFAULT 'founder',
+  status TEXT NOT NULL DEFAULT 'resting',
+  active INTEGER NOT NULL DEFAULT 0,
+  generation INTEGER NOT NULL DEFAULT 0,
+  created_at REAL NOT NULL,
+  updated_at REAL NOT NULL,
+  trait_seed TEXT,
+  identity_json TEXT NOT NULL DEFAULT '{}',
+  appearance_json TEXT NOT NULL DEFAULT '{}',
+  preferences_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_beasts_single_active ON beasts(active) WHERE active=1;
+CREATE INDEX IF NOT EXISTS idx_beasts_kind_status ON beasts(kind,status,updated_at DESC);
+CREATE TABLE IF NOT EXISTS beast_progress (
+  beast_id TEXT PRIMARY KEY,
+  xp INTEGER NOT NULL DEFAULT 0,
+  max_level INTEGER NOT NULL DEFAULT 100,
+  lifetime_runtime_sec REAL NOT NULL DEFAULT 0,
+  runtime_award_remainder_sec REAL NOT NULL DEFAULT 0,
+  counters_json TEXT NOT NULL DEFAULT '{}',
+  seen_vendors_json TEXT NOT NULL DEFAULT '[]',
+  updated_at REAL NOT NULL,
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_achievements (
+  beast_id TEXT NOT NULL,
+  achievement_id TEXT NOT NULL,
+  unlocked_at REAL NOT NULL,
+  context_json TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY(beast_id,achievement_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_unlocks (
+  beast_id TEXT NOT NULL,
+  unlock_id TEXT NOT NULL,
+  unlocked_at REAL NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY(beast_id,unlock_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_ancestry (
+  child_id TEXT NOT NULL,
+  parent_id TEXT NOT NULL,
+  parent_role TEXT NOT NULL DEFAULT 'parent',
+  PRIMARY KEY(child_id,parent_id),
+  FOREIGN KEY(child_id) REFERENCES beasts(id) ON DELETE CASCADE,
+  FOREIGN KEY(parent_id) REFERENCES beasts(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_beast_ancestry_parent ON beast_ancestry(parent_id);
+CREATE TABLE IF NOT EXISTS monster_syntheses (
+  id TEXT PRIMARY KEY,
+  created_at REAL NOT NULL,
+  parent_a TEXT NOT NULL,
+  parent_b TEXT NOT NULL,
+  child_id TEXT UNIQUE NOT NULL,
+  seed TEXT NOT NULL,
+  recipe_id TEXT NOT NULL DEFAULT 'lineage_synthesis_v1',
+  data_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(parent_a) REFERENCES beasts(id) ON DELETE RESTRICT,
+  FOREIGN KEY(parent_b) REFERENCES beasts(id) ON DELETE RESTRICT,
+  FOREIGN KEY(child_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS global_unlocks (
+  unlock_id TEXT PRIMARY KEY,
+  unlocked_at REAL NOT NULL,
+  source TEXT NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}'
+);
 """
 
 class Store:
