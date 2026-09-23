@@ -165,7 +165,9 @@ class UpdatePolicyEngine:
             key = repo.lower()
             cached = repos.get(key) if isinstance(repos.get(key), dict) else {}
             checked_at = float(cached.get("checked_at") or 0.0)
-            due = now - checked_at >= self.check_interval_sec
+            # A repository with no previous successful/failed check is always due.
+            # Do not make first-check behavior depend on the absolute clock value.
+            due = checked_at <= 0.0 or now - checked_at >= self.check_interval_sec
             if auto_trigger_ready and due:
                 try:
                     latest = self.checker.latest(repo)
