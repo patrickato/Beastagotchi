@@ -337,13 +337,45 @@ class Pages:
             d.text((270,y),ssid,font=f['small'],fill=t.c('text'));d.text((400,y),f'{ch}/{rssi}',font=f['tiny'],fill=t.c('accent'))
 
     def networks(self,d,state,ui):
-        t=ui.theme;f=ui.fonts;aps=state.get('wifi.aps') or [];panel(d,(8,42,472,268),t);headers=[('SSID',16),('CH',280),('RSSI',323),('SEC',375)]
-        for lab,x in headers:d.text((x,49),lab,font=f['tiny'],fill=t.c('dim'))
-        rows=sorted([a for a in aps if isinstance(a,dict)],key=lambda a:a.get('rssi',-999),reverse=True)[:9]
-        for i,ap in enumerate(rows):
-            y=66+i*21
-            if i%2==0:d.rectangle((12,y-2,468,y+17),fill=t.c('panel2'))
-            d.text((16,y),str(ap.get('hostname') or '<hidden>')[:29],font=f['small'],fill=t.c('text'));d.text((282,y),str(ap.get('channel','--')),font=f['small'],fill=t.c('info'));d.text((325,y),str(ap.get('rssi','--')),font=f['small'],fill=t.c('accent'));d.text((375,y),str(ap.get('encryption') or 'OPEN')[:12],font=f['tiny'],fill=t.c('primary'))
+        t=ui.theme;f=ui.fonts
+        aps=[a for a in (state.get('wifi.aps') or []) if isinstance(a,dict)]
+        rows=sorted(aps,key=lambda a:a.get('rssi',-999),reverse=True)
+        hidden=sum(1 for a in rows if not str(a.get('hostname') or a.get('ssid') or '').strip())
+        secure=sum(1 for a in rows if str(a.get('encryption') or '').upper() not in {'','OPEN','NONE'})
+        section_title(d,(12,43),'VISIBLE NETWORKS',f,t)
+        d.text((12,55),f'{len(rows)} OBSERVED  ·  {secure} SECURE  ·  {hidden} HIDDEN',font=f['tiny'],fill=t.c('dim'))
+
+        # Fewer, taller rows trade raw density for legibility on the 3.5" TFT.
+        # The full catalog remains available through detail/operations surfaces.
+        y=72
+        for i,ap in enumerate(rows[:6]):
+            rssi=ap.get('rssi')
+            try:
+                strength=max(0.0,min(1.0,(float(rssi)+100.0)/70.0))
+            except Exception:
+                strength=0.0
+            name=str(ap.get('hostname') or ap.get('ssid') or '<hidden>').strip() or '<hidden>'
+            ch=ap.get('channel','--')
+            sec=str(ap.get('encryption') or 'OPEN').upper()
+            accent=t.c('accent') if i==0 else t.c('primary')
+            card(d,(8,y,472,y+29),t,accent=accent if i==0 else t.c('edge'))
+            d.text((17,y+6),name[:28],font=f['small'],fill=t.c('text'))
+            d.text((259,y+7),f'CH {ch}',font=f['tiny'],fill=t.c('info'))
+            d.text((313,y+7),str(rssi if rssi is not None else '--'),font=f['tiny'],fill=accent)
+            d.text((365,y+7),sec[:13],font=f['micro'],fill=t.c('dim') if sec in {'OPEN','NONE'} else t.c('secondary'))
+            # Tiny strength rail is visual support for the real RSSI value, not
+            # a synthetic score.
+            d.rectangle((17,y+22,242,y+24),fill=t.c('edge'))
+            if strength>0:
+                d.rectangle((17,y+22,17+int(225*strength),y+24),fill=accent)
+            y+=32
+
+        if not rows:
+            card(d,(8,78,472,178),t)
+            d.text((128,108),'NO NETWORK OBSERVATIONS YET',font=f['medium'],fill=t.c('dim'))
+            d.text((114,134),'Waiting for live Bettercap state…',font=f['tiny'],fill=t.c('dim'))
+        elif len(rows)>6:
+            d.text((12,266),f'+ {len(rows)-6} MORE · open detail/search for complete list',font=f['micro'],fill=t.c('dim'))
 
     def spectrum(self,d,state,ui):
         t=ui.theme;f=ui.fonts;aps=state.get('wifi.aps') or [];mode=ui.renderer_for('spectrum');counts=self._channel_counts(aps);channels=sorted(counts);vals=[counts[ch] for ch in channels]
