@@ -210,7 +210,7 @@ approved scope.
 - [x] two-tier interaction model defined: Pwnagotchi-compatible encounter vs Beast-to-Beast encounter
 - [x] privacy-safe cross-device Lineage Capsule concept protected
 - [ ] Beast Bridge canonical peer_detected / peer_lost events
-- [ ] persistent PeerDex / social encounter table keyed by pwngrid fingerprint
+- [x] persistent PeerDex / social encounter table keyed by pwngrid fingerprint (storage/query foundation; bridge/UI integration still pending)
 - [ ] first-meeting / reunion / recurring-friend achievement families
 - [ ] capped/diminishing social XP to prevent proximity farming
 - [ ] peer encounters attached to Expeditions / Memory Vault
@@ -607,14 +607,21 @@ approved scope.
 ## Current next work
 
 1. Keep PR #9 unmerged.
-2. Build Face/Animation Pack consumers and Depot browser without allowing Pack code
-   to execute.
-3. Return to the v0.19 Unified UX gate and generate another real-state visual
-   acceptance gallery.
-4. Package a bounded off-screen/physical Pi validation build only after that
-   visible delta is substantial enough to justify a user test.
-5. Use physical visual/touch/thermal feedback before promoting v0.19 toward
-   `main`.
+2. Finish the remaining high-frequency v0.19 hierarchy/interaction cleanup and
+   Control Center/overlay cleanup.
+3. Generate and review another captured-real-state v0.19 visual acceptance gallery;
+   fix clipping, hierarchy and theme-specific regressions off-screen first.
+4. Reconcile the PeerDex bridge/event integration and user-facing social state
+   without overstating the already-implemented persistence foundation.
+5. Package a bounded Pi validation build only after the visible UX delta is
+   substantial enough to justify physical testing.
+6. Perform physical 480×320 readability/touch/navigation/thermal acceptance.
+7. After that gate, implement and repeatedly validate real Native ↔ Theme Manager ↔
+   Beast presentation-owner adapters with probation/rollback.
+8. Continue the remaining Pack, Update, responsive-display, recovery, hardware,
+   companion and experience-depth work from this matrix.
+
+Preservation snapshot: `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`.
 
 No unchecked item above is considered dropped unless a later documented decision
 explicitly retires it with a reason.
