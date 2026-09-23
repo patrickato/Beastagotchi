@@ -123,6 +123,27 @@ class PackActivationManager:
                 except Exception:
                     blockers.append(f"{ptype} JSON is unreadable: {fp.name}")
 
+        if ptype == "animation":
+            anim_dir = path / "animations"
+            animations = sorted(anim_dir.glob("*.json")) if anim_dir.is_dir() else []
+            if not animations:
+                blockers.append("animation Pack contains no animations/*.json files")
+            for fp in animations[:64]:
+                try:
+                    obj = json.loads(fp.read_text())
+                    aid = str(obj.get("id") or "").strip().lower()
+                    target = str(obj.get("target") or "face").strip().lower()
+                    motion = obj.get("motion") if isinstance(obj.get("motion"), dict) else {}
+                    orbit = obj.get("orbit") if isinstance(obj.get("orbit"), dict) else {}
+                    if not aid or fp.stem != aid:
+                        blockers.append(f"animation id must match filename: {fp.name}")
+                    if target != "face":
+                        blockers.append(f"v0.19 animation target must be face: {fp.name}")
+                    if not motion and not orbit:
+                        blockers.append(f"animation has no motion/orbit definition: {fp.name}")
+                except Exception:
+                    blockers.append(f"animation JSON is unreadable: {fp.name}")
+
         if ptype == "face":
             face_dir = path / "faces"
             faces = sorted(face_dir.glob("*.json")) if face_dir.is_dir() else []

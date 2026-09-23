@@ -86,6 +86,23 @@ rectangles, rounded rectangles, polygons and arcs. Colors refer to semantic
 theme roles such as `primary`, `accent`, `danger`, `text` and `dim`.
 This keeps community faces theme-aware and cheap to render.
 
+### Animation Pack
+
+v0.19 Animation Packs are intentionally lightweight choreography rather than
+video/GIF/frame bundles. The first target is `face`.
+
+```
+manifest.json
+animations/
+  float.json
+```
+
+A profile can declare bounded bob, sway and breathing motion plus up to four
+orbit markers. Optional per-mood multipliers make alert/excited motion quicker
+and sleeping motion calmer. The runtime performs only a few trigonometric
+operations and primitive draws, keeping the animation layer reusable across
+built-in faces and Face Packs with very low storage and CPU cost.
+
 ### Board Pack
 
 ```

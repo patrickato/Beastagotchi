@@ -325,7 +325,7 @@ approved scope.
 - [x] Depot Catalog v1 parser
 - [x] Depot catalog kept separate from source trust
 - [x] Face Pack consumer — declarative glyph/vector profiles, selectable in Beast Studio
-- [ ] Animation Pack consumer
+- [x] Animation Pack consumer — bounded declarative face motion/orbit profiles
 - [ ] Audio Pack consumer
 - [ ] Data Pack consumer
 - [ ] Map Pack consumer
