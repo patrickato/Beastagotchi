@@ -68,3 +68,20 @@ External reviewers can inspect the active PR/branch without forcing unfinished
 work into `main`. Korrie71 or other collaborators can review code/docs/renders,
 open issues or PRs, and use the Pack/compatibility contracts while the current
 stable baseline remains intact.
+
+
+## Continuity preservation gate
+
+Before a long conversation/thread is abandoned or a major development context is
+moved, synchronize durable project truth into the repository:
+
+- current implementation/checkpoint document;
+- current completion matrix;
+- roadmap when execution order changed;
+- continuity ledger when protected scope/architecture changed;
+- validation report when new target/physical evidence exists;
+- preservation snapshot when recovery from chat/Library history was required.
+
+Private chat transcripts are not a release artifact. Preserve the engineering
+decisions and evidence needed for continuity without publishing credentials,
+captures, precise location history or unrelated personal material.
