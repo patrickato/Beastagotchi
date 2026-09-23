@@ -31,6 +31,8 @@ from .operator_tools import OperatorToolRegistry
 from .personality import PersonalityEngine
 from .presentation import PresentationBroker
 from .missions import MissionPackEngine
+from .packs import PackRegistryEngine
+from .updates import UpdatePolicyEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .actions import ActionBroker
@@ -74,6 +76,8 @@ class BeastCore:
         self.personality = PersonalityEngine(self.state)
         self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
+        self.packs = PackRegistryEngine(self.state)
+        self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.api.search_engine = self.search
@@ -426,6 +430,32 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
             except asyncio.TimeoutError: pass
 
+    async def _packs_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("packs", self.packs.tick(), priority=73)
+                if changed:
+                    self.events.publish("packs.changed", "packs", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("pack registry failed")
+                ev = self.events.publish("packs.error", "packs", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError: pass
+
+    async def _updates_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("updates", self.updates.tick(), priority=74)
+                if changed:
+                    self.events.publish("updates.changed", "updates", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("update policy engine failed")
+                ev = self.events.publish("updates.error", "updates", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError: pass
+
     async def _plugin_integration_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -529,6 +559,8 @@ class BeastCore:
             asyncio.create_task(self._expedition_loop(), name="expedition"),
             asyncio.create_task(self._channel_history_loop(), name="channel-history"),
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
+            asyncio.create_task(self._packs_loop(), name="packs"),
+            asyncio.create_task(self._updates_loop(), name="updates"),
             asyncio.create_task(self._presentation_loop(), name="presentation"),
             asyncio.create_task(self._records_loop(), name="records"),
             asyncio.create_task(self._overview_loop(), name="overview"),

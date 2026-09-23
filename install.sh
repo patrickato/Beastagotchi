@@ -5,6 +5,7 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then echo "Run with sudo: sudo ./install.sh"; 
 getent group beastagotchi >/dev/null 2>&1 || groupadd --system beastagotchi
 systemctl stop beast-core.service 2>/dev/null || true
 install -d -o root -g beastagotchi -m 0750 /var/lib/beastagotchi/support
+install -d -o root -g beastagotchi -m 0750 /var/lib/beastagotchi/packs /var/lib/beastagotchi/packs/installed /var/lib/beastagotchi/packs/staged
 install -d -m 0755 /opt/beast-core /etc/beastagotchi /var/lib/beastagotchi
 rm -rf /opt/beast-core/beastcore
 cp -a "$SRC/beastcore" /opt/beast-core/

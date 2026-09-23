@@ -154,6 +154,31 @@ class LocalAPI:
             "thermal": thermal,
             "governor": governor,
             "presentation": presentation,
+            "packs": {
+                "count": int(self.state.get("packs.count", 0) or 0),
+                "enabled_count": int(self.state.get("packs.enabled_count", 0) or 0),
+                "staged_count": int(self.state.get("packs.staged_count", 0) or 0),
+                "compatible_count": int(self.state.get("packs.compatible_count", 0) or 0),
+                "error_count": int(self.state.get("packs.error_count", 0) or 0),
+                "items": self.state.get("packs.items", []) or [],
+                "errors": self.state.get("packs.errors", []) or [],
+                "resource_counts": self.state.get("packs.resource_counts", {}) or {},
+                "thermal_counts": self.state.get("packs.thermal_counts", {}) or {},
+                "executor_enabled": bool(self.state.get("packs.executor_enabled", False)),
+                "executor_reason": self.state.get("packs.executor_reason"),
+            },
+            "updates": {
+                "components": self.state.get("updates.components", []) or [],
+                "component_count": int(self.state.get("updates.component_count", 0) or 0),
+                "policy_counts": self.state.get("updates.policy_counts", {}) or {},
+                "allowed_policies": self.state.get("updates.allowed_policies", []) or [],
+                "dock_ready": bool(self.state.get("updates.dock_ready", False)),
+                "internet_state": self.state.get("updates.internet_state"),
+                "auto_trigger_ready": bool(self.state.get("updates.auto_trigger_ready", False)),
+                "check_state": self.state.get("updates.check_state"),
+                "executor_enabled": bool(self.state.get("updates.executor_enabled", False)),
+                "executor_reason": self.state.get("updates.executor_reason"),
+            },
         }
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:

@@ -162,3 +162,81 @@ def test_platform_bundle_exposes_resource_and_presentation_truth():
     assert bundle["presentation"]["theme_manager_installed"] is True
     assert bundle["presentation"]["executor_enabled"] is False
     assert bundle["incidents"]["items"][0]["status"] == "resolved"
+
+
+def test_pack_registry_validates_and_reports_capability_blockers(tmp_path):
+    import json
+    from beastcore.packs import PackRegistryEngine
+
+    root = tmp_path / "installed"
+    pack = root / "maps-plus"
+    pack.mkdir(parents=True)
+    (pack / "manifest.json").write_text(json.dumps({
+        "id": "maps-plus",
+        "label": "Maps Plus",
+        "version": "1.2.3",
+        "pack_type": "map",
+        "capabilities": ["gps", "rtl_sdr"],
+        "resource_class": "medium",
+        "thermal_class": "compute",
+        "source": {"type": "github_release", "url": "https://user:secret@example.com/project/releases"},
+    }))
+    state = _S({"capabilities.present": ["gps"]})
+    engine = PackRegistryEngine(state, roots={"installed": root})
+    patch = engine.tick()
+
+    assert patch["packs.count"] == 1
+    row = patch["packs.items"][0]
+    assert row["id"] == "maps-plus"
+    assert row["requirements_met"] is False
+    assert row["missing_capabilities"] == ["rtl_sdr"]
+    assert "secret@" not in row["source"]["url"]
+    assert patch["packs.executor_enabled"] is False
+
+
+def test_update_policy_engine_records_intent_without_enabling_executor(tmp_path):
+    import json
+    from beastcore.updates import UpdatePolicyEngine
+
+    policy = tmp_path / "update_policies.json"
+    policy.write_text(json.dumps({"schema": 1, "policies": {
+        "beastagotchi": "notify",
+        "theme_manager": "auto_stage",
+        "pack:maps-plus": "auto_install",
+    }}))
+    state = _S({
+        "system.beast_version": "0.19.0-dev.2",
+        "plugins.catalog": [{"name": "theme_manager", "enabled": False}],
+        "packs.items": [{
+            "id": "maps-plus", "label": "Maps Plus", "version": "1.2.3",
+            "origin": "installed", "requirements_met": True, "blockers": [],
+            "source": {"type": "github_release", "url": "https://example.com/maps"},
+        }],
+        "dock.docked": True,
+        "network.internet.state": "unknown",
+    })
+    patch = UpdatePolicyEngine(state, path=str(policy)).tick()
+    by_id = {r["id"]: r for r in patch["updates.components"]}
+
+    assert by_id["beastagotchi"]["policy"] == "notify"
+    assert by_id["theme_manager"]["policy"] == "auto_stage"
+    assert by_id["pack:maps-plus"]["policy"] == "auto_install"
+    assert by_id["pack:maps-plus"]["auto_install_eligible"] is False
+    assert patch["updates.auto_trigger_ready"] is False
+    assert patch["updates.executor_enabled"] is False
+
+
+def test_studio_update_policy_store_is_private_and_validated(tmp_path):
+    from beaststudio.update_policies import UpdatePolicyStore, UpdatePolicyError
+
+    path = tmp_path / "update_policies.json"
+    store = UpdatePolicyStore(path)
+    row = store.set_policy("pack:maps-plus", "auto_stage")
+    assert row["policies"]["pack:maps-plus"] == "auto_stage"
+    assert (path.stat().st_mode & 0o777) == 0o600
+    try:
+        store.set_policy("../../bad", "auto_install")
+    except UpdatePolicyError:
+        pass
+    else:
+        raise AssertionError("unsafe component id must be rejected")
