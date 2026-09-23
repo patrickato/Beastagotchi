@@ -16,6 +16,8 @@ from .update_downloads import VerifiedUpdateStager, UpdateStageError
 from .presentation_transition import PresentationTransitionPlanner
 from .update_orchestrator import PackUpdateOrchestrator, UpdateOrchestrationError
 from .pack_activation import PackActivationManager, PackActivationError
+from .roster import BeastRoster
+from .global_sync import GlobalProfileSync, GlobalPublishPolicyError, clean_policy
 
 
 class ActionBroker:
@@ -42,6 +44,7 @@ class ActionBroker:
         self.presentation_planner = PresentationTransitionPlanner(state)
         self.update_orchestrator = PackUpdateOrchestrator(state, stager=self.update_stager, intake=self.pack_intake, installer=self.pack_installer)
         self.pack_activation = PackActivationManager(state)
+        self.global_sync = GlobalProfileSync(state,store,BeastRoster(store))
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -86,6 +89,23 @@ class ActionBroker:
             return self.pack_activation.plan(str(payload.get("id") or ""),True)
         if action == "pack.deactivate":
             return self.pack_activation.plan(str(payload.get("id") or ""),False)
+        if action == "global.preview":
+            policy=self.global_sync.policy()
+            snapshot=self.global_sync.build_snapshot(policy)
+            return {
+                "allowed":True,"operation":"global.preview","policy":policy,"snapshot":snapshot,
+                "pending":self.global_sync.pending(20),
+                "local_roster":[{"id":b["id"],"name":b["name"],"kind":b["kind"],"level":b["level"],"active":b["active"]} for b in self.global_sync.roster.list()],
+                "network_io_enabled":False,"blockers":[]
+            }
+        if action == "global.policy_set":
+            requested=clean_policy(payload.get("policy") if isinstance(payload.get("policy"),dict) else {})
+            return {
+                "allowed":True,"operation":"global.policy_set","current":self.global_sync.policy(),
+                "requested":requested,"network_io_enabled":False,
+                "warnings":["Global connector is not configured; this changes only the local privacy/publish policy and local revision queue."],
+                "blockers":[]
+            }
         raise ValueError("unsupported action")
 
     def perform(self, action: str, payload: dict[str, Any], *, actor: str = "local") -> dict[str, Any]:
@@ -116,6 +136,11 @@ class ActionBroker:
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
             elif action == "pack.deactivate":
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
+            elif action == "global.policy_set":
+                policy=self.global_sync.set_policy(requested.get("policy") if isinstance(requested.get("policy"),dict) else {})
+                patch=self.global_sync.tick()
+                self.state.update_many("global_sync",patch,priority=62)
+                result={"ok":True,"policy":policy,"snapshot":self.global_sync.build_snapshot(policy),"state":patch,"network_io_performed":False}
             elif action == "plugin.toggle":
                 result = self.plugin_broker.toggle(str(requested.get("name") or ""), bool(requested.get("enabled")), restart=True)
             elif action == "service.restart":
@@ -135,7 +160,7 @@ class ActionBroker:
             else:
                 raise ValueError("unsupported action")
             status = "success" if result.get("ok") else "rolled_back" if result.get("rolled_back") else "failed"
-        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, PackActivationError, ValueError) as exc:
+        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, PackActivationError, GlobalPublishPolicyError, ValueError) as exc:
             plan = {}
             result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             status = "blocked" if isinstance(exc, PluginBrokerError) else "failed"

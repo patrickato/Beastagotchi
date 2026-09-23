@@ -133,3 +133,14 @@ corresponding category is disabled.
 
 This lets a user choose "keep my public Beast profile current" while preserving
 fine-grained control over what "public" means.
+
+
+## Beast Studio privacy surface
+
+Beast Studio now has a Global privacy panel backed by the Action Broker rather
+than direct browser writes to the database. It exposes the current local roster,
+publication scope and field allow-list, then renders the **exact sanitized public
+snapshot** the future connector would be allowed to transmit.
+
+Saving this policy is local-only in the current milestone. The UI explicitly
+states that network upload is disabled until a connector/provider is configured.

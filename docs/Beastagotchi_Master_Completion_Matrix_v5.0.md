@@ -229,8 +229,8 @@ approved scope.
 - [x] pseudonymous public creature IDs instead of raw internal Beast IDs
 - [x] change-hashed local revision queue; unchanged/private-only changes do not create duplicate public revisions
 - [x] current sync foundation performs no network I/O until a connector is configured
-- [ ] Beast Studio Global privacy/settings UI
-- [ ] public-profile live preview: "this is exactly what others will see"
+- [x] Beast Studio Global privacy/settings UI
+- [x] exact public-profile preview: "this is exactly what others will see"
 - [ ] connector/provider interface
 - [ ] remote profile create/update/delete
 - [ ] public identity rotation/revocation UI
