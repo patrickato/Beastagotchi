@@ -166,3 +166,17 @@ Every substantial milestone must update this ledger or the current Master Comple
 5. adds a new approved idea.
 
 No item is considered gone simply because it is not mentioned in a milestone summary.
+
+
+## Repository preservation source
+
+The 2026-09-23 cross-source recovery and reconciliation is preserved in
+`Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`. It records the
+current branch/PR checkpoint, physical decisions that supersede older theoretical
+recommendations, recovered validation state, Library artifact provenance and
+working continuation rules.
+
+Raw private chat transcripts are not required as a source of truth. When a
+conversation produces a durable architectural decision, physical-hardware truth,
+scope commitment or validation result, that decision should be promoted into the
+repository before the chat becomes the only surviving record.
