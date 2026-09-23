@@ -50,8 +50,8 @@ This tier rejects executable/code-like files, executable permission bits,
 privileged permission requests, background services and service restart
 declarations.
 
-Not every safe class has a consumer yet. **Theme, Board and Layout Packs are the
-first fully connected v0.19 consumers.**
+Not every safe class has a consumer yet. **Theme, Face, Board and Layout Packs are
+fully connected v0.19 consumers.**
 
 ### Theme Pack
 
@@ -63,6 +63,28 @@ themes/
 
 Each theme filename must match its internal `id`. Built-in Beast theme IDs win
 collisions.
+
+### Face Pack
+
+```
+manifest.json
+faces/
+  orbital.json
+```
+
+Face Packs are declarative and never import Pack code. The selected Face Pack
+changes how canonical Beast moods are drawn; Beast Core/Face Engine still decides
+what the creature is feeling.
+
+Current renderers:
+
+- `glyph` — mood → Unicode/text glyph string;
+- `vector` — mood → bounded lists of safe normalized drawing primitives.
+
+Vector coordinates use a 0–1000 logical box and may use lines, ellipses,
+rectangles, rounded rectangles, polygons and arcs. Colors refer to semantic
+theme roles such as `primary`, `accent`, `danger`, `text` and `dim`.
+This keeps community faces theme-aware and cheap to render.
 
 ### Board Pack
 

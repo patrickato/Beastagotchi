@@ -70,7 +70,8 @@ class BeastUI:
         self.dashboard_widgets=validate_dashboard_widgets(pref.get('dashboard_widgets'))
         self.custom_boards=validate_custom_boards(pref.get('custom_boards'))
         self.pack_boards=discover_enabled_pack_boards()
-        self.face=FaceEngine(); self.pages=Pages(self.face); self.page=0; self.phase=0.0
+        self.face_profile_pref=str(pref.get('face_profile') or 'builtin')
+        self.face=FaceEngine(profile_id=self.face_profile_pref); self.pages=Pages(self.face); self.page=0; self.phase=0.0
         self.apps=self._build_app_registry()
         _app_ids=[a.id for a in self.apps.all()]
         self.context_decks=validate_context_decks(pref.get('context_decks'),app_ids=_app_ids)
@@ -175,7 +176,7 @@ class BeastUI:
         if self.pref_path is None:return
         try:
             self.pref_path.parent.mkdir(parents=True,exist_ok=True)
-            self.pref_path.write_text(json.dumps({'theme':self.theme.id,'renderers':self.renderers,'theme_options':self.theme_options,'dashboard_widgets':self.dashboard_widgets,'custom_boards':self.custom_boards,'context_decks':self.context_decks,'active_context_deck':self.active_context_deck,'palette_overrides':self.palette_overrides,'correlation_keys':self.correlation_keys},indent=2)+'\n')
+            self.pref_path.write_text(json.dumps({'theme':self.theme.id,'face_profile':self.face_profile_pref,'renderers':self.renderers,'theme_options':self.theme_options,'dashboard_widgets':self.dashboard_widgets,'custom_boards':self.custom_boards,'context_decks':self.context_decks,'active_context_deck':self.active_context_deck,'palette_overrides':self.palette_overrides,'correlation_keys':self.correlation_keys},indent=2)+'\n')
             st=self.pref_path.stat();self._pref_sig=(int(st.st_mtime_ns),int(st.st_size))
         except Exception as exc: log.warning('could not persist UI prefs: %s',exc)
 
@@ -192,6 +193,7 @@ class BeastUI:
             tid=str(obj.get('theme') or self.theme.id)
             self._refresh_theme_catalog();tp=self._theme_path(tid)
             if tp and tp.exists():self.theme=load_theme(tp);self._bg_cache=None;self._bg_cache_key=None
+            self.face_profile_pref=str(obj.get('face_profile') or 'builtin');self.face.refresh_profiles();self.face.set_profile(self.face_profile_pref)
             incoming=obj.get('renderers') or {}
             if isinstance(incoming,dict):
                 for pid,choices in self.RENDERER_CHOICES.items():
@@ -856,10 +858,10 @@ class BeastUI:
         st,ev,hist,aux,err=self.feed.snapshot()
         if st:
             self.state=st
-            content_pack_sig=tuple(sorted((str(r.get('id') or ''),str(r.get('pack_type') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '') in {'theme','board','layout'}))
+            content_pack_sig=tuple(sorted((str(r.get('id') or ''),str(r.get('pack_type') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '') in {'theme','face','board','layout'}))
             if content_pack_sig!=getattr(self,'_content_pack_sig',None):
                 self._content_pack_sig=content_pack_sig
-                self._refresh_theme_catalog();self.pack_boards=discover_enabled_pack_boards();self.apps=self._build_app_registry()
+                self._refresh_theme_catalog();self.face.refresh_profiles();self.face.set_profile(self.face_profile_pref);self.pack_boards=discover_enabled_pack_boards();self.apps=self._build_app_registry()
                 if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self._all_boards()}:self.active_board_id=''
             sig=(bool(st.get('containers.runtime.available')),bool(st.get('capabilities.rtlsdr.present')),int(st.get('display.connected_outputs') or 0))
             if sig!=self._capability_app_sig:

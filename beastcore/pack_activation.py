@@ -123,6 +123,37 @@ class PackActivationManager:
                 except Exception:
                     blockers.append(f"{ptype} JSON is unreadable: {fp.name}")
 
+        if ptype == "face":
+            face_dir = path / "faces"
+            faces = sorted(face_dir.glob("*.json")) if face_dir.is_dir() else []
+            if not faces:
+                blockers.append("face Pack contains no faces/*.json files")
+            for fp in faces[:64]:
+                try:
+                    obj = json.loads(fp.read_text())
+                    fid = str(obj.get("id") or "").strip().lower()
+                    renderer = str(obj.get("renderer") or "").strip().lower()
+                    expressions = obj.get("expressions")
+                    if not fid or fp.stem != fid:
+                        blockers.append(f"face id must match filename: {fp.name}")
+                    if renderer not in {"glyph", "vector"}:
+                        blockers.append(f"face renderer must be glyph or vector: {fp.name}")
+                    if not isinstance(expressions, dict) or not expressions:
+                        blockers.append(f"face is missing expressions: {fp.name}")
+                    elif renderer == "glyph" and not all(isinstance(v, str) for v in expressions.values()):
+                        blockers.append(f"glyph face expressions must be strings: {fp.name}")
+                    elif renderer == "vector":
+                        allowed = {"line","ellipse","rectangle","rounded_rectangle","polygon","arc"}
+                        for rows in expressions.values():
+                            if not isinstance(rows, list) or not rows:
+                                blockers.append(f"vector face expressions must be non-empty lists: {fp.name}")
+                                break
+                            if any(not isinstance(x, dict) or str(x.get("type") or "") not in allowed for x in rows):
+                                blockers.append(f"vector face contains an unsupported primitive: {fp.name}")
+                                break
+                except Exception:
+                    blockers.append(f"face JSON is unreadable: {fp.name}")
+
         if ptype == "theme":
             theme_dir = path / "themes"
             themes = sorted(theme_dir.glob("*.json")) if theme_dir.is_dir() else []

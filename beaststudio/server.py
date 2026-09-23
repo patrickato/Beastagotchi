@@ -16,6 +16,7 @@ from beastui.responsive import render_responsive_board
 from beastui.engine import BeastUI
 from beastui.theme import load_theme, discover_enabled_pack_themes
 from beastui.pack_content import discover_enabled_pack_boards, discover_enabled_pack_layouts
+from beastui.facepacks import discover_enabled_face_profiles
 from beastui.customization import (
     validate_dashboard_widgets, scalar_catalog, dashboard_history_keys, WIDGET_STYLES,
     validate_context_decks, validate_palette_overrides, validate_correlation_keys, validate_custom_boards,
@@ -42,7 +43,7 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 </style></head><body>
 <header><b>BEAST STUDIO</b><span class="sub">Live compositor • layered customization • transactional controls</span><span id="conn">CONNECTING</span></header>
 <main><aside><div class="nav"><button class="tab active" data-tab="visual">VISUAL</button><button class="tab" data-tab="dashboard">DASH</button><button class="tab" data-tab="decks">DECKS</button><button class="tab" data-tab="data">DATA</button><button class="tab" data-tab="plugins">PLUGINS</button><button class="tab" data-tab="packs">PACKS</button><button class="tab" data-tab="search">SEARCH</button><button class="tab" data-tab="ops">OPS</button></div>
-<section id="visual" class="section"><h3>VISUAL SYSTEM</h3><label>Theme</label><select id="theme"></select><label>Preview page</label><select id="page"></select><label>Output proof</label><select id="previewOutput"></select><div id="previewOutputNote" class="mini">480×320 is the validated reference layout.</div><div id="themeOpts" class="group"></div><div class="group"><h3>PALETTE OVERRIDES</h3><div class="mini">Theme-native defaults remain underneath. Change only the semantic color slots you want.</div><div id="palette"></div></div><div class="group"><h3>DATA RENDERERS</h3><div id="renderers"></div></div></section>
+<section id="visual" class="section"><h3>VISUAL SYSTEM</h3><label>Theme</label><select id="theme"></select><label>Beast face</label><select id="faceProfile"></select><div class="mini">Built-in follows the active theme. Enabled Face Packs remain separate from personality/mood logic.</div><label>Preview page</label><select id="page"></select><label>Output proof</label><select id="previewOutput"></select><div id="previewOutputNote" class="mini">480×320 is the validated reference layout.</div><div id="themeOpts" class="group"></div><div class="group"><h3>PALETTE OVERRIDES</h3><div class="mini">Theme-native defaults remain underneath. Change only the semantic color slots you want.</div><div id="palette"></div></div><div class="group"><h3>DATA RENDERERS</h3><div id="renderers"></div></div></section>
 <section id="dashboard" class="section hidden"><h3>LIVE DASHBOARD COMPOSER</h3><div class="mini">Add, remove, drag, resize, overlap and hide real live instruments. The browser overlay and TFT share the same 12×8 grid; no fake data is introduced.</div><div class="group"><h3>PACK LAYOUT TEMPLATES</h3><div id="packBoardInfo" class="mini"></div><select id="layoutTemplate"></select><button id="importLayout" style="margin-top:7px">IMPORT TEMPLATE AS EDITABLE BOARD</button></div><label>Composition</label><select id="boardSelect"></select><div class="composeTools"><button id="newBoard">+ NEW BOARD</button><button id="deleteBoard">DELETE BOARD</button></div><label>Board name</label><input id="boardLabel" maxlength="22" placeholder="Main Dashboard"><div class="composeTools"><button id="addWidget">+ ADD INSTRUMENT</button><button id="focusDashboard">EDIT ON PREVIEW</button></div><div id="dashWidgets"></div></section>
 <section id="decks" class="section hidden"><h3>CONTEXT DECKS</h3><div class="mini">Curated launcher views keep a large app universe clean. ALL always remains available; a deck never hides capability from the system.</div><label>Edit deck</label><select id="deckSelect"></select><label>Deck label</label><input id="deckLabel" maxlength="18"><label><input id="deckActive" type="checkbox" style="width:auto"> Preferred deck</label><div id="deckApps" class="group"></div></section>
 <section id="data" class="section hidden"><h3>CORRELATION LAB</h3><div class="mini">Compare the shape of two genuine persisted telemetry histories. Values are normalized only for plotting; source data is never altered.</div><label>Stream A</label><select id="corrA"></select><label>Stream B</label><select id="corrB"></select><div class="group"><h3>PROVENANCE</h3><div class="mini">On the TFT, long-press supported production instruments to open the Widget Inspector and see source, quality, age, units and history.</div></div></section>
@@ -59,6 +60,7 @@ function setTab(id){activeTab=id;document.querySelectorAll('.tab').forEach(x=>x.
 document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
 function rebuild(){
  $('theme').innerHTML='';schema.themes.forEach(x=>option($('theme'),x.id,x.label));$('theme').value=draft.theme;
+ $('faceProfile').innerHTML='';(schema.face_profiles||[]).forEach(x=>option($('faceProfile'),x.id,x.source_pack?(x.label+' · '+x.source_pack):x.label));$('faceProfile').value=draft.face_profile||'builtin';
  $('page').innerHTML='';schema.pages.forEach(x=>option($('page'),x.id,x.title));$('page').value=draft.page||'home';
  draft.preview_output=draft.preview_output||'480x320';let po=$('previewOutput');po.innerHTML='';(schema.preview_outputs||[]).forEach(x=>option(po,x.id,x.label));po.value=draft.preview_output;po.onchange=()=>mutate(()=>draft.preview_output=po.value);updatePreviewOutputChrome();
  let box=$('themeOpts');box.innerHTML='<h3>THEME OPTIONS</h3>';let rows=schema.theme_options[draft.theme]||[];let opts=(draft.theme_options[draft.theme]||{});rows.forEach(r=>{let l=document.createElement('label');l.textContent=r.label;let s=document.createElement('select');r.values.forEach(v=>option(s,String(v)));s.value=String(opts[r.key]??r.default??r.values[0]);s.onchange=()=>mutate(()=>{draft.theme_options[draft.theme]=draft.theme_options[draft.theme]||{};draft.theme_options[draft.theme][r.key]=s.value});box.append(l,s)});
@@ -206,7 +208,7 @@ async function loadVariants(){try{variants=await jfetch('/api/variants');let s=$
 $('saveVariant').onclick=async()=>{let name=$('variantName').value.trim();if(!name){$('status').textContent='Enter a variant name first.';return}try{let r=await jfetch('/api/variant-save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,draft})});$('status').textContent='Saved variant: '+r.name;await loadVariants()}catch(e){$('status').textContent='Save variant failed: '+e}}
 $('loadVariant').onclick=async()=>{let id=$('variantList').value;if(!id)return;try{push();draft=await jfetch('/api/variant-load',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});rebuild();$('status').textContent='Variant loaded into draft. Apply when ready.'}catch(e){$('status').textContent='Load failed: '+e}}
 $('deleteVariant').onclick=async()=>{let id=$('variantList').value;if(!id)return;if(!confirm('Delete this saved variant?'))return;try{await jfetch('/api/variant-delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});await loadVariants();$('status').textContent='Variant deleted.'}catch(e){$('status').textContent='Delete failed: '+e}}
-$('refreshPlugins').onclick=loadPlugins;$('theme').onchange=()=>mutate(()=>draft.theme=$('theme').value);$('page').onchange=()=>mutate(()=>draft.page=$('page').value);$('undo').onclick=()=>{if(!undo.length)return;redo.push(clone(draft));draft=undo.pop();rebuild()};$('redo').onclick=()=>{if(!redo.length)return;undo.push(clone(draft));draft=redo.pop();rebuild()};$('reset').onclick=()=>{push();draft=clone(base);rebuild()};$('apply').onclick=async()=>{try{await jfetch('/api/apply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(draft)});base=clone(draft);undo=[];redo=[];$('status').textContent='Applied atomically. Physical Beast UI reloads the draft automatically.'}catch(e){$('status').textContent='Apply failed: '+e}};
+$('refreshPlugins').onclick=loadPlugins;$('theme').onchange=()=>mutate(()=>draft.theme=$('theme').value);$('faceProfile').onchange=()=>mutate(()=>draft.face_profile=$('faceProfile').value);$('page').onchange=()=>mutate(()=>draft.page=$('page').value);$('undo').onclick=()=>{if(!undo.length)return;redo.push(clone(draft));draft=undo.pop();rebuild()};$('redo').onclick=()=>{if(!redo.length)return;undo.push(clone(draft));draft=redo.pop();rebuild()};$('reset').onclick=()=>{push();draft=clone(base);rebuild()};$('apply').onclick=async()=>{try{await jfetch('/api/apply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(draft)});base=clone(draft);undo=[];redo=[];$('status').textContent='Applied atomically. Physical Beast UI reloads the draft automatically.'}catch(e){$('status').textContent='Apply failed: '+e}};
 (async()=>{try{schema=await jfetch('/api/schema');base=await jfetch('/api/preferences');draft=clone(base);rebuild();await loadVariants();$('conn').textContent='LIVE'}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}})();
 </script></body></html>
 '''
@@ -234,7 +236,8 @@ class StudioState:
         active=str(obj.get('active_context_deck') or '')
         if active not in {d['id'] for d in decks}:active=''
         theme_ids=list(BeastUI.THEMES)+[x for x in discover_enabled_pack_themes() if x not in BeastUI.THEMES]
-        return {'theme':str(obj.get('theme') or 'classic'),'page':'home','preview_output':'480x320','renderers':renderers,'theme_options':dict(obj.get('theme_options') or {}),'dashboard_widgets':validate_dashboard_widgets(obj.get('dashboard_widgets')),'custom_boards':validate_custom_boards(obj.get('custom_boards')),'preview_board_id':'','context_decks':decks,'active_context_deck':active,'palette_overrides':validate_palette_overrides(obj.get('palette_overrides'),theme_ids=theme_ids),'correlation_keys':validate_correlation_keys(obj.get('correlation_keys'))}
+        face_ids={'builtin',*discover_enabled_face_profiles().keys()};face_profile=str(obj.get('face_profile') or 'builtin');face_profile=face_profile if face_profile in face_ids else 'builtin'
+        return {'theme':str(obj.get('theme') or 'classic'),'face_profile':face_profile,'page':'home','preview_output':'480x320','renderers':renderers,'theme_options':dict(obj.get('theme_options') or {}),'dashboard_widgets':validate_dashboard_widgets(obj.get('dashboard_widgets')),'custom_boards':validate_custom_boards(obj.get('custom_boards')),'preview_board_id':'','context_decks':decks,'active_context_deck':active,'palette_overrides':validate_palette_overrides(obj.get('palette_overrides'),theme_ids=theme_ids),'correlation_keys':validate_correlation_keys(obj.get('correlation_keys'))}
 
     def validate(self,obj: dict)->dict:
         if not isinstance(obj,dict):raise ValueError('draft must be an object')
@@ -245,6 +248,7 @@ class StudioState:
         probe=BeastUI(root=str(self.root),output=str(Path(tempfile.gettempdir())/'beast-studio-probe.png'),theme_id=theme)
         if theme not in probe.THEMES:raise ValueError('unknown theme')
         if page not in probe.pages.IDS:raise ValueError('unknown page')
+        face_profile=str(obj.get('face_profile') or 'builtin');face_ids={x['id'] for x in probe.face.profile_options()};face_profile=face_profile if face_profile in face_ids else 'builtin'
         renderers={}
         incoming=obj.get('renderers') or {}
         for pid,vals in probe.RENDERER_CHOICES.items():
@@ -271,7 +275,7 @@ class StudioState:
         if active not in {d['id'] for d in decks}:active=''
         palette=validate_palette_overrides(obj.get('palette_overrides'),theme_ids=probe.THEMES)
         corr=validate_correlation_keys(obj.get('correlation_keys'),catalog=live_catalog)
-        return {'theme':theme,'page':page,'preview_output':preview_output,'renderers':renderers,'theme_options':options,'dashboard_widgets':widgets,'custom_boards':boards,'preview_board_id':preview_board_id,'context_decks':decks,'active_context_deck':active,'palette_overrides':palette,'correlation_keys':corr}
+        return {'theme':theme,'face_profile':face_profile,'page':page,'preview_output':preview_output,'renderers':renderers,'theme_options':options,'dashboard_widgets':widgets,'custom_boards':boards,'preview_board_id':preview_board_id,'context_decks':decks,'active_context_deck':active,'palette_overrides':palette,'correlation_keys':corr}
 
     def schema(self)->dict:
         probe=BeastUI(root=str(self.root),output=str(Path(tempfile.gettempdir())/'beast-studio-schema.png'),theme_id='classic')
@@ -282,6 +286,7 @@ class StudioState:
             th=load_theme(fp);themes.append({'id':tid,'label':th.label})
             defaults=probe.options_for_theme(tid);opts[tid]=[{'key':k,'label':lab,'values':vals,'default':defaults.get(k)} for k,lab,vals in probe._theme_option_rows(tid)]
         telemetry=scalar_catalog(self.api.telemetry())
+        face_profiles=probe.face.profile_options()
         pack_boards=discover_enabled_pack_boards(catalog=telemetry);pack_layouts=discover_enabled_pack_layouts(catalog=telemetry)
         apps=[{'id':a.id,'title':a.title,'category':a.category,'description':a.description} for a in AppRegistry().all()]
         apps.extend({'id':f"board:{b['id']}",'title':b.get('label') or b['id'],'category':'Boards','description':f"Read-only board from Pack {b.get('source_pack') or ''}"} for b in pack_boards)
@@ -289,7 +294,7 @@ class StudioState:
         for row in themes:
             th=load_theme(probe._theme_path(row["id"]))
             theme_colors[row['id']]={slot:'#%02x%02x%02x'%th.c(slot) for slot in PALETTE_SLOTS if slot in th.colors}
-        return {'version':'0.18.0','themes':themes,'preview_outputs':[{'id':'480x320','label':'REFERENCE · 480 × 320','width':480,'height':320,'reference':True},{'id':'640x480','label':'COMPATIBILITY · 640 × 480','width':640,'height':480,'reference':False},{'id':'800x480','label':'COMPATIBILITY · 800 × 480','width':800,'height':480,'reference':False}],'pages':[{'id':x,'title':probe.pages.TITLES[x]} for x in probe.pages.IDS],'renderers':probe.RENDERER_CHOICES,'theme_options':opts,'dashboard_keys':telemetry,'widget_styles':list(WIDGET_STYLES),'palette_slots':list(PALETTE_SLOTS),'theme_colors':theme_colors,'apps':apps,'default_context_decks':[dict(x) for x in DEFAULT_CONTEXT_DECKS],'max_dashboard_widgets':MAX_DASHBOARD_WIDGETS,'pack_boards':pack_boards,'pack_layouts':pack_layouts}
+        return {'version':'0.18.0','themes':themes,'preview_outputs':[{'id':'480x320','label':'REFERENCE · 480 × 320','width':480,'height':320,'reference':True},{'id':'640x480','label':'COMPATIBILITY · 640 × 480','width':640,'height':480,'reference':False},{'id':'800x480','label':'COMPATIBILITY · 800 × 480','width':800,'height':480,'reference':False}],'pages':[{'id':x,'title':probe.pages.TITLES[x]} for x in probe.pages.IDS],'renderers':probe.RENDERER_CHOICES,'theme_options':opts,'dashboard_keys':telemetry,'widget_styles':list(WIDGET_STYLES),'palette_slots':list(PALETTE_SLOTS),'theme_colors':theme_colors,'apps':apps,'default_context_decks':[dict(x) for x in DEFAULT_CONTEXT_DECKS],'max_dashboard_widgets':MAX_DASHBOARD_WIDGETS,'pack_boards':pack_boards,'pack_layouts':pack_layouts,'face_profiles':face_profiles}
 
     def preview(self,draft: dict)->bytes:
         cfg=self.validate(draft);live=self.api.live(24);state=live.get('state') if isinstance(live,dict) else {}
@@ -300,7 +305,7 @@ class StudioState:
         batch=self.api.history_batch(hkeys,64,channel_limit=90,expedition_points=256)
         with tempfile.TemporaryDirectory(prefix='beast-studio-') as td:
             dims={'480x320':(480,320),'640x480':(640,480),'800x480':(800,480)};physical=dims.get(cfg.get('preview_output'),(480,320))
-            ui=BeastUI(root=str(self.root),output=str(Path(td)/'preview.png'),theme_id=cfg['theme'],physical_size=physical,display_mode='fit');ui.state=state if isinstance(state,dict) else {};ui.renderers=cfg['renderers'];ui.theme_options=cfg['theme_options'];ui.dashboard_widgets=cfg['dashboard_widgets'];ui.custom_boards=cfg['custom_boards'];ui.active_board_id=cfg.get('preview_board_id') or '';ui.context_decks=cfg['context_decks'];ui.active_context_deck=cfg['active_context_deck'];ui.palette_overrides=cfg['palette_overrides'];ui.correlation_keys=cfg['correlation_keys'];ui._apply_palette_overrides();ui.events=live.get('events') or [] if isinstance(live,dict) else []
+            ui=BeastUI(root=str(self.root),output=str(Path(td)/'preview.png'),theme_id=cfg['theme'],physical_size=physical,display_mode='fit');ui.face_profile_pref=cfg['face_profile'];ui.face.set_profile(cfg['face_profile']);ui.state=state if isinstance(state,dict) else {};ui.renderers=cfg['renderers'];ui.theme_options=cfg['theme_options'];ui.dashboard_widgets=cfg['dashboard_widgets'];ui.custom_boards=cfg['custom_boards'];ui.active_board_id=cfg.get('preview_board_id') or '';ui.context_decks=cfg['context_decks'];ui.active_context_deck=cfg['active_context_deck'];ui.palette_overrides=cfg['palette_overrides'];ui.correlation_keys=cfg['correlation_keys'];ui._apply_palette_overrides();ui.events=live.get('events') or [] if isinstance(live,dict) else []
             raw=(batch or {}).get('histories') or {};ui.histories={k:[x.get('value') for x in v if isinstance(x,dict)] for k,v in raw.items() if isinstance(v,list)};ui.aux={'channel_history':(batch or {}).get('channel_history') or [],'expedition':(batch or {}).get('expedition'),'telemetry':(batch or {}).get('telemetry') or []};ui.page=ui.pages.IDS.index(cfg['page']);logical=ui._compose(ui.page)
             if cfg['page']=='dashboard' and physical!=(480,320):
                 label='DASHBOARD'
@@ -312,7 +317,7 @@ class StudioState:
             bio=io.BytesIO();im.save(bio,format='PNG');return bio.getvalue()
 
     def apply(self,draft: dict)->dict:
-        cfg=self.validate(draft);payload={'theme':cfg['theme'],'renderers':cfg['renderers'],'theme_options':cfg['theme_options'],'dashboard_widgets':cfg['dashboard_widgets'],'custom_boards':cfg['custom_boards'],'context_decks':cfg['context_decks'],'active_context_deck':cfg['active_context_deck'],'palette_overrides':cfg['palette_overrides'],'correlation_keys':cfg['correlation_keys']}
+        cfg=self.validate(draft);payload={'theme':cfg['theme'],'face_profile':cfg['face_profile'],'renderers':cfg['renderers'],'theme_options':cfg['theme_options'],'dashboard_widgets':cfg['dashboard_widgets'],'custom_boards':cfg['custom_boards'],'context_decks':cfg['context_decks'],'active_context_deck':cfg['active_context_deck'],'palette_overrides':cfg['palette_overrides'],'correlation_keys':cfg['correlation_keys']}
         self.prefs.parent.mkdir(parents=True,exist_ok=True)
         if self.prefs.exists():
             bdir=self.prefs.parent/'backups';bdir.mkdir(exist_ok=True);stamp=time.strftime('%Y%m%d-%H%M%S');(bdir/f'preferences-{stamp}.json').write_bytes(self.prefs.read_bytes())
