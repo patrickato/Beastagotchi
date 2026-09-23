@@ -206,8 +206,9 @@ class PackRegistryEngine:
             "packs.thermal_counts": thermal_counts,
             "packs.executor_enabled": True,
             "packs.executor_scope": "verified_registry_install_only",
-            "packs.activation_enabled": True,
-            "packs.activation_scope": "content_only_no_code_no_services",
-            "packs.activation_types": ["theme","face","animation","audio","layout","board","data","map"],
+            "packs.activation_enabled": False,
+            "packs.content_activation_enabled": True,
+            "packs.content_activation_scope": "content_only_no_code_no_services",
+            "packs.content_activation_types": ["theme","face","animation","audio","layout","board","data","map"],
             "packs.executor_reason": "verified Packs may be installed transactionally; content-only Packs can be enabled without executing code or changing services",
         }
