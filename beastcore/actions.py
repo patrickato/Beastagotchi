@@ -16,7 +16,7 @@ from .update_downloads import VerifiedUpdateStager, UpdateStageError
 from .presentation_transition import PresentationTransitionPlanner
 from .update_orchestrator import PackUpdateOrchestrator, UpdateOrchestrationError
 from .pack_activation import PackActivationManager, PackActivationError
-from .roster import BeastRoster
+from .roster import BeastRoster, BeastRosterError
 from .global_sync import GlobalProfileSync, GlobalPublishPolicyError, clean_policy
 
 
@@ -44,7 +44,8 @@ class ActionBroker:
         self.presentation_planner = PresentationTransitionPlanner(state)
         self.update_orchestrator = PackUpdateOrchestrator(state, stager=self.update_stager, intake=self.pack_intake, installer=self.pack_installer)
         self.pack_activation = PackActivationManager(state)
-        self.global_sync = GlobalProfileSync(state,store,BeastRoster(store))
+        self.roster = BeastRoster(store)
+        self.global_sync = GlobalProfileSync(state,store,self.roster)
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -89,6 +90,34 @@ class ActionBroker:
             return self.pack_activation.plan(str(payload.get("id") or ""),True)
         if action == "pack.deactivate":
             return self.pack_activation.plan(str(payload.get("id") or ""),False)
+        if action == "roster.snapshot":
+            items=[]
+            for b in self.roster.list():
+                items.append({
+                    "id":b["id"],"name":b["name"],"kind":b["kind"],"lineage_id":b["lineage_id"],
+                    "status":b["status"],"active":bool(b["active"]),"generation":int(b.get("generation") or 0),
+                    "level":int(b.get("level") or 1),"stage":b.get("stage"),
+                    "achievement_count":len(b.get("achievements") or []),
+                    "parent_ids":list(b.get("parents") or []),
+                    "synthesis_eligible":bool(b.get("kind")=="beast" and int(b.get("level") or 1)>=70),
+                })
+            active=next((x for x in items if x.get("active")),None)
+            return {
+                "allowed":True,"operation":"roster.snapshot","active_id":active.get("id") if active else None,
+                "items":items,"count":len(items),"blockers":[]
+            }
+        if action == "roster.switch":
+            target=str(payload.get("id") or "")
+            if not target:
+                return {"allowed":False,"operation":"roster.switch","blockers":["missing Beast/Monster id"]}
+            current=self.roster.active()
+            candidate=self.roster.get(target)
+            return {
+                "allowed":True,"operation":"roster.switch","from_id":current["id"],"to_id":candidate["id"],
+                "already_active":bool(candidate.get("active")),
+                "warnings":["Switching changes the active progression identity only. The current UI Experience is not changed automatically in this milestone."],
+                "blockers":[]
+            }
         if action == "global.preview":
             policy=self.global_sync.policy()
             snapshot=self.global_sync.build_snapshot(policy)
@@ -136,6 +165,15 @@ class ActionBroker:
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
             elif action == "pack.deactivate":
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
+            elif action == "roster.switch":
+                before=self.roster.active()
+                after=self.roster.set_active(str(requested.get("id") or ""))
+                self.state.update_many("roster",{
+                    "roster.active.id":after["id"],"roster.active.name":after["name"],
+                    "roster.active.kind":after["kind"],"roster.active.level":after["level"],
+                    "roster.active.stage":after["stage"],"roster.count":len(self.roster.list()),
+                },priority=89)
+                result={"ok":True,"from_id":before["id"],"active":after,"experience_changed":False}
             elif action == "global.policy_set":
                 policy=self.global_sync.set_policy(requested.get("policy") if isinstance(requested.get("policy"),dict) else {})
                 patch=self.global_sync.tick()
@@ -160,7 +198,7 @@ class ActionBroker:
             else:
                 raise ValueError("unsupported action")
             status = "success" if result.get("ok") else "rolled_back" if result.get("rolled_back") else "failed"
-        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, PackActivationError, GlobalPublishPolicyError, ValueError) as exc:
+        except (PluginBrokerError, ServiceBrokerError, ContainerBrokerError, BackupError, PackIntakeError, PackInstallError, UpdateStageError, UpdateOrchestrationError, PackActivationError, GlobalPublishPolicyError, BeastRosterError, ValueError) as exc:
             plan = {}
             result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             status = "blocked" if isinstance(exc, PluginBrokerError) else "failed"
@@ -171,7 +209,7 @@ class ActionBroker:
             "finished_at": finished,
             "actor": str(actor),
             "action": action,
-            "target": str(requested.get("name") or requested.get("unit") or requested.get("target") or ""),
+            "target": str(requested.get("name") or requested.get("unit") or requested.get("target") or requested.get("id") or ""),
             "status": status,
             "request": requested,
             "plan": plan,

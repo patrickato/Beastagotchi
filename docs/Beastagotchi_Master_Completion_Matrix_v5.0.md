@@ -178,10 +178,10 @@ approved scope.
 - [x] v1 prevents repeated reroll synthesis from the same unordered parent pair
 - [x] deterministic inheritance seed + parent lineage/preference snapshot recorded
 - [x] core synthesis is sex/gender agnostic; lineage Packs may present optional identity/family terminology
-- [ ] cut live ProgressionEngine over from legacy single profile to active roster Beast
-- [ ] canonical roster/active-Beast state publisher
-- [ ] Beast Roster UI / switcher
-- [ ] per-Beast preferred Experience/Theme/Face/Motion/Board
+- [x] live ProgressionEngine cut over from legacy single profile to active roster Beast
+- [x] canonical active-Beast/progression roster summary state
+- [x] Beast Studio Roster UI / audited active-creature switcher
+- [ ] per-Beast preferred Experience/Theme/Face/Motion/Board (switching intentionally leaves current Experience unchanged until this lands)
 - [ ] split global achievements/collections from per-Beast achievements
 - [ ] Beast-first versus device-first discovery accounting and anti-farming XP
 - [ ] per-Beast Expedition/rare-witness/personality history

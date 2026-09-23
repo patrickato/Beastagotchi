@@ -114,9 +114,11 @@ Implemented foundation:
 - parents preserved after synthesis;
 - first Monster unlocks the future `monstergotchi.core` layer.
 
+Now implemented:
+- live progression is bound to the active roster creature with Founder legacy rollback mirroring;
+- Beast Studio Roster shows persistent creatures and provides audited active-creature switching;
+
 Next:
-- cut live progression over to the active Beast without losing legacy data;
-- Roster/switcher UI;
 - global versus per-Beast achievement/collection split;
 - Beast-first versus device-first encounter rewards;
 - per-Beast preferred Experiences;
