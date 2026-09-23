@@ -76,3 +76,32 @@
 
 ## Continuity rule
 The Master Continuity Ledger and latest Master Completion Matrix remain authoritative. Ideas may be deferred, reorganized or redesigned, but must not silently disappear.
+
+
+## 2026-09-23 Pack / Depot / documentation synchronization
+
+Since the earlier checkpoint, v0.19 also implements:
+
+- verified Pack intake/staging and transactional managed-registry installation;
+- scoped safe content-only activation;
+- enabled Theme Pack discovery in Beast UI and Studio;
+- read-only Board Pack destinations in the Beast launcher;
+- Layout Pack templates importable into editable personal Boards;
+- safe update-source checking and Pack update orchestration;
+- Beast Pack SDK examples;
+- bounded Depot Catalog v1 parser with source trust kept separate from catalog
+  discoverability;
+- explicit content-activation capability reporting without changing the legacy
+  generic Pack activation contract.
+
+Current source gate at this checkpoint: **253 tests passing** plus Python compile
+and shell syntax.
+
+The public roadmap and detailed status matrix are now synchronized to:
+- `ROADMAP.md`
+- `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
+- `docs/Beastagotchi_Development_Release_Workflow.md`
+
+GitHub cadence is now explicit: development commits stay on the active milestone
+branch for CI/rollback; `main`, tags and Releases move only at meaningful
+validated milestone gates.
