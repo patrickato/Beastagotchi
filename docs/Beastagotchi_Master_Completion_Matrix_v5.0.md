@@ -3,7 +3,7 @@
 **Status date:** 2026-09-23  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** 329 automated tests passing + Python compile + shell syntax
+**Current v0.19 source gate:** 332 automated tests passing + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -193,7 +193,8 @@ approved scope.
 - [~] mutation framework + generic rare mutation vocabulary; curated lineage-pair/archetype rules pending
 - [x] Monster-specific fallback evolution vocabulary (Origin → Awakened → Morph → Adapted → Chimera → Ascendant → Prime → Mythic → Monstergotchi)
 - [x] Beast Studio non-mutating synthesis plan + explicit audited Monster creation
-- [ ] Monster creation/reveal cinematic
+- [x] procedural Monster synthesis reveal ceremony with first-Monstergotchi-unlock distinction
+- [ ] optional richer authored Monster reveal assets / lineage-specific ceremonies
 - [x] Hall of Legends foundation with explicit level-100 induction independent of active/resting state
 - [x] ancestry/family-tree data graph + Beast Studio textual viewer foundation
 - [ ] dedicated visual ancestry/family-tree renderer

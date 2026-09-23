@@ -183,3 +183,17 @@ The multi-creature progression branch now also has:
 - ancestry graph and Studio ancestry viewer.
 
 Current full gate: **329 tests passing**, Python compile green, shell syntax green.
+
+
+## Monster reveal milestone
+
+Lineage Synthesis now has a user-visible TFT ceremony tied to the actual persisted
+Monster result. The first Monster separately identifies the Monstergotchi unlock;
+later Monsters receive normal synthesis reveals. Mutation metadata and inherited
+traits are presented from real synthesis state, not generated UI demo data.
+
+Rare Moments retain final-layer visual priority and the reveal adds no permanent
+background workload.
+
+Current full source gate: **332 tests passing**, Python compile green, shell
+syntax green.

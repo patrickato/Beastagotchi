@@ -325,3 +325,25 @@ relationships, generation and mutation information.
 Beast Studio includes a Hall surface and textual ancestry-tree viewer. The
 underlying graph is renderer-neutral so a richer visual family-tree/constellation
 presentation can be added later without changing persistent ancestry data.
+
+
+## Monster synthesis reveal ceremony
+
+Successful synthesis now publishes a short-lived, data-driven reveal state for the
+TFT renderer. The ceremony is procedural and uses the persisted child identity:
+parent names, generation, stage, inherited eye/aura/motion traits and mutation
+metadata where present.
+
+The first successful Monster is visually distinguished from later synthesis
+events because it is also the one-time `monstergotchi.core` unlock.
+
+The reveal:
+- lasts up to 12 seconds;
+- may be dismissed with a tap;
+- is rendered above the normal Beast UI, including Native presentation;
+- remains below a real Rare Moment, which always retains top visual priority;
+- introduces no video decoder or idle background service;
+- does not change progression, ancestry or synthesis results.
+
+Future Lineage Packs may supply richer authored ceremony assets while retaining
+this procedural fallback and the same persisted synthesis semantics.
