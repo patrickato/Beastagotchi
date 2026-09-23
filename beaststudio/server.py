@@ -61,6 +61,8 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <label>Monster name</label><input id="synthName" maxlength="64" placeholder="Nova">
 <div class="row" style="margin-top:8px"><button id="synthPlan">PREVIEW SYNTHESIS</button><button id="synthCreate" class="primary">CREATE MONSTER</button></div>
 <div id="synthStatus" class="status">Choose two eligible Beasts.</div></div>
+<div class="group"><h3>HALL OF LEGENDS</h3><div class="mini">Level-100 creatures may be commemorated without forcing them to stay retired. Hall status is independent of active/resting state.</div><button id="hallRefresh">REFRESH HALL + ANCESTRY</button><div id="hallList"></div></div>
+<div class="group"><h3>ANCESTRY TREE</h3><div class="mini">Persistent parent/child relationships and mutation lineage. This textual tree foundation will later feed a dedicated visual family-tree renderer.</div><div id="ancestryTree" class="status"></div></div>
 </section>
 <section id="global" class="section hidden"><h3>GLOBAL INTERACTION</h3>
 <div class="mini">Optional public/community layer. Local Beast data remains authoritative. No Global connector is configured in this milestone, so saving these settings performs no network upload.</div>
@@ -130,7 +132,7 @@ function renderLayoutOverlay(){let ov=$('layoutOverlay');if(!ov)return;ov.innerH
 function startLayoutDrag(e,i,mode){e.preventDefault();e.stopPropagation();selectedWidget=i;push();let w=currentWidgetList()[i];dragState={i,mode,sx:e.clientX,sy:e.clientY,x:Number(w.x||0),y:Number(w.y||0),w:Number(w.w||4),h:Number(w.h||3)};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.onpointermove=layoutDrag;e.currentTarget.onpointerup=endLayoutDrag;e.currentTarget.onpointercancel=endLayoutDrag;rebuildDashboard()}
 function layoutDrag(e){if(!dragState)return;let rect=$('layoutOverlay').getBoundingClientRect(),dx=Math.round((e.clientX-dragState.sx)/rect.width*12),dy=Math.round((e.clientY-dragState.sy)/rect.height*8),w=currentWidgetList()[dragState.i];if(dragState.mode==='move'){w.x=Math.max(0,Math.min(12-dragState.w,dragState.x+dx));w.y=Math.max(0,Math.min(8-dragState.h,dragState.y+dy))}else{w.w=Math.max(2,Math.min(12-dragState.x,dragState.w+dx));w.h=Math.max(2,Math.min(8-dragState.y,dragState.h+dy))}renderLayoutOverlay();queuePreview()}
 function endLayoutDrag(e){if(e.currentTarget){e.currentTarget.onpointermove=null;e.currentTarget.onpointerup=null;e.currentTarget.onpointercancel=null}dragState=null;rebuildDashboard();queuePreview()}
-$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=loadRoster;$('synthPlan').onclick=previewSynthesis;$('synthCreate').onclick=createSynthesis;$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
+$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=async()=>{await loadRoster();await loadHall()};$('hallRefresh').onclick=loadHall;$('synthPlan').onclick=previewSynthesis;$('synthCreate').onclick=createSynthesis;$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
 
 async function preview(){try{$('conn').textContent='RENDERING';updatePreviewOutputChrome();let r=await fetch('/api/preview',{method:'POST',headers:{'content-type':'application/json','X-Beast-Studio-Token':TOKEN},body:JSON.stringify(draft)});if(!r.ok)throw Error(await r.text());let b=await r.blob();let old=$('screen').src;$('screen').src=URL.createObjectURL(b);if(old&&old.startsWith('blob:'))URL.revokeObjectURL(old);$('conn').textContent='LIVE';let po=previewOutputInfo();$('previewMeta').textContent=`${draft.theme} · ${draft.page}${boardEditorId?' · '+(boardById(boardEditorId)?.label||boardEditorId):''} · ${po.width}×${po.height}`;renderLayoutOverlay()}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}}
 async function loadPlugins(){try{let x=await jfetch('/api/plugins');plugins=x.items||[];renderPlugins()}catch(e){$('pluginList').innerHTML='<div class="status">Plugin catalog unavailable: '+e+'</div>'}}
@@ -220,6 +222,21 @@ async function loadRoster(){try{
   $('synthPlan').disabled=elig.length<2;$('synthCreate').disabled=elig.length<2;
 
 }catch(e){$('rosterStatus').textContent='Roster unavailable: '+e}}
+async function loadHall(){try{
+  let h=await jfetch('/api/roster-hall'),box=$('hallList');box.innerHTML='';
+  let all=[...(h.inductees||[]),...(h.candidates||[])];
+  if(!all.length)box.innerHTML='<div class="status">No level-100 Hall candidates yet.</div>';
+  all.forEach(r=>{let d=document.createElement('div');d.className='plugin';let inducted=!!r.legend,m=r.memory_summary||{};
+    d.innerHTML='<div class="pluginTop"><span class="pluginName">'+(r.name||r.id)+'</span><span class="pill '+(inducted?'on':'')+'">'+(inducted?'LEGEND':'LEVEL 100')+'</span></div>'+
+      '<div class="mini">'+String(r.kind||'beast').toUpperCase()+' · '+(r.stage||'')+' · GEN '+(r.generation||0)+' · '+(r.achievement_count||0)+' achievements</div>'+
+      '<div class="mini">'+(m.memory_count||0)+' memories · '+(m.expedition_count||0)+' expeditions · '+(m.rare_witness_count||0)+' rare witnesses · '+((r.children||[]).length)+' descendants</div>';
+    let b=document.createElement('button');b.textContent=inducted?'REMOVE HALL MARK':'INDUCT INTO HALL';b.onclick=()=>setLegend(r.id,r.name||r.id,!inducted,b);d.append(b);box.append(d)});
+  let g=h.graph||{},nodes={};(g.nodes||[]).forEach(n=>nodes[n.id]=n);let children={};(g.edges||[]).forEach(e=>(children[e.parent_id]=children[e.parent_id]||[]).push(e.child_id));
+  let childSet=new Set((g.edges||[]).map(e=>e.child_id)),roots=(g.nodes||[]).filter(n=>!childSet.has(n.id));
+  function line(id,depth,seen){if(seen.has(id))return '  '.repeat(depth)+'↳ [cycle blocked] '+id+'\n';seen=new Set(seen);seen.add(id);let n=nodes[id]||{id:id,name:id},mut=n.mutation?(' · ✦ '+(n.mutation.id||'mutation')):'';let out='  '.repeat(depth)+(depth?'↳ ':'')+(n.name||n.id)+' · '+String(n.kind||'beast').toUpperCase()+' · LV'+(n.level||1)+' '+(n.stage||'')+(n.legend?' · LEGEND':'')+mut+'\n';(children[id]||[]).forEach(c=>out+=line(c,depth+1,seen));return out}
+  $('ancestryTree').textContent=roots.length?roots.map(r=>line(r.id,0,new Set())).join('\n'):'No ancestry links yet.';
+}catch(e){$('hallList').innerHTML='<div class="status">Hall unavailable: '+e+'</div>'}}
+async function setLegend(id,name,enabled,btn){let msg=enabled?('Induct '+name+' into the Hall of Legends?\n\nThis records a permanent milestone but does not retire or deactivate the creature.'):('Remove the Hall mark from '+name+'?\n\nIts level, memories and history remain untouched.');if(!confirm(msg))return;btn.disabled=true;try{let x=await jfetch('/api/roster-legend',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id,enabled:enabled})});let row=x.action_row||{};$('rosterStatus').textContent=row.status==='success'?(enabled?'Legend inducted.':'Hall mark removed.'):'Hall change failed.';await loadRoster();await loadHall()}catch(e){$('rosterStatus').textContent='Hall change failed: '+e}finally{btn.disabled=false}}
 async function previewSynthesis(){let a=$('synthParentA').value,b=$('synthParentB').value,name=$('synthName').value.trim()||'Monster';if(!a||!b){$('synthStatus').textContent='Choose two eligible Beasts.';return}try{
   let x=await jfetch('/api/roster-synthesis-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({parent_a:a,parent_b:b,name:name})});
   let blockers=x.blockers||[];if(blockers.length){$('synthStatus').textContent='BLOCKED · '+blockers.join(' · ');return}
@@ -338,7 +355,7 @@ $('saveVariant').onclick=async()=>{let name=$('variantName').value.trim();if(!na
 $('loadVariant').onclick=async()=>{let id=$('variantList').value;if(!id)return;try{push();draft=await jfetch('/api/variant-load',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});rebuild();$('status').textContent='Variant loaded into draft. Apply when ready.'}catch(e){$('status').textContent='Load failed: '+e}}
 $('deleteVariant').onclick=async()=>{let id=$('variantList').value;if(!id)return;if(!confirm('Delete this saved variant?'))return;try{await jfetch('/api/variant-delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});await loadVariants();$('status').textContent='Variant deleted.'}catch(e){$('status').textContent='Delete failed: '+e}}
 $('refreshPlugins').onclick=loadPlugins;$('theme').onchange=()=>mutate(()=>draft.theme=$('theme').value);$('faceProfile').onchange=()=>mutate(()=>draft.face_profile=$('faceProfile').value);$('animationProfile').onchange=()=>mutate(()=>draft.animation_profile=$('animationProfile').value);$('page').onchange=()=>mutate(()=>draft.page=$('page').value);$('undo').onclick=()=>{if(!undo.length)return;redo.push(clone(draft));draft=undo.pop();rebuild()};$('redo').onclick=()=>{if(!redo.length)return;undo.push(clone(draft));draft=redo.pop();rebuild()};$('reset').onclick=()=>{push();draft=clone(base);rebuild()};$('apply').onclick=async()=>{try{await jfetch('/api/apply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(draft)});base=clone(draft);undo=[];redo=[];$('status').textContent='Applied atomically. Physical Beast UI reloads the draft automatically.'}catch(e){$('status').textContent='Apply failed: '+e}};
-(async()=>{try{schema=await jfetch('/api/schema');base=await jfetch('/api/preferences');draft=clone(base);rebuild();await loadVariants();await loadRoster();await loadGlobalProfile();$('conn').textContent='LIVE'}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}})();
+(async()=>{try{schema=await jfetch('/api/schema');base=await jfetch('/api/preferences');draft=clone(base);rebuild();await loadVariants();await loadRoster();await loadHall();await loadGlobalProfile();$('conn').textContent='LIVE'}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}})();
 </script></body></html>
 '''
 
@@ -495,6 +512,13 @@ class StudioState:
         mission=next((m for m in missions if isinstance(m,dict) and str(m.get('id') or '')==mission_id),None)
         if mission is None:raise ExperienceDraftError('Experience not found')
         return compose_experience_draft(self.preferences(),mission,self.schema())
+
+    def roster_hall(self)->dict:
+        row=self.actions.plan('roster.hall',{})
+        return row.get('plan',row) if isinstance(row,dict) else {}
+
+    def roster_legend(self,obj: dict)->dict:
+        return self.actions.perform('roster.legend_set',{'id':str(obj.get('id') or ''),'enabled':bool(obj.get('enabled',True))})
 
     def roster_synthesis_plan(self,obj: dict)->dict:
         return self.actions.plan('roster.synthesis_plan',{
@@ -685,6 +709,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/platform':return self._send(200,self.st.platform())
         if path=='/api/global-profile':return self._send(200,self.st.global_profile())
         if path=='/api/roster':return self._send(200,self.st.roster_snapshot())
+        if path=='/api/roster-hall':return self._send(200,self.st.roster_hall())
         if path=='/api/roster-preferred':
             rid=parse_qs(urlsplit(self.path).query).get('id',[''])[0];return self._send(200,self.st.roster_preferred({'id':rid}))
         if path=='/api/update-policies':return self._send(200,self.st.update_policy_snapshot())
@@ -733,7 +758,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -767,6 +792,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/roster-switch':return self._send(200,self.st.roster_switch(obj))
             if path=='/api/roster-synthesis-plan':return self._send(200,self.st.roster_synthesis_plan(obj))
             if path=='/api/roster-synthesize':return self._send(200,self.st.roster_synthesize(obj))
+            if path=='/api/roster-legend':return self._send(200,self.st.roster_legend(obj))
             if path=='/api/roster-presentation':return self._send(200,self.st.roster_remember_presentation(obj))
             if path=='/api/roster-presentation-clear':return self._send(200,self.st.roster_clear_presentation(obj))
             if path=='/api/presentation-plan':return self._send(200,self.st.presentation_plan(obj))
