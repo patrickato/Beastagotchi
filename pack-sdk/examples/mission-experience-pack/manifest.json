@@ -1,0 +1,17 @@
+{
+  "id": "example-field-experience",
+  "label": "Example Field Companion Experience",
+  "version": "1.0.0",
+  "pack_type": "mission",
+  "description": "Composes reusable visual/content Packs into one field-oriented experience.",
+  "author": "Beastagotchi SDK",
+  "license": "MIT",
+  "dependencies": [
+    "example-orchard-theme",
+    "example-orbit-faces",
+    "example-gentle-motion",
+    "example-field-board"
+  ],
+  "resource_class": "none",
+  "thermal_class": "static"
+}

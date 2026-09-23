@@ -1,0 +1,13 @@
+{
+  "id": "field-companion",
+  "label": "Field Companion",
+  "description": "A cohesive field identity assembled from reusable Beast Packs.",
+  "theme": "orchard_example",
+  "face_profile": "pack_example-orbit-faces_orbital",
+  "animation_profile": "pack_example-gentle-motion_float",
+  "board": "pack_example-field-board_field",
+  "deck": "field",
+  "apps": ["home", "dashboard", "map", "expedition", "field_library"],
+  "capabilities": ["display"],
+  "checklist": ["Confirm GPS status", "Start Expedition", "Review encounter summary"]
+}

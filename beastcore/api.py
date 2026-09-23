@@ -166,6 +166,18 @@ class LocalAPI:
                 "thermal_counts": self.state.get("packs.thermal_counts", {}) or {},
                 "executor_enabled": bool(self.state.get("packs.executor_enabled", False)),
                 "executor_reason": self.state.get("packs.executor_reason"),
+                "content_activation_enabled": bool(self.state.get("packs.content_activation_enabled", False)),
+                "content_activation_scope": self.state.get("packs.content_activation_scope"),
+                "content_activation_types": self.state.get("packs.content_activation_types", []) or [],
+            },
+            "missions": {
+                "count": int(self.state.get("missions.count",0) or 0),
+                "available_count": int(self.state.get("missions.available_count",0) or 0),
+                "experience_count": int(self.state.get("missions.experience_count",0) or 0),
+                "pack_count": int(self.state.get("missions.pack_count",0) or 0),
+                "items": self.state.get("missions.items",[]) or [],
+                "experience_apply_enabled": bool(self.state.get("missions.experience_apply_enabled",False)),
+                "experience_apply_reason": self.state.get("missions.experience_apply_reason"),
             },
             "updates": {
                 "components": self.state.get("updates.components", []) or [],

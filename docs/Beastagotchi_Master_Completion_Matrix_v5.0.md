@@ -366,8 +366,8 @@ approved scope.
 - [x] checklist/doc/app suggestions
 - [x] safe structured-action concept
 - [x] Field Survey / Road Trip / Lab Diagnostics / Home Base examples
-- [ ] Mission Pack downloadable Pack consumer integration
-- [ ] Mission activation UI polish
+- [~] Mission Pack downloadable integration — enabled Mission Packs are discovered as namespaced read-only profiles; transactional Apply pending
+- [~] Mission/Experience UI — Beast Studio previews composed Theme/Face/Animation/Board/Deck selections; Apply pending
 - [ ] rules/profile automation engine
 - [ ] mission/session results/replay
 - [ ] share/export user Missions

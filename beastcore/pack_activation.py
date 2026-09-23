@@ -15,7 +15,7 @@ class PackActivationError(RuntimeError):
 
 
 CONTENT_ONLY_TYPES = {
-    "theme", "face", "animation", "audio", "layout", "board", "data", "map",
+    "theme", "face", "animation", "audio", "layout", "board", "mission", "data", "map",
 }
 
 _FORBIDDEN_SUFFIXES = {
@@ -122,6 +122,20 @@ class PackActivationManager:
                         blockers.append(f"{ptype} JSON must define non-empty widgets: {fp.name}")
                 except Exception:
                     blockers.append(f"{ptype} JSON is unreadable: {fp.name}")
+
+        if ptype == "mission":
+            mission_dir = path / "missions"
+            files = sorted(mission_dir.glob("*.json")) if mission_dir.is_dir() else []
+            if not files:
+                blockers.append("mission Pack contains no missions/*.json files")
+            for fp in files[:64]:
+                try:
+                    obj=json.loads(fp.read_text())
+                    rows=obj.get("missions") if isinstance(obj,dict) and isinstance(obj.get("missions"),list) else [obj]
+                    if not rows or not all(isinstance(x,dict) and str(x.get("id") or "").strip() and str(x.get("label") or "").strip() for x in rows):
+                        blockers.append(f"mission JSON requires id and label: {fp.name}")
+                except Exception:
+                    blockers.append(f"mission JSON is unreadable: {fp.name}")
 
         if ptype == "animation":
             anim_dir = path / "animations"

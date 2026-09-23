@@ -11,6 +11,7 @@ Supported at this gate:
 - board
 - data
 - map
+- mission
 
 Activation changes the Pack's managed registry state. It does not copy Pack
 files into `/opt`, execute code, import Python, install dependencies, restart
@@ -46,3 +47,13 @@ disabled content.
 This proves the Depot architecture without weakening the security boundary.
 Code-bearing app, renderer, integration, hardware and experimental Packs still
 require dedicated activation adapters.
+
+
+## Mission Packs as Experience Profiles
+
+Mission Packs remain declarative. Enabled Mission Packs may contribute
+namespaced read-only profiles from `missions/*.json`. A profile may reference
+Theme, Face, Animation, Board/Layout and Context Deck selections while the Pack
+manifest expresses dependencies on the Packs that provide those assets.
+
+Discovery does not apply or mutate user preferences in this milestone.

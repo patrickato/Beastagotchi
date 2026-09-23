@@ -103,6 +103,23 @@ and sleeping motion calmer. The runtime performs only a few trigonometric
 operations and primitive draws, keeping the animation layer reusable across
 built-in faces and Face Packs with very low storage and CPU cost.
 
+### Mission Pack / Experience Profile
+
+Mission Packs are the composition layer. They may depend on other Pack IDs and
+reference their reusable Theme, Face, Animation, Board/Layout and Context Deck
+content.
+
+A Mission becomes an **Experience Profile** when it contains presentation
+selections such as `theme`, `face_profile`, `animation_profile`, `board`
+or `layout`.
+
+This is intentionally not a new monolithic Experience Pack type. A WOPR,
+LCARS, Field Scout or seasonal experience can be a tiny Mission Pack that
+assembles independently reusable components.
+
+v0.19 discovers, validates and previews Experience Profiles. Applying a full
+profile transactionally to user preferences is deliberately the next gate.
+
 ### Board Pack
 
 ```
