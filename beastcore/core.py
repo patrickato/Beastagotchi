@@ -36,6 +36,7 @@ from .updates import UpdatePolicyEngine
 from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
+from .peerdex import PeerDex
 from .actions import ActionBroker
 from .action_server import LocalActionServer
 from .collectors import *
@@ -81,6 +82,7 @@ class BeastCore:
         self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
+        self.peerdex = PeerDex(self.store)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
         self.actions = ActionBroker(self.state, self.store, self.events)
@@ -90,6 +92,7 @@ class BeastCore:
         self.api.operator_tools = self.operator_tools
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
+        self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
 
     def _health_patch(self, c, state: str, duration_ms: float, error: str | None = None) -> dict[str, Any]:
         now = time.time()
@@ -141,6 +144,16 @@ class BeastCore:
             et = str(raw.get("type") or "event")
             data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
             if raw.get("seq") is not None: data = dict(data, bridge_seq=raw.get("seq"))
+            if et == "peer_detected":
+                peer = self.peerdex.observe(data, ts=raw.get("ts"))
+                if peer.get("accepted"):
+                    data = dict(data, peerdex=peer)
+                    self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
+            elif et == "peer_lost":
+                peer = self.peerdex.mark_lost(data, ts=raw.get("ts"))
+                if peer.get("accepted"):
+                    data = dict(data, peerdex=peer)
+                    self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
             ev = self.events.publish(f"pwnagotchi.{et}", "bridge", data)
             # Preserve plugin callback timestamp when supplied.
             try:

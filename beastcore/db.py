@@ -229,6 +229,27 @@ CREATE TABLE IF NOT EXISTS global_unlocks (
   source TEXT NOT NULL,
   data_json TEXT NOT NULL DEFAULT '{}'
 );
+
+CREATE TABLE IF NOT EXISTS peer_encounters (
+  fingerprint TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL DEFAULT '???',
+  first_seen REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  seen_events INTEGER NOT NULL DEFAULT 0,
+  advertised_encounters INTEGER NOT NULL DEFAULT 0,
+  last_rssi INTEGER,
+  best_rssi INTEGER,
+  last_channel INTEGER,
+  version TEXT NOT NULL DEFAULT '',
+  last_face TEXT NOT NULL DEFAULT '',
+  pwnd_run INTEGER NOT NULL DEFAULT 0,
+  pwnd_total INTEGER NOT NULL DEFAULT 0,
+  session_id TEXT NOT NULL DEFAULT '',
+  beast_capable INTEGER NOT NULL DEFAULT 0,
+  public_beast_json TEXT NOT NULL DEFAULT '{}',
+  data_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_peer_encounters_last_seen ON peer_encounters(last_seen DESC);
 """
 
 class Store:
