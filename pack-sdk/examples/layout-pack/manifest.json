@@ -1,0 +1,11 @@
+{
+  "id": "example-layout-templates",
+  "label": "Example Layout Templates",
+  "version": "1.0.0",
+  "pack_type": "layout",
+  "description": "Editable-import layout template example.",
+  "author": "Beastagotchi SDK",
+  "license": "MIT",
+  "resource_class": "none",
+  "thermal_class": "static"
+}

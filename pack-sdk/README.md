@@ -1,0 +1,1 @@
+# Beast Pack SDK\n\nStart with `docs/Beastagotchi_Beast_Pack_SDK_v0.19.md` and the examples in this directory.\n
