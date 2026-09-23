@@ -169,3 +169,17 @@ Validated behavior:
 The first cutover CI run exposed an active-binding bug at the mutation boundary.
 That defect was fixed before promotion. The current full source gate is
 **297 tests passing**, Python compile green and shell syntax green.
+
+
+## Roster longevity milestone
+
+The multi-creature progression branch now also has:
+- per-creature preferred Experience/presentation memory;
+- deterministic Monster heritage generation;
+- explicit previewed/audited Lineage Synthesis in Studio;
+- Monster-specific fallback evolution stages;
+- per-creature milestone/Expedition/Rare/personality memory;
+- Hall of Legends induction independent of active/resting state;
+- ancestry graph and Studio ancestry viewer.
+
+Current full gate: **329 tests passing**, Python compile green, shell syntax green.

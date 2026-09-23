@@ -309,3 +309,19 @@ future Memory Vault views.
 A `beast_expeditions` join table records which creatures actually participated
 in an Expedition. Touch updates are throttled so this feature does not create a
 new high-rate SD-card write path.
+
+
+## Hall of Legends and ancestry graph
+
+Hall membership is deliberately separate from runtime `active/resting` state.
+A creature must reach level 100 before it can be inducted. Once inducted, it may
+still be awakened, used normally, rested again, or have its preferred Experience
+changed without losing Hall status.
+
+The Hall foundation reports inducted Legends, level-100 candidates, achievements,
+memory totals, Rare witnesses, Expedition participation, parent/descendant
+relationships, generation and mutation information.
+
+Beast Studio includes a Hall surface and textual ancestry-tree viewer. The
+underlying graph is renderer-neutral so a richer visual family-tree/constellation
+presentation can be added later without changing persistent ancestry data.

@@ -125,7 +125,7 @@ Next:
 - deterministic inheritance foundation — implemented; curated lineage-pair mutation rules remain;
 - per-Beast milestone/Expedition/Rare/personality memory timeline — implemented;
 - Monster reveal/evolution presentation;
-- Hall of Legends + ancestry tree;
+- Hall of Legends + ancestry graph/Studio viewer — implemented foundation; dedicated visual renderer pending;
 - later evaluate additional generations and privacy-safe cross-device Lineage Capsules.
 
 ### Gate 7A — Peer encounters / Beast social layer
