@@ -209,6 +209,7 @@ class UpdatePolicyEngine:
                         for a in row["release_assets"] if isinstance(a,dict)
                     )
                 )
+                row["auto_install_eligible"] = bool(row["auto_stage_eligible"] and str(row.get("id") or "").startswith("pack:"))
             elif cached.get("ok") is False:
                 row["last_result"] = "check_error"
             elif not auto_trigger_ready:
@@ -246,10 +247,11 @@ class UpdatePolicyEngine:
             "updates.checked_now_count": checked_now,
             "updates.check_errors": errors,
             "updates.metadata_fetch_enabled": True,
-            "updates.download_executor_enabled": False,
-            "updates.executor_enabled": False,
+            "updates.download_executor_enabled": True,
+            "updates.executor_enabled": True,
+            "updates.executor_scope": "verified_staging_plus_inert_beast_pack_transactions",
             "updates.executor_reason": (
-                "v0.19 trusted metadata discovery only; remote downloads and automatic installs remain locked "
-                "until checksum-verified download staging and component-specific rollback are implemented"
+                "trusted SHA-256 verified release staging is enabled; automatic transactional install is limited "
+                "to inert Beast Packs with rollback, while core/platform integrations remain stage-only"
             ),
         }

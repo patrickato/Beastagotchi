@@ -88,8 +88,9 @@ def test_docked_online_update_check_is_cached_and_read_only(tmp_path: Path):
     assert items["beastagotchi"]["auto_stage_eligible"] is True
     assert items["beastagotchi"]["auto_install_eligible"] is False
     assert items["pwnagotchi"]["update_available"] is False
-    assert first["updates.download_executor_enabled"] is False
-    assert first["updates.executor_enabled"] is False
+    assert first["updates.download_executor_enabled"] is True
+    assert first["updates.executor_enabled"] is True
+    assert first["updates.executor_scope"] == "verified_staging_plus_inert_beast_pack_transactions"
     assert len(checker.calls) == 2
 
     # Within the check interval, cached metadata is reused and no network lookup occurs.
