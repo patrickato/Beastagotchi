@@ -85,3 +85,25 @@ moved, synchronize durable project truth into the repository:
 Private chat transcripts are not a release artifact. Preserve the engineering
 decisions and evidence needed for continuity without publishing credentials,
 captures, precise location history or unrelated personal material.
+
+## Recovered-conversation preservation
+
+When old chat/context has to be reconstructed from screenshots, exports or pasted
+conversation material:
+
+1. preserve the raw material privately in the Beastagotchi Preservation Library;
+2. keep ordered batch indexes plus a master coverage map;
+3. never publish raw private screenshots/transcripts to the public repository;
+4. promote only durable sanitized engineering/design decisions into GitHub;
+5. record historical commit/test anchors as provenance, not as current-state
+   authority;
+6. reconcile the Master Continuity Ledger, Completion Matrix, active checkpoint,
+   ROADMAP and documentation indexes when the recovered material changes current
+   understanding;
+7. stop treating a chronological gap as dangerous once recovered material strongly
+   overlaps current source/tests and continuity docs, while still allowing further
+   archival recovery for literal history;
+8. continue to distinguish word-for-word transcript backup from engineering
+   continuity. A successful ChatGPT account export remains the preferred literal
+   transcript source when available.
+
