@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .progression import level_for_xp, stage_for_level
+from .heritage import generate_heritage
 
 
 SYNTHESIS_UNLOCK_LEVEL = 70
@@ -287,14 +288,16 @@ class BeastRoster:
         synthesis_id = "synth-" + uuid.uuid4().hex[:16]
         seed_material = "|".join(sorted([a["id"], b["id"]]) + [child_id, "lineage_synthesis_v1"])
         seed = hashlib.sha256(seed_material.encode()).hexdigest()
+        generated = generate_heritage(a,b,seed)
         heritage = {
-            "schema": 1,
+            "schema": 2,
             "parent_ids": [a["id"], b["id"]],
             "parent_lineages": [a["lineage_id"], b["lineage_id"]],
             "parent_levels_at_synthesis": [a["level"], b["level"]],
             "parent_preferences": [a.get("preferences") or {}, b.get("preferences") or {}],
             "inheritance_seed": seed,
-            "generated_identity_pending": True,
+            "generated_identity_pending": False,
+            "generated": generated,
         }
         lineage = "monster.hybrid"
         with self.conn:
@@ -303,8 +306,8 @@ class BeastRoster:
                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (child_id, str(name or "Monster")[:64], "monster", lineage, "resting", 0,
                  max(int(a["generation"]), int(b["generation"])) + 1, now, now, seed[:24],
-                 json.dumps({"monster": True, "heritage": heritage}, separators=(",", ":")),
-                 json.dumps({}, separators=(",", ":")),
+                 json.dumps({"monster": True, "heritage": heritage, "traits": generated.get("traits") or {}}, separators=(",", ":")),
+                 json.dumps({"traits": generated.get("traits") or {}, "mutation": generated.get("mutation")}, separators=(",", ":")),
                  json.dumps({}, separators=(",", ":"))),
             )
             self.conn.execute(

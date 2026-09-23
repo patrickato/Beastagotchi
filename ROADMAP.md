@@ -119,10 +119,10 @@ Now implemented:
 - Beast Studio Roster shows persistent creatures and provides audited active-creature switching;
 
 Next:
-- global versus per-Beast achievement/collection split;
-- Beast-first versus device-first encounter rewards;
+- global versus per-Beast achievement/collection split — implemented;
+- Beast-first versus device-first encounter rewards with anti-farming cap — implemented;
 - per-Beast preferred presentation memory + preview restore — implemented;
-- deterministic inheritance + curated mutation traits;
+- deterministic inheritance foundation — implemented; curated lineage-pair mutation rules remain;
 - Monster reveal/evolution presentation;
 - Hall of Legends + ancestry tree;
 - later evaluate additional generations and privacy-safe cross-device Lineage Capsules.

@@ -184,11 +184,11 @@ approved scope.
 - [x] per-Beast preferred presentation memory (Experience/Theme/Face/Motion/Board/Deck + validated Studio configuration)
 - [x] Roster supports Wake Only versus Wake + Load Preferred into Studio draft
 - [x] preferred presentation restore remains preview-only until explicit APPLY TO BEAST
-- [ ] split global achievements/collections from per-Beast achievements
-- [ ] Beast-first versus device-first discovery accounting and anti-farming XP
+- [x] global/device achievement layer separated from per-Beast achievements
+- [x] Beast-first versus device-first discovery accounting with capped familiar-world XP
 - [ ] per-Beast Expedition/rare-witness/personality history
-- [ ] deterministic hybrid visual/behavior trait generator
-- [ ] curated lineage-pair mutation/archetype unlocks
+- [x] deterministic hybrid visual/behavior heritage trait generator
+- [~] mutation framework + generic rare mutation vocabulary; curated lineage-pair/archetype rules pending
 - [ ] Monster-specific evolution vocabulary
 - [ ] Monster creation/reveal cinematic
 - [ ] Hall of Legends

@@ -222,3 +222,38 @@ prove that XP, achievements, counters and records survive exactly.
 10. Monster-specific evolution vocabulary;
 11. Hall of Legends / ancestry tree;
 12. physical usability review.
+
+
+## Deterministic heritage engine — implemented foundation
+
+Monster synthesis now produces a persisted schema-2 heritage profile rather than
+only reserving an inheritance seed.
+
+The first declarative trait vocabulary covers:
+- silhouette;
+- eyes;
+- mouth;
+- accent;
+- aura;
+- motion tendency;
+- palette/blend mode;
+- information emphasis;
+- temperament axes: curiosity, social, focus, boldness and nocturnal bias.
+
+Explicit lineage/appearance traits override deterministic lineage defaults.
+Each categorical child trait is deterministically inherited from one parent or
+shared when identical. Temperament axes blend both parents plus a small
+seed-derived bounded variation.
+
+A separate mutation roll is deterministic and persisted. The current foundation
+uses a conservative 3.5% base chance, +1.5 percentage points for cross-lineage
+parents, and +2.5 points for each level-100 parent, capped at 10%. The initial
+generic mutation vocabulary is intentionally small; later Lineage Packs and
+curated pair rules may replace/add artist-authored forms.
+
+Level-100 ancestry creates visible `apex_lineage` legacy markers but does not
+copy the parent's achievements to the child. Cross-lineage ancestry likewise
+records a `cross_lineage` marker.
+
+This engine generates declarative identity only. It does not yet force a Monster
+Face/Theme or bypass the user's presentation preferences.
