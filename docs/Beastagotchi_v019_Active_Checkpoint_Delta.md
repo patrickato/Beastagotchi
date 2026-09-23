@@ -197,3 +197,26 @@ background workload.
 
 Current full source gate: **332 tests passing**, Python compile green, shell
 syntax green.
+
+
+## Repository continuity preservation sync — 2026-09-23
+
+A cross-source recovery pass reconciled the accessible Beastagotchi/Monstergotchi
+conversation context, Library artifacts and the live repository. The durable
+summary is now committed as:
+
+`docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`
+
+Synchronization corrections made alongside this checkpoint include:
+- top-level README/documentation indexes now point to Completion Matrix v5.0;
+- stale 195/253-test entry-point references were replaced by the preserved
+  332-test v0.19 source gate;
+- already-implemented Face/Animation Pack, Depot browser, Experience composition
+  and Global public-preview items are no longer described as future work;
+- PeerDex persistence is acknowledged as implemented while bridge/UI integration
+  remains pending;
+- the older 2026-09-21 continuity audit is retained as historical evidence rather
+  than treated as the current project state.
+
+This is documentation/preservation synchronization only. It does not constitute a
+new physical TFT, target-runtime or presentation-owner validation.
