@@ -58,16 +58,23 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `Beastagotchi_Plugin_Operations_v0.2.md`
 - `Beastagotchi_Hardware_Power_Dock_Spec_v0.1.md`
 
-## Historical roadmaps and matrices
+## Historical material
 
-Older `Beastagotchi_Foundation_Roadmap_v*` and `Beastagotchi_Master_Completion_Matrix_v*` files are retained deliberately as historical evidence. For current status, follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`; do not assume an old roadmap's final paragraph is still current merely because the document is preserved.
+Superseded material is retained under `archive/` instead of crowding the active
+documentation root:
 
-## Validation history
+- `archive/roadmaps/` — Foundation Roadmap v1.1–v2.9 history.
+- `archive/matrices/` — superseded completion matrices before v5.0.
+- `archive/validation/` — historical source/target/physical validation and checkpoint evidence.
+- `archive/checkpoints/` — superseded within-milestone checkpoints.
+- `archive/superseded-specs/` — older spec revisions with a newer active replacement.
+- `archive/drafts/` — old draft documents retained for provenance.
+- `archive/continuity/` — superseded continuity audits.
 
-`Beastagotchi_v*_Validation_*`, checkpoint and physical-review documents record what was actually tested at each stage. They are evidence, not a claim that every historical build is supported today.
+Historical files are evidence, not current instructions. Follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`.
 
 ## Collaboration / review
 
 - `COLLABORATOR_AI_HANDOFF.md` — review order/context for another developer or AI.
-- `Beastagotchi_Project_Continuity_Audit_v1.0.md` — continuity audit.
+- `archive/continuity/Beastagotchi_Project_Continuity_Audit_v1.0.md` — historical 2026-09-21 continuity audit.
 - `adr/` — architectural decision records for decisions that should remain explicit.

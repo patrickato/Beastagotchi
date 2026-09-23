@@ -26,10 +26,15 @@ Responsive local WebUI, action client and local library-file access surface.
 
 - `tests/` — source/unit/regression tests.
 - `validate_v*.sh` — target validation collectors for specific development milestones.
-- `docs/Beastagotchi_v*_Validation_*` — human-readable validation history.
+- `docs/archive/validation/` — historical human-readable source/target/physical validation evidence.
 
 ## Documentation
 
-The project currently keeps many versioned specifications directly in `docs/` because installers and historical packages reference exact names. Do not reorganize them casually without updating installers and reference-audit tests.
+Current/authoritative specifications and milestone documents stay directly in `docs/`.
+Clearly superseded roadmaps, matrices, checkpoints, drafts and validation reports
+belong under `docs/archive/` so the active documentation root stays readable.
 
-Use `docs/README.md` as the navigation layer rather than assuming every old roadmap is current.
+Do not archive a file merely because its version number is old: if current runtime,
+installers, tests or active documentation still depend on its exact path, keep it
+active until those references are migrated safely. Use `docs/README.md` as the
+navigation/source-of-truth layer.
