@@ -268,6 +268,29 @@ CREATE TABLE IF NOT EXISTS peer_encounters (
   data_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_peer_encounters_last_seen ON peer_encounters(last_seen DESC);
+CREATE TABLE IF NOT EXISTS beast_memories (
+  id TEXT PRIMARY KEY,
+  beast_id TEXT NOT NULL,
+  ts REAL NOT NULL,
+  kind TEXT NOT NULL,
+  source_event_type TEXT NOT NULL,
+  rarity TEXT,
+  expedition_id TEXT,
+  summary TEXT NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_memories_beast_ts ON beast_memories(beast_id,ts DESC);
+CREATE INDEX IF NOT EXISTS idx_beast_memories_kind_ts ON beast_memories(kind,ts DESC);
+CREATE TABLE IF NOT EXISTS beast_expeditions (
+  beast_id TEXT NOT NULL,
+  expedition_id TEXT NOT NULL,
+  first_active_at REAL NOT NULL,
+  last_active_at REAL NOT NULL,
+  PRIMARY KEY(beast_id,expedition_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_expeditions_exp ON beast_expeditions(expedition_id,last_active_at DESC);
 CREATE TABLE IF NOT EXISTS global_sync_queue (
   id TEXT PRIMARY KEY,
   created_at REAL NOT NULL,

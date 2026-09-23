@@ -186,7 +186,9 @@ approved scope.
 - [x] preferred presentation restore remains preview-only until explicit APPLY TO BEAST
 - [x] global/device achievement layer separated from per-Beast achievements
 - [x] Beast-first versus device-first discovery accounting with capped familiar-world XP
-- [ ] per-Beast Expedition/rare-witness/personality history
+- [x] low-volume per-Beast memory timeline for evolution/achievement/Rare/Expedition/lineage milestones
+- [x] per-Beast Expedition participation join records with throttled persistence
+- [x] stable personality-state transition history (10s debounce; no high-rate telemetry duplication)
 - [x] deterministic hybrid visual/behavior heritage trait generator
 - [~] mutation framework + generic rare mutation vocabulary; curated lineage-pair/archetype rules pending
 - [x] Monster-specific fallback evolution vocabulary (Origin → Awakened → Morph → Adapted → Chimera → Ascendant → Prime → Mythic → Monstergotchi)

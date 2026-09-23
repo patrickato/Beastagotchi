@@ -205,6 +205,7 @@ async function loadRoster(){try{
     d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.name||r.id}</span><span class="pill ${active?'on':''}">${active?'ACTIVE':String(r.status||'RESTING').toUpperCase()}</span></div>
       <div class="mini">${String(r.kind||'beast').toUpperCase()} · LV ${r.level||1} · ${r.stage||''} · ${r.lineage_id||'standard'} · GEN ${r.generation||0}</div>
       <div class="mini">${r.achievement_count||0} achievements${eligible?' · LINEAGE ELIGIBLE':''}${(r.parent_ids||[]).length?' · '+r.parent_ids.length+' recorded parents':''}</div>
+      <div class="mini">${(r.memory_summary||{}).memory_count||0} memories · ${(r.memory_summary||{}).expedition_count||0} expeditions · ${(r.memory_summary||{}).rare_witness_count||0} rare witnesses</div>
       <div class="status">Preferred setup: ${hasPref?'SAVED':'not saved'}</div>`;
     if(active){let save=document.createElement('button');save.textContent=hasPref?'UPDATE PREFERRED FROM CURRENT DRAFT':'REMEMBER CURRENT DRAFT AS PREFERRED';save.onclick=()=>rememberRosterPresentation(r.id,r.name||r.id,save);d.append(save)}
     if(!active){let wake=document.createElement('button');wake.textContent='WAKE ONLY';wake.onclick=()=>switchRoster(r.id,r.name||r.id,wake,false);d.append(wake);

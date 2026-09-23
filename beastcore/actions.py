@@ -18,6 +18,7 @@ from .update_orchestrator import PackUpdateOrchestrator, UpdateOrchestrationErro
 from .pack_activation import PackActivationManager, PackActivationError
 from .roster import BeastRoster, BeastRosterError
 from .global_sync import GlobalProfileSync, GlobalPublishPolicyError, clean_policy
+from .memories import BeastMemoryEngine
 
 
 class ActionBroker:
@@ -46,6 +47,7 @@ class ActionBroker:
         self.pack_activation = PackActivationManager(state)
         self.roster = BeastRoster(store)
         self.global_sync = GlobalProfileSync(state,store,self.roster)
+        self.memories = BeastMemoryEngine(state,store,self.roster)
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -102,6 +104,7 @@ class ActionBroker:
                     "synthesis_eligible":bool(b.get("kind")=="beast" and int(b.get("level") or 1)>=70),
                     "has_preferred_presentation":bool(self.roster.presentation_preferences(b["id"])),
                     "preferred_presentation":self.roster.presentation_preferences(b["id"]),
+                    "memory_summary":self.memories.summary(b["id"]),
                 })
             active=next((x for x in items if x.get("active")),None)
             return {
@@ -230,6 +233,23 @@ class ActionBroker:
                     "mutation":((monster.get("appearance") or {}).get("mutation")),
                 },"info")
                 self.store.add_event(mev)
+                child_id=str(monster.get("id") or "")
+                if child_id:
+                    self.memories.record_custom(
+                        child_id,"origin",
+                        f"Created from {result['parents'][0]['name']} × {result['parents'][1]['name']}",
+                        {"synthesis_id":result.get("synthesis_id"),"parents":list(monster.get("parents") or []),
+                         "generation":monster.get("generation"),"mutation":((monster.get("appearance") or {}).get("mutation"))},
+                        rarity=str((((monster.get("appearance") or {}).get("mutation") or {}).get("rarity") or "")) or None,
+                        memory_id=f"synthesis:{result.get('synthesis_id')}:child",
+                    )
+                    for parent_row in result.get("parents") or []:
+                        self.memories.record_custom(
+                            str(parent_row.get("id")),"lineage",
+                            f"Descendant created · {monster.get('name') or child_id}",
+                            {"synthesis_id":result.get("synthesis_id"),"child_id":child_id,"generation":monster.get("generation")},
+                            memory_id=f"synthesis:{result.get('synthesis_id')}:parent:{parent_row.get('id')}",
+                        )
             elif action == "roster.presentation_set":
                 beast=self.roster.set_presentation_preferences(
                     str(requested.get("id") or self.roster.active()["id"]),

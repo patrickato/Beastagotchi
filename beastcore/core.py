@@ -41,6 +41,7 @@ from .incidents import IncidentEngine
 from .peerdex import PeerDex
 from .roster import BeastRoster
 from .global_sync import GlobalProfileSync
+from .memories import BeastMemoryEngine
 from .actions import ActionBroker
 from .action_server import LocalActionServer
 from .collectors import *
@@ -91,6 +92,7 @@ class BeastCore:
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.peerdex = PeerDex(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
+        self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
         self.actions = ActionBroker(self.state, self.store, self.events)
@@ -136,12 +138,15 @@ class BeastCore:
             log.exception("progression event handler failed")
             return
         for etype, source, data, severity in rows:
-            pev = self.events.publish(etype, source, data, severity)
+            pdata=dict(data or {});pdata.setdefault('beast_id',str(self.state.get('progression.beast.id') or self.roster.active()['id']))
+            pev = self.events.publish(etype, source, pdata, severity)
             self.store.add_event(pev)
+            self.memories.record_event(pev)
 
     def _publish_durable(self, event_type: str, source: str, data=None, severity: str = "info"):
         ev = self.events.publish(event_type, source, data or {}, severity)
         self.store.add_event(ev)
+        self.memories.record_event(ev)
         self._publish_progression_followups(ev)
         return ev
 
@@ -353,7 +358,9 @@ class BeastCore:
     async def _personality_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
-                self.state.update_many("personality", self.personality.tick(), priority=87)
+                personality_patch=self.personality.tick()
+                self.state.update_many("personality", personality_patch, priority=87)
+                self.memories.observe_personality(personality_patch)
                 self.state.update_many("operator_session", {"operator.session":self.actions.operator_sessions.current(),"operator.policy.level":self.actions.operator_sessions.current().get("level","observer")}, priority=96)
             except Exception as exc:
                 log.exception("personality engine failed")
@@ -424,6 +431,7 @@ class BeastCore:
             try:
                 patch, rows = self.expedition.tick()
                 changed = self.state.update_many("expedition", patch, priority=87)
+                self.memories.observe_expedition(patch)
                 for etype, source, data, severity in rows:
                     self._publish_durable(etype, source, data, severity)
                 if changed:

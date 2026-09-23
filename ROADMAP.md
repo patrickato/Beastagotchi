@@ -123,6 +123,7 @@ Next:
 - Beast-first versus device-first encounter rewards with anti-farming cap — implemented;
 - per-Beast preferred presentation memory + preview restore — implemented;
 - deterministic inheritance foundation — implemented; curated lineage-pair mutation rules remain;
+- per-Beast milestone/Expedition/Rare/personality memory timeline — implemented;
 - Monster reveal/evolution presentation;
 - Hall of Legends + ancestry tree;
 - later evaluate additional generations and privacy-safe cross-device Lineage Capsules.

@@ -287,3 +287,25 @@ Monstergotchi
 at the same numeric level thresholds used by Beast progression. Numeric
 progression therefore stays compatible while presentation can diverge by kind
 and, later, by lineage.
+
+
+## Per-creature memory timeline
+
+The roster now has a deliberately low-volume memory layer.
+
+Stored as per-creature memories:
+- level-ups;
+- evolution/stage changes;
+- personal achievement unlocks;
+- acknowledged Rare Moments;
+- Expedition start/recovery/checkpoint milestones;
+- Monster origin and descendant lineage events;
+- personality/mood transitions only after the new mood remains stable for 10s.
+
+Detailed Wi-Fi, peer and GPS telemetry is **not copied** into the memory table.
+BeastDex, PeerDex and Expedition stores remain authoritative and may be linked by
+future Memory Vault views.
+
+A `beast_expeditions` join table records which creatures actually participated
+in an Expedition. Touch updates are throttled so this feature does not create a
+new high-rate SD-card write path.
