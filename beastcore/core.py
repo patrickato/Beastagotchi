@@ -15,6 +15,7 @@ from .timeseries import TimeSeriesSampler
 from .semantic import SemanticEngine
 from .dock import DockEngine
 from .progression import ProgressionEngine
+from .roster_progression import ActiveBeastProgressionStore
 from .rare import RareMomentEngine
 from .ambient import AmbientContextEngine
 from .governor import ResourceGovernor
@@ -67,7 +68,9 @@ class BeastCore:
         self.sampler = TimeSeriesSampler(self.state, self.store)
         self.semantic = SemanticEngine(self.state, self.store)
         self.dock = DockEngine(self.state)
-        self.progression = ProgressionEngine(self.state)
+        self.progression_store = ActiveBeastProgressionStore(self.store)
+        self.roster = self.progression_store.roster
+        self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
         self.rare = RareMomentEngine(self.state)
         self.ambient = AmbientContextEngine(self.state)
         self.governor = ResourceGovernor(self.state)
@@ -85,7 +88,6 @@ class BeastCore:
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.peerdex = PeerDex(self.store)
-        self.roster = BeastRoster(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy

@@ -170,9 +170,12 @@ class ProgressionEngine:
     more than any active behavior.
     """
 
-    def __init__(self, state, path: str = '/var/lib/beastagotchi/profile.json') -> None:
+    def __init__(self, state, path: str = '/var/lib/beastagotchi/profile.json', profile_store=None) -> None:
         self.state = state
         self.path = Path(path)
+        self.profile_store = profile_store
+        self._active_beast_id = None
+        self._active_identity = {}
         self._last_tick = time.monotonic()
         self._runtime_dirty = 0.0
         self.profile = self._load()
@@ -202,12 +205,17 @@ class ProgressionEngine:
         }
 
     def _load(self) -> dict[str, Any]:
-        try:
-            obj = json.loads(self.path.read_text())
-            if not isinstance(obj, dict):
-                raise ValueError('profile is not an object')
-        except Exception:
-            obj = self._default_profile()
+        if self.profile_store is not None:
+            self._active_identity = self.profile_store.active_identity()
+            self._active_beast_id = str(self._active_identity.get('id') or '')
+            obj = self.profile_store.load_profile(self._active_beast_id)
+        else:
+            try:
+                obj = json.loads(self.path.read_text())
+                if not isinstance(obj, dict):
+                    raise ValueError('profile is not an object')
+            except Exception:
+                obj = self._default_profile()
         base = self._default_profile()
         base.update(obj)
         if not isinstance(base.get('counters'), dict):
@@ -220,8 +228,30 @@ class ProgressionEngine:
         base['achievements'] = list(dict.fromkeys(str(v) for v in (base.get('achievements') or []) if str(v).strip()))
         return base
 
+    def _ensure_active(self) -> bool:
+        if self.profile_store is None:
+            return False
+        identity = self.profile_store.active_identity()
+        active_id = str(identity.get('id') or '')
+        if active_id == self._active_beast_id:
+            self._active_identity = dict(identity)
+            return False
+        if self._active_beast_id:
+            self.profile_store.save_profile(str(self._active_beast_id), self.profile)
+        self._active_beast_id = active_id
+        self._active_identity = dict(identity)
+        self.profile = self._load()
+        self._runtime_dirty = 0.0
+        self._last_tick = time.monotonic()
+        return True
+
     def _save(self) -> None:
         self.profile['updated_at'] = time.time()
+        if self.profile_store is not None:
+            if not self._active_beast_id:
+                self._ensure_active()
+            self.profile_store.save_profile(str(self._active_beast_id), self.profile)
+            return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(prefix='.profile.', suffix='.json', dir=str(self.path.parent))
         try:
@@ -287,6 +317,7 @@ class ProgressionEngine:
         return rows
 
     def _state_values(self) -> dict[str, Any]:
+        self._ensure_active()
         xp = max(0, int(self.profile.get('xp') or 0))
         level = level_for_xp(xp)
         current = xp_threshold(level)
@@ -329,7 +360,14 @@ class ProgressionEngine:
             'progression.achievement.last': self.profile.get('last_achievement'),
             'progression.vendors.count': len(self.profile.get('seen_vendors') or []),
             'progression.lifetime_runtime_sec': round(float(self.profile.get('lifetime_runtime_sec') or 0.0), 1),
-            'progression.profile_path': str(self.path),
+            'progression.profile_path': self.profile_store.storage_label(str(self._active_beast_id)) if self.profile_store is not None else str(self.path),
+            'progression.storage': 'roster' if self.profile_store is not None else 'legacy_json',
+            'progression.beast.id': self._active_identity.get('id') if self.profile_store is not None else 'legacy',
+            'progression.beast.name': self._active_identity.get('name') if self.profile_store is not None else None,
+            'progression.beast.kind': self._active_identity.get('kind') if self.profile_store is not None else 'beast',
+            'progression.beast.lineage': self._active_identity.get('lineage_id') if self.profile_store is not None else 'legacy',
+            'progression.beast.generation': int(self._active_identity.get('generation') or 0) if self.profile_store is not None else 0,
+            'progression.roster.summary': self.profile_store.roster_summary() if self.profile_store is not None else {'total':1,'beasts':1,'monsters':0,'legends':0},
         }
 
     def _publish_state(self) -> None:
@@ -405,6 +443,7 @@ class ProgressionEngine:
         return out
 
     def on_event(self, ev) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         et = str(getattr(ev, 'type', '') or '')
         data = getattr(ev, 'data', {}) or {}
         out: list[tuple[str, str, dict[str, Any], str]] = []
@@ -449,6 +488,7 @@ class ProgressionEngine:
         return out
 
     def tick(self) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         now = time.monotonic()
         delta = max(0.0, min(60.0, now - self._last_tick))
         self._last_tick = now
