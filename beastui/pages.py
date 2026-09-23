@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from .design import PRIMARY_PAGES
 from .customization import dashboard_widget_box
+from .components import card, label_value, progress_bar, divider, status_badge, section_title
 from .widgets import (
     panel, metric, channel_bars, line_area, multiline, bars, stacked_bars, histogram,
     waveform, waterfall, radial, donut, radar, polar, signal_meter, heatmap, timeline, microtrend,
@@ -155,8 +156,7 @@ class Pages:
             for i,(k,v) in enumerate(rows):d.text((238,55+i*28),k,font=f['tiny'],fill=t.c('dim'));d.text((358,55+i*28),str(v),font=f['small'],fill=t.c('accent'))
             return
         # v0.19 reference Home: the Beast is the primary object; operational
-        # telemetry is deliberately summarized instead of rendered as six equal
-        # diagnostic boxes. Theme identity still controls treatment/colors.
+        # telemetry is summarized around it rather than competing with it.
         health=str(self._v(state,'health.core.state','starting')).upper()
         mood=str(self._v(state,'pwnagotchi.mood','awake')).upper()
         dock=str(self._v(state,'dock.state','field')).upper()
@@ -166,26 +166,30 @@ class Pages:
         try:growth=max(0.0,min(100.0,float(self._v(state,'progression.level_progress_pct',0))))
         except Exception:growth=0.0
         expression=str(self._v(state,'beast.expression',mood)).replace('_',' ').upper()
-
-        # Identity card.
-        panel(d,(8,43,228,216),t,accent=t.c('primary'),width=2)
-        self.face.draw(d,(20,52,216,165),t,state,ui.phase)
-        d.text((18,170),expression[:20],font=f['small'],fill=t.c('accent'))
-        d.text((18,187),f'LV {lvl:02d}',font=f['medium'],fill=t.c('primary'))
-        d.text((72,190),stage[:16],font=f['tiny'],fill=t.c('text'))
-        d.text((18,203),f'GROWTH {growth:3.0f}%',font=f['micro'],fill=t.c('dim'))
-        d.rectangle((88,205,216,210),fill=t.c('edge'))
-        d.rectangle((88,205,88+int(128*growth/100.0),210),fill=t.c('accent'))
-
-        # Operational summary card. Strong hierarchy replaces equal-weight tiles.
-        panel(d,(238,43,472,216),t,accent=t.c('edge'))
         mode=str(self._v(state,'context.mode.effective','pwn')).upper()
-        d.text((250,54),'MODE',font=f['micro'],fill=t.c('dim'))
-        d.text((250,65),mode[:18],font=f['large'],fill=t.c('secondary'))
+
+        # Identity card: creature, expression and progression are the visual
+        # anchor. This is deliberately not another telemetry dashboard.
+        card(d,(8,43,228,216),t,accent=t.c('primary'),width=2)
+        self.face.draw(d,(20,52,216,163),t,state,ui.phase)
+        section_title(d,(18,168),expression[:20],f,t,color=t.c('accent'))
+        d.text((18,183),f'LV {lvl:02d}',font=f['medium'],fill=t.c('primary'))
+        d.text((72,186),stage[:16],font=f['tiny'],fill=t.c('text'))
+        d.text((18,201),f'GROWTH {growth:3.0f}%',font=f['micro'],fill=t.c('dim'))
+        progress_bar(d,(88,203,216,209),growth,t,color=t.c('accent'))
+
+        # Operational card: one strong mode/status area, then compact supporting
+        # facts. This avoids the old equal-weight "box wall" treatment.
+        card(d,(238,43,472,216),t,accent=t.c('edge'))
+        section_title(d,(250,53),'MODE',f,t)
+        d.text((250,64),mode[:18],font=f['large'],fill=t.c('secondary'))
         status_col=t.c('accent') if health=='HEALTHY' else t.c('warn')
-        d.text((250,89),f'CORE {health}',font=f['tiny'],fill=status_col)
-        d.line((250,103,460,103),fill=t.c('edge'))
-        rows=[
+        badge=status_badge(d,(250,86),f'CORE {health}',f,t,color=status_col)
+        if dock!='FIELD':
+            status_badge(d,(258+badge,86),dock,f,t,color=t.c('info'))
+        divider(d,250,111,460,t)
+
+        stats=[
             ('APS',self._v(state,'wifi.ap_count',0),t.c('primary')),
             ('CH',self._v(state,'radio.primary.channel'),t.c('info')),
             ('HS',self._v(state,'pwnagotchi.handshakes',0),t.c('accent')),
@@ -193,27 +197,24 @@ class Pages:
             ('TEMP',f"{self._v(state,'system.temp.cpu_c',0):.0f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--',t.c('text')),
             ('GPS','LOCK' if state.get('gps.fix') else '--',t.c('accent') if state.get('gps.fix') else t.c('dim')),
         ]
-        for i,(label,value,col) in enumerate(rows):
-            cx=250+(i%3)*70;cy=115+(i//3)*42
-            d.text((cx,cy),label,font=f['micro'],fill=t.c('dim'))
-            d.text((cx,cy+11),str(value)[:8],font=f['medium'],fill=col)
-        d.text((250,199),f'{dock}  //  AURA {aura[:10]}',font=f['tiny'],fill=t.c('dim'))
+        for i,(label,value,col) in enumerate(stats):
+            cx=250+(i%3)*70;cy=121+(i//3)*42
+            label_value(d,(cx,cy),label,value,f,t,color=col,max_chars=8)
+        d.text((250,198),f'AURA {aura[:10]}',font=f['tiny'],fill=t.c('dim'))
 
-        # Calm context strip: enough identity/exploration information to make
-        # Home feel alive without turning it back into a dashboard.
-        panel(d,(8,224,472,268),t)
+        # Calm exploration/context strip. It carries persistent meaning without
+        # pushing the Beast off the page or recreating a dense dashboard.
+        card(d,(8,224,472,268),t)
         session=self._v(state,'wifi.encounters.session_unique',0)
         life=self._v(state,'wifi.encounters.lifetime_unique',0)
-        d.text((18,232),'TODAY / SESSION',font=f['micro'],fill=t.c('dim'))
-        d.text((18,244),f'{session} UNIQUE SIGNALS',font=f['small'],fill=t.c('text'))
-        d.text((210,232),'LIFETIME',font=f['micro'],fill=t.c('dim'))
-        d.text((210,244),f'{life} DISCOVERIES',font=f['small'],fill=t.c('info'))
+        label_value(d,(18,232),'SESSION',f'{session} SIGNALS',f,t,color=t.c('text'),value_font='small',max_chars=18)
+        label_value(d,(205,232),'LIFETIME',f'{life} DISCOVERIES',f,t,color=t.c('info'),value_font='small',max_chars=18)
         if state.get('power.telemetry.available'):
             pct=state.get('power.battery.percent_estimate')
             power=f'BAT {pct:.0f}%' if isinstance(pct,(int,float)) else 'BAT --'
         else:
             power='DOCKED' if state.get('dock.docked') else 'FIELD'
-        d.text((397,244),power,font=f['tiny'],fill=t.c('accent'))
+        label_value(d,(397,232),'STATE',power,f,t,color=t.c('accent'),value_font='tiny',max_chars=10)
 
     @staticmethod
     def _dashboard_value(key,value):
