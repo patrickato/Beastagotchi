@@ -226,8 +226,14 @@ class ProgressionEngine:
         if not isinstance(base.get('counters'), dict):
             base['counters'] = self._default_profile()['counters']
         else:
+            raw_counters = dict(base['counters'])
             c = self._default_profile()['counters']
-            c.update(base['counters'])
+            c.update(raw_counters)
+            # Pre-roster profiles used lifetime_new_aps for the one creature that
+            # existed. Preserve that exact progress when interpreting old JSON.
+            if 'beast_unique_aps' not in raw_counters:
+                c['beast_unique_aps'] = int(c.get('lifetime_new_aps') or 0)
+            c['lifetime_new_aps'] = int(c.get('beast_unique_aps') or 0)
             base['counters'] = c
         base['seen_vendors'] = list(dict.fromkeys(str(v) for v in (base.get('seen_vendors') or []) if str(v).strip()))
         base['achievements'] = list(dict.fromkeys(str(v) for v in (base.get('achievements') or []) if str(v).strip()))

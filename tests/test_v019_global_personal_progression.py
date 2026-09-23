@@ -54,10 +54,14 @@ def test_new_beast_gets_small_capped_familiar_world_xp(tmp_path):
     _,pstore,_,progression,_=setup_runtime(tmp_path)
     other=pstore.roster.create_beast("Orbit",activate=True)
     rows=progression.on_event(event({"beast_new_count":60,"device_new_count":0,"aps":[]}))
-    assert pstore.roster.get(other["id"])["xp"]==20
-    assert any(r[0]=="progression.xp_awarded" and r[2]["amount"]==20 for r in rows)
+    first_xp=pstore.roster.get(other["id"])["xp"]
+    # Base familiar-world XP is capped at 20/day. One-time personal achievement
+    # bonuses may make total XP larger, which is intentional.
+    assert progression.profile["counters"]["familiar_discovery_xp_day"]==20
+    assert first_xp>=20
     progression.on_event(event({"beast_new_count":60,"device_new_count":0,"aps":[]}))
-    assert pstore.roster.get(other["id"])["xp"]==20
+    assert progression.profile["counters"]["familiar_discovery_xp_day"]==20
+    assert pstore.roster.get(other["id"])["xp"]==first_xp
 
 
 def test_device_first_still_gets_full_one_per_ap_without_using_familiar_cap(tmp_path):

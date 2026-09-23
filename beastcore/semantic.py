@@ -20,6 +20,7 @@ class SemanticEngine:
         self.seen_bssids: set[str] = set()
         self.beast_seen_session: dict[str,set[str]] = {}
         self._last_ap_event = 0.0
+        self._last_ap_event_beast_id = ''
         self._gps_reported: bool | None = None
         self._gps_candidate: bool | None = None
         self._gps_candidate_since = 0.0
@@ -175,8 +176,11 @@ class SemanticEngine:
             except Exception:
                 beast_seen={"new_count":0,"device_new_count":0,"familiar_new_count":0,"total":None,"new_bssids":[]}
 
-        if (newly_seen or int(beast_seen.get("new_count") or 0)) and now - self._last_ap_event >= 1.0:
+        should_emit=bool(newly_seen or int(beast_seen.get("new_count") or 0))
+        active_changed=bool(beast_id and beast_id!=self._last_ap_event_beast_id)
+        if should_emit and (active_changed or now - self._last_ap_event >= 1.0):
             self._last_ap_event = now
+            self._last_ap_event_beast_id = beast_id
             display_aps=beast_candidates if beast_candidates else newly_seen
             out.append(("wifi.ap_discovered", "bettercap", {
                 "count": len(display_aps),
