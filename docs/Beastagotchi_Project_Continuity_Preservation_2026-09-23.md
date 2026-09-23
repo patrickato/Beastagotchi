@@ -352,3 +352,54 @@ The repository itself must now be sufficient for another competent developer or 
 - and what the next bounded validation/development block is.
 
 When future chat-only decisions materially alter architecture, hardware truth, validation status, protected scope, or the active implementation plan, they should be promoted into repository documentation before the conversation is allowed to become the sole source of truth.
+
+## Pinned-chat screenshot recovery expansion — 2026-09-23 evening
+
+The previously inaccessible tail of the final pinned Beastagotchi development
+conversation was reconstructed further from **78 readable screenshots in six
+ordered private recovery batches**.
+
+The raw screenshots remain private in ChatGPT Library under the Beastagotchi
+Preservation area. They are not public repository artifacts.
+
+A sanitized engineering/provenance reconciliation is published as:
+
+`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
+
+The recovered material closes the major continuity gaps around:
+
+- the formal v0.19 Gate 1–17 roadmap/completeness model;
+- the permanent development rule that the roadmap is a memory/execution system,
+  not a rigid cage;
+- Lightbulb Reviews and proactive exploration of adjacent ecosystems;
+- Context Deck + Mission/Experience Pack + hardware-autodetection direction;
+- the origin and intended semantics of Beast Experiences;
+- the architectural pivot from one shared progression profile to
+  Device/User → Beast Roster → Experience;
+- global/device accomplishments versus individual-creature accomplishments;
+- Beast-first versus device-first discovery and anti-farming rules;
+- permanent level-100/no-prestige longevity;
+- persistent lineages/temperaments/preferred Experiences;
+- the user-originated multi-Beast breeding/synthesis concept that became the
+  Monster/Monstergotchi lineage system;
+- deterministic inheritance, curated mutations, Hall of Legends and ancestry;
+- privacy-safe Lineage Capsules;
+- ordinary-Pwnagotchi interoperability, PeerDex/social progression and future
+  Beast-to-Beast extensions;
+- Nearby / Friends / Global separation;
+- exact PUBLIC SNAPSHOT privacy semantics and opt-in Global synchronization;
+- active-Beast progression cutover and Founder rollback-compatibility behavior.
+
+This new recovery does **not** change the physical-validation state, does not
+merge PR #9, and does not supersede current source/tests as the implementation
+authority. It materially improves provenance and design-intent preservation.
+
+The screenshot reconstruction now strongly overlaps repository/Library history.
+Earlier screenshots may still improve literal historical completeness, especially
+around the first v0.19 UX, Presentation Broker, Packs/Depot and GitHub-access
+discussions, but those areas are no longer considered dangerous engineering
+continuity gaps.
+
+Literal word-for-word transcript completeness still requires a successful
+ChatGPT account export if one becomes available later.
+
