@@ -76,27 +76,55 @@ class Pages:
 
     def overview(self,d,state,ui):
         t=ui.theme;f=ui.fonts
-        cards=[x for x in (state.get('overview.cards') or []) if isinstance(x,dict)]
+        rows=[x for x in (state.get('overview.cards') or []) if isinstance(x,dict)]
         attention=[x for x in (state.get('overview.attention') or []) if isinstance(x,dict)]
         overall=str(state.get('overview.state') or 'starting').upper()
         col=t.c('danger') if overall=='CRITICAL' else t.c('warn') if overall=='ATTENTION' else t.c('accent')
-        d.text((14,42),'WHOLE-DEVICE OVERVIEW',font=f['medium'],fill=col)
-        d.text((352,45),overall,font=f['small'],fill=col)
-        boxes=[(8,64,160,121),(164,64,316,121),(320,64,472,121),(8,127,160,184),(164,127,316,184),(320,127,472,184)]
-        for row,box in zip(cards[:6],boxes):
-            status=str(row.get('status') or 'ok').lower();edge=t.c('danger') if status in {'critical','error'} else t.c('warn') if status in {'warning','degraded','attention'} else t.c('info') if status=='info' else t.c('edge')
-            panel(d,box,t,accent=edge,width=2 if status in {'critical','error','warning'} else 1)
-            x1,y1,x2,y2=box;d.text((x1+8,y1+6),str(row.get('title') or '--')[:16],font=f['tiny'],fill=t.c('dim'))
-            d.text((x1+8,y1+22),str(row.get('value') or '--')[:17],font=f['medium'],fill=edge if status!='ok' else t.c('text'))
-            d.text((x1+8,y1+41),str(row.get('detail') or '')[:24],font=f['micro'],fill=t.c('dim'))
-        panel(d,(8,191,472,267),t,accent=col)
-        if attention:
-            first=attention[0];d.text((18,201),f"ATTENTION {len(attention)}",font=f['small'],fill=col)
-            d.text((18,222),str(first.get('title') or 'Attention')[:42],font=f['small'],fill=t.c('text'))
-            d.text((18,242),str(first.get('detail') or '')[:64],font=f['tiny'],fill=t.c('dim'))
+
+        # v0.19 Overview prioritizes "what needs my attention?" over a wall of
+        # equal diagnostic tiles. Source data remains the same overview model.
+        card(d,(8,43,304,157),t,accent=col,width=2)
+        section_title(d,(18,52),'WHOLE DEVICE',f,t)
+        status_badge(d,(190,49),overall,f,t,color=col,min_width=92)
+
+        primary=rows[:3]
+        for i,row in enumerate(primary):
+            y=76+i*25
+            status=str(row.get('status') or 'ok').lower()
+            rcol=t.c('danger') if status in {'critical','error'} else t.c('warn') if status in {'warning','degraded','attention'} else t.c('info') if status=='info' else t.c('text')
+            d.text((18,y),str(row.get('title') or '--').upper()[:15],font=f['tiny'],fill=t.c('dim'))
+            value=str(row.get('value') or '--')[:20]
+            tw=d.textbbox((0,0),value,font=f['small'])[2]
+            d.text((290-tw,y-1),value,font=f['small'],fill=rcol)
+            if i<2:divider(d,18,y+18,294,t)
+
+        card(d,(312,43,472,157),t)
+        section_title(d,(322,52),'MORE STATUS',f,t)
+        secondary=rows[3:6]
+        if secondary:
+            for i,row in enumerate(secondary):
+                y=73+i*27
+                status=str(row.get('status') or 'ok').lower()
+                rcol=t.c('danger') if status in {'critical','error'} else t.c('warn') if status in {'warning','degraded','attention'} else t.c('accent')
+                d.text((322,y),str(row.get('title') or '--').upper()[:12],font=f['micro'],fill=t.c('dim'))
+                d.text((322,y+10),str(row.get('value') or '--')[:18],font=f['small'],fill=rcol if status!='ok' else t.c('text'))
         else:
-            d.text((18,204),'NO ACTIVE ATTENTION ITEMS',font=f['small'],fill=t.c('accent'))
-            d.text((18,229),'PWNAGOTCHI / BETTERCAP / STORAGE / CORE NOMINAL',font=f['tiny'],fill=t.c('dim'))
+            d.text((322,82),'COLLECTING',font=f['small'],fill=t.c('dim'))
+
+        card(d,(8,165,472,268),t,accent=col if attention else t.c('edge'))
+        if attention:
+            first=attention[0]
+            section_title(d,(18,175),f'ATTENTION · {len(attention)}',f,t,color=col)
+            d.text((18,195),str(first.get('title') or 'Attention')[:50],font=f['medium'],fill=t.c('text'))
+            detail=str(first.get('detail') or '')
+            d.text((18,218),detail[:66],font=f['tiny'],fill=t.c('dim'))
+            if len(attention)>1:
+                d.text((18,245),f'+ {len(attention)-1} MORE ITEM(S) · OPEN OPERATIONS FOR DETAIL',font=f['tiny'],fill=col)
+        else:
+            section_title(d,(18,176),'STATUS',f,t,color=t.c('accent'))
+            d.text((18,197),'NO ACTIVE ATTENTION ITEMS',font=f['medium'],fill=t.c('accent'))
+            d.text((18,222),'Core services and available capabilities report nominal.',font=f['tiny'],fill=t.c('dim'))
+            d.text((18,244),'Swipe for detail · Operations keeps the full diagnostic view.',font=f['tiny'],fill=t.c('dim'))
 
     def home(self,d,state,ui):
         t=ui.theme;f=ui.fonts;tid=t.id
@@ -438,25 +466,59 @@ class Pages:
 
     def system(self,d,state,ui):
         t=ui.theme;f=ui.fonts;mode=ui.renderer_for('system')
-        metric(d,(8,42,120,94),'Core',str(self._v(state,'health.core.state','--')).upper(),f,t,t.c('accent'));metric(d,(126,42,238,94),'Temp',f"{state.get('system.temp.cpu_c',0):.1f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--',f,t);metric(d,(244,42,356,94),'CPU',f"{state.get('system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--',f,t);metric(d,(362,42,472,94),'RAM',f"{state.get('system.memory.used_pct',0):.1f}%" if isinstance(state.get('system.memory.used_pct'),(int,float)) else '--',f,t)
-        panel(d,(8,102,292,268),t);d.text((16,110),'HARDWARE / POWER',font=f['tiny'],fill=t.c('dim'));power='UPS '+str(self._v(state,'power.ups.state','--')).upper();d.text((16,130),power,font=f['small'],fill=t.c('accent') if state.get('power.telemetry.available') else t.c('dim'))
-        if state.get('power.telemetry.available'):
-            d.text((16,150),f"BAT {self._v(state,'power.battery.percent_estimate',0):.0f}%  {self._v(state,'power.battery.voltage_v',0):.2f}V",font=f['small'],fill=t.c('text'));d.text((16,169),f"{self._v(state,'power.power_w',0):.2f}W  {self._v(state,'power.current_ma',0):.0f}mA",font=f['small'],fill=t.c('text'))
-        d.text((16,194),'DOCK '+str(self._v(state,'dock.state','field')).upper(),font=f['small'],fill=t.c('secondary'));d.text((16,213),'ETH '+('LINK' if state.get('network.ethernet.carrier') else 'DOWN'),font=f['small'],fill=t.c('text'))
-        gov=str(self._v(state,'governor.mode','FULL')).upper();budget=self._v(state,'governor.budget_pct',100);gcol=t.c('danger') if gov=='SURVIVAL' else t.c('warn') if gov=='REDUCED' else t.c('accent') if gov=='GUARDED' else t.c('text');d.text((16,232),f'GOV {gov} {budget}%',font=f['small'],fill=gcol);d.text((170,232),f"CAPS {self._v(state,'capabilities.count',0)}  LIFE AP {self._v(state,'wifi.encounters.lifetime_unique',0)}",font=f['small'],fill=t.c('text'))
-        cpu=ui.histories.get('system.cpu.total') or [];temp=ui.histories.get('system.temp.cpu_c') or []
-        # CPU (%) and temperature (C) are intentionally independent scales.
-        # They are never overlaid on one unlabeled axis.
-        d.text((304,103),f'CPU % // {mode.upper()}',font=f['tiny'],fill=t.c('primary'));d.text((304,184),'TEMP C',font=f['tiny'],fill=t.c('warn'))
-        top=(300,114,472,181);bottom=(300,195,472,268)
-        if mode=='area':
-            line_area(d,top,cpu,t,t.c('primary'),fill_area=True);line_area(d,bottom,temp,t,t.c('warn'),fill_area=True)
-        elif mode=='waveform':
-            waveform(d,top,cpu,t,t.c('primary'));waveform(d,bottom,temp,t,t.c('warn'))
-        elif mode=='histogram':
-            histogram(d,top,cpu,t,t.c('primary'));histogram(d,bottom,temp,t,t.c('warn'))
-        elif mode=='waterfall':
-            waterfall(d,top,cpu,t,t.c('primary'));waterfall(d,bottom,temp,t,t.c('warn'))
-        else:
-            line_area(d,top,cpu,t,t.c('primary'),fill_area=False);line_area(d,bottom,temp,t,t.c('warn'),fill_area=False)
+        health=str(self._v(state,'health.core.state','--')).upper()
+        temp=f"{state.get('system.temp.cpu_c',0):.1f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--'
+        cpu=f"{state.get('system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--'
+        ram=f"{state.get('system.memory.used_pct',0):.0f}%" if isinstance(state.get('system.memory.used_pct'),(int,float)) else '--'
+        hcol=t.c('accent') if health=='HEALTHY' else t.c('warn')
 
+        # Compact status spine instead of four identical metric boxes.
+        card(d,(8,43,294,105),t,accent=hcol)
+        section_title(d,(18,52),'DEVICE HEALTH',f,t)
+        status_badge(d,(18,69),health,f,t,color=hcol,min_width=84)
+        label_value(d,(119,57),'TEMP',temp,f,t,color=t.c('warn'),max_chars=8)
+        label_value(d,(180,57),'CPU',cpu,f,t,color=t.c('primary'),max_chars=8)
+        label_value(d,(238,57),'RAM',ram,f,t,color=t.c('info'),max_chars=8)
+
+        gov=str(self._v(state,'governor.mode','FULL')).upper()
+        budget=self._v(state,'governor.budget_pct',100)
+        gcol=t.c('danger') if gov=='SURVIVAL' else t.c('warn') if gov=='REDUCED' else t.c('accent') if gov=='GUARDED' else t.c('text')
+        card(d,(302,43,472,105),t)
+        section_title(d,(312,52),'RESOURCE MODE',f,t)
+        d.text((312,68),gov[:12],font=f['medium'],fill=gcol)
+        d.text((312,88),f'BUDGET {budget}%',font=f['tiny'],fill=t.c('dim'))
+
+        card(d,(8,113,294,268),t)
+        section_title(d,(18,122),'HARDWARE / POWER / LINKS',f,t)
+        power_available=bool(state.get('power.telemetry.available'))
+        power='UPS '+str(self._v(state,'power.ups.state','--')).upper()
+        d.text((18,143),power,font=f['small'],fill=t.c('accent') if power_available else t.c('dim'))
+        if power_available:
+            bat=self._v(state,'power.battery.percent_estimate',0)
+            volt=self._v(state,'power.battery.voltage_v',0)
+            watts=self._v(state,'power.power_w',0)
+            d.text((18,163),f'BAT {bat:.0f}%  {volt:.2f}V  {watts:.2f}W',font=f['small'],fill=t.c('text'))
+        else:
+            d.text((18,163),'No managed battery telemetry',font=f['tiny'],fill=t.c('dim'))
+        divider(d,18,184,284,t)
+        label_value(d,(18,194),'DOCK',str(self._v(state,'dock.state','field')).upper(),f,t,color=t.c('secondary'),max_chars=12)
+        label_value(d,(110,194),'ETH','LINK' if state.get('network.ethernet.carrier') else 'DOWN',f,t,color=t.c('accent') if state.get('network.ethernet.carrier') else t.c('dim'),max_chars=8)
+        label_value(d,(182,194),'CAPS',self._v(state,'capabilities.count',0),f,t,color=t.c('info'),max_chars=8)
+        d.text((18,239),f"LIFETIME DISCOVERIES {self._v(state,'wifi.encounters.lifetime_unique',0)}",font=f['tiny'],fill=t.c('dim'))
+        d.text((18,252),'Detailed services, storage and diagnostics live in Operations.',font=f['micro'],fill=t.c('dim'))
+
+        cpu_hist=ui.histories.get('system.cpu.total') or []
+        temp_hist=ui.histories.get('system.temp.cpu_c') or []
+        section_title(d,(308,116),f'CPU % · {mode}',f,t,color=t.c('primary'))
+        section_title(d,(308,190),'TEMP C',f,t,color=t.c('warn'))
+        top=(302,130,472,184);bottom=(302,204,472,268)
+        if mode=='area':
+            line_area(d,top,cpu_hist,t,t.c('primary'),fill_area=True);line_area(d,bottom,temp_hist,t,t.c('warn'),fill_area=True)
+        elif mode=='waveform':
+            waveform(d,top,cpu_hist,t,t.c('primary'));waveform(d,bottom,temp_hist,t,t.c('warn'))
+        elif mode=='histogram':
+            histogram(d,top,cpu_hist,t,t.c('primary'));histogram(d,bottom,temp_hist,t,t.c('warn'))
+        elif mode=='waterfall':
+            waterfall(d,top,cpu_hist,t,t.c('primary'));waterfall(d,bottom,temp_hist,t,t.c('warn'))
+        else:
+            line_area(d,top,cpu_hist,t,t.c('primary'),fill_area=False);line_area(d,bottom,temp_hist,t,t.c('warn'),fill_area=False)
