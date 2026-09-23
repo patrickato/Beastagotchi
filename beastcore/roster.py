@@ -204,6 +204,46 @@ class BeastRoster:
             self.conn.execute("UPDATE beasts SET updated_at=? WHERE id=?", (now, str(beast_id)))
         return self.get(beast_id)
 
+    PRESENTATION_KEYS = (
+        "experience_id","theme","face_profile","animation_profile","renderers","theme_options",
+        "dashboard_widgets","custom_boards","context_decks","active_context_deck",
+        "palette_overrides","correlation_keys",
+    )
+
+    def set_presentation_preferences(self, beast_id: str, presentation: dict[str, Any] | None) -> dict[str, Any]:
+        beast=self.get(str(beast_id))
+        incoming=presentation if isinstance(presentation,dict) else {}
+        clean={k:incoming[k] for k in self.PRESENTATION_KEYS if k in incoming}
+        raw=json.dumps(clean,separators=(",",":"),sort_keys=True)
+        if len(raw.encode("utf-8"))>262144:
+            raise BeastRosterError("preferred presentation is too large")
+        prefs=dict(beast.get("preferences") or {})
+        prefs["presentation"]=clean
+        prefs["presentation_updated_at"]=float(self.clock())
+        now=float(self.clock())
+        with self.conn:
+            self.conn.execute(
+                "UPDATE beasts SET preferences_json=?,updated_at=? WHERE id=?",
+                (json.dumps(prefs,separators=(",",":")),now,str(beast_id)),
+            )
+        return self.get(str(beast_id))
+
+    def clear_presentation_preferences(self, beast_id: str) -> dict[str, Any]:
+        beast=self.get(str(beast_id));prefs=dict(beast.get("preferences") or {})
+        prefs.pop("presentation",None);prefs.pop("presentation_updated_at",None)
+        now=float(self.clock())
+        with self.conn:
+            self.conn.execute(
+                "UPDATE beasts SET preferences_json=?,updated_at=? WHERE id=?",
+                (json.dumps(prefs,separators=(",",":")),now,str(beast_id)),
+            )
+        return self.get(str(beast_id))
+
+    def presentation_preferences(self, beast_id: str) -> dict[str, Any]:
+        beast=self.get(str(beast_id));prefs=beast.get("preferences") if isinstance(beast.get("preferences"),dict) else {}
+        row=prefs.get("presentation")
+        return dict(row) if isinstance(row,dict) else {}
+
     def synthesis_plan(self, parent_a: str, parent_b: str) -> dict[str, Any]:
         if str(parent_a) == str(parent_b):
             return {"allowed": False, "blockers": ["Lineage Synthesis requires two distinct Beasts"]}

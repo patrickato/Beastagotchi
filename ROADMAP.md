@@ -121,7 +121,7 @@ Now implemented:
 Next:
 - global versus per-Beast achievement/collection split;
 - Beast-first versus device-first encounter rewards;
-- per-Beast preferred Experiences;
+- per-Beast preferred presentation memory + preview restore — implemented;
 - deterministic inheritance + curated mutation traits;
 - Monster reveal/evolution presentation;
 - Hall of Legends + ancestry tree;

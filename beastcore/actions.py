@@ -100,12 +100,37 @@ class ActionBroker:
                     "achievement_count":len(b.get("achievements") or []),
                     "parent_ids":list(b.get("parents") or []),
                     "synthesis_eligible":bool(b.get("kind")=="beast" and int(b.get("level") or 1)>=70),
+                    "has_preferred_presentation":bool(self.roster.presentation_preferences(b["id"])),
+                    "preferred_presentation":self.roster.presentation_preferences(b["id"]),
                 })
             active=next((x for x in items if x.get("active")),None)
             return {
                 "allowed":True,"operation":"roster.snapshot","active_id":active.get("id") if active else None,
                 "items":items,"count":len(items),"blockers":[]
             }
+        if action == "roster.presentation_get":
+            beast=self.roster.get(str(payload.get("id") or self.roster.active()["id"]))
+            pref=self.roster.presentation_preferences(beast["id"])
+            return {
+                "allowed":True,"operation":"roster.presentation_get","id":beast["id"],
+                "name":beast["name"],"presentation":pref,"has_preferred_presentation":bool(pref),
+                "blockers":[]
+            }
+        if action == "roster.presentation_set":
+            beast=self.roster.get(str(payload.get("id") or self.roster.active()["id"]))
+            presentation=payload.get("presentation") if isinstance(payload.get("presentation"),dict) else {}
+            clean={k:presentation[k] for k in self.roster.PRESENTATION_KEYS if k in presentation}
+            raw=__import__("json").dumps(clean,separators=(",",":"))
+            blockers=[] if len(raw.encode("utf-8"))<=262144 else ["preferred presentation exceeds 256 KiB"]
+            return {
+                "allowed":not blockers,"operation":"roster.presentation_set","id":beast["id"],
+                "name":beast["name"],"presentation":clean,
+                "warnings":["This stores a preferred presentation for the creature; it does not change the currently running UI."],
+                "blockers":blockers
+            }
+        if action == "roster.presentation_clear":
+            beast=self.roster.get(str(payload.get("id") or self.roster.active()["id"]))
+            return {"allowed":True,"operation":"roster.presentation_clear","id":beast["id"],"name":beast["name"],"blockers":[]}
         if action == "roster.switch":
             target=str(payload.get("id") or "")
             if not target:
@@ -165,6 +190,15 @@ class ActionBroker:
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
             elif action == "pack.deactivate":
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
+            elif action == "roster.presentation_set":
+                beast=self.roster.set_presentation_preferences(
+                    str(requested.get("id") or self.roster.active()["id"]),
+                    requested.get("presentation") if isinstance(requested.get("presentation"),dict) else {},
+                )
+                result={"ok":True,"id":beast["id"],"presentation":self.roster.presentation_preferences(beast["id"]),"ui_changed":False}
+            elif action == "roster.presentation_clear":
+                beast=self.roster.clear_presentation_preferences(str(requested.get("id") or self.roster.active()["id"]))
+                result={"ok":True,"id":beast["id"],"presentation":{},"ui_changed":False}
             elif action == "roster.switch":
                 before=self.roster.active()
                 after=self.roster.set_active(str(requested.get("id") or ""))

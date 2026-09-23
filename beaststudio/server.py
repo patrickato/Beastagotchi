@@ -51,7 +51,7 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <section id="decks" class="section hidden"><h3>CONTEXT DECKS</h3><div class="mini">Curated launcher views keep a large app universe clean. ALL always remains available; a deck never hides capability from the system.</div><label>Edit deck</label><select id="deckSelect"></select><label>Deck label</label><input id="deckLabel" maxlength="18"><label><input id="deckActive" type="checkbox" style="width:auto"> Preferred deck</label><div id="deckApps" class="group"></div></section>
 <section id="data" class="section hidden"><h3>CORRELATION LAB</h3><div class="mini">Compare the shape of two genuine persisted telemetry histories. Values are normalized only for plotting; source data is never altered.</div><label>Stream A</label><select id="corrA"></select><label>Stream B</label><select id="corrB"></select><div class="group"><h3>PROVENANCE</h3><div class="mini">On the TFT, long-press supported production instruments to open the Widget Inspector and see source, quality, age, units and history.</div></div></section>
 <section id="plugins" class="section hidden"><h3>PLUGIN INTEGRATION</h3><div class="mini">Enabled state, Beast integration and safe transactional toggles. Changes are snapshotted, verified and rolled back on failure.</div><button id="refreshPlugins" style="margin-top:9px">REFRESH CATALOG</button><div id="pluginList"></div></section><section id="packs" class="section hidden"><h3>BEAST PACKS / UPDATE CENTER</h3><div class="mini">Local packages can be uploaded, verified, staged and transactionally installed. Safe content-only Packs can also be enabled without executing code or restarting services.</div><div class="group"><h3>DEPOT BROWSER</h3><div class="mini">Catalogs are discovery metadata only. Importing or browsing a catalog never trusts, downloads or installs a Pack.</div><input id="depotSearch" placeholder="Search packs, tags, authors…"><select id="depotType" style="margin-top:7px"><option value="">ALL PACK TYPES</option><option value="theme">THEME</option><option value="face">FACE</option><option value="animation">ANIMATION</option><option value="layout">LAYOUT</option><option value="board">BOARD</option><option value="audio">AUDIO</option><option value="data">DATA</option><option value="map">MAP</option></select><input id="depotFile" type="file" accept=".json" style="margin-top:7px"><button id="uploadDepot" style="margin-top:7px">IMPORT CATALOG JSON</button><div id="depotMeta" class="status"></div><div id="depotList"></div></div><div class="group"><h3>EXPERIENCE / MISSION PROFILES</h3><div class="mini">Mission Packs can compose installed Theme, Face, Animation, Board/Layout and Context Deck pieces without duplicating those assets. v0.19 previews these profiles; Apply is intentionally gated.</div><div id="experienceList"></div></div><div class="group"><h3>LOCAL PACK INTAKE</h3><input id="packFile" type="file" accept=".zip,.tgz,.tar.gz"><button id="uploadPack" style="margin-top:7px">UPLOAD + VERIFY + STAGE</button></div><button id="refreshPacks" style="margin-top:9px">REFRESH CATALOG</button><div id="packSummary" class="group"></div><div id="packList" class="group"></div><div id="packTransactions" class="group"></div><div id="updateList" class="group"></div></section><section id="roster" class="section hidden"><h3>BEAST ROSTER</h3>
-<div class="mini">Every Beast and Monster keeps independent progression while resting. Switching changes the active progression identity; it does not yet change your current Theme/Experience automatically.</div>
+<div class="mini">Every Beast and Monster keeps independent progression while resting. Each creature can also remember a preferred presentation. Wake-only leaves the UI untouched; wake + load preferred puts that setup into the Studio draft for review before Apply.</div>
 <button id="rosterRefresh" style="margin-top:9px">REFRESH ROSTER</button>
 <div id="rosterStatus" class="status"></div>
 <div id="rosterList"></div>
@@ -195,19 +195,32 @@ function fillGlobalPolicy(p){
 async function loadRoster(){try{
   let x=await jfetch('/api/roster');let box=$('rosterList');box.innerHTML='';
   (x.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';
-    let active=!!r.active,eligible=!!r.synthesis_eligible;
+    let active=!!r.active,eligible=!!r.synthesis_eligible,hasPref=!!r.has_preferred_presentation;
     d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.name||r.id}</span><span class="pill ${active?'on':''}">${active?'ACTIVE':String(r.status||'RESTING').toUpperCase()}</span></div>
       <div class="mini">${String(r.kind||'beast').toUpperCase()} · LV ${r.level||1} · ${r.stage||''} · ${r.lineage_id||'standard'} · GEN ${r.generation||0}</div>
-      <div class="mini">${r.achievement_count||0} achievements${eligible?' · LINEAGE ELIGIBLE':''}${(r.parent_ids||[]).length?' · '+r.parent_ids.length+' recorded parents':''}</div>`;
-    if(!active){let b=document.createElement('button');b.textContent='WAKE / MAKE ACTIVE';b.onclick=()=>switchRoster(r.id,r.name||r.id,b);d.append(b)}
+      <div class="mini">${r.achievement_count||0} achievements${eligible?' · LINEAGE ELIGIBLE':''}${(r.parent_ids||[]).length?' · '+r.parent_ids.length+' recorded parents':''}</div>
+      <div class="status">Preferred setup: ${hasPref?'SAVED':'not saved'}</div>`;
+    if(active){let save=document.createElement('button');save.textContent=hasPref?'UPDATE PREFERRED FROM CURRENT DRAFT':'REMEMBER CURRENT DRAFT AS PREFERRED';save.onclick=()=>rememberRosterPresentation(r.id,r.name||r.id,save);d.append(save)}
+    if(!active){let wake=document.createElement('button');wake.textContent='WAKE ONLY';wake.onclick=()=>switchRoster(r.id,r.name||r.id,wake,false);d.append(wake);
+      if(hasPref){let restore=document.createElement('button');restore.textContent='WAKE + LOAD PREFERRED SETUP';restore.onclick=()=>switchRoster(r.id,r.name||r.id,restore,true);d.append(restore)}}
+    if(hasPref){let clear=document.createElement('button');clear.textContent='FORGET PREFERRED SETUP';clear.onclick=()=>clearRosterPresentation(r.id,r.name||r.id,clear);d.append(clear)}
     box.append(d)
   });
   $('rosterStatus').textContent=(x.count||0)+' persistent creatures · '+((x.items||[]).filter(r=>r.active).length?'one active':'no active creature');
 }catch(e){$('rosterStatus').textContent='Roster unavailable: '+e}}
-async function switchRoster(id,name,btn){if(!confirm('Wake '+name+' and make it the active progression creature?\n\nIts saved XP/history will resume. Your current UI Experience will remain unchanged.'))return;btn.disabled=true;try{
+async function rememberRosterPresentation(id,name,btn){if(!confirm('Remember the current Studio draft as '+name+'\'s preferred setup?\n\nThis stores the preference but does not apply or change the physical UI.'))return;btn.disabled=true;try{
+  let x=await jfetch('/api/roster-presentation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id,draft:draft,experience_id:window._loadedExperienceId||''})});
+  $('rosterStatus').textContent=(x.action_row||{}).status==='success'?'Preferred setup saved for '+name+'.':'Could not save preferred setup.';await loadRoster()
+}catch(e){$('rosterStatus').textContent='Save failed: '+e}finally{btn.disabled=false}}
+async function clearRosterPresentation(id,name,btn){if(!confirm('Forget '+name+'\'s preferred setup?\n\nProgression/history are not affected.'))return;btn.disabled=true;try{
+  let x=await jfetch('/api/roster-presentation-clear',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id})});
+  $('rosterStatus').textContent=(x.action_row||{}).status==='success'?'Preferred setup forgotten.':'Could not clear preferred setup.';await loadRoster()
+}catch(e){$('rosterStatus').textContent='Clear failed: '+e}finally{btn.disabled=false}}
+async function switchRoster(id,name,btn,loadPreferred){if(!confirm('Wake '+name+' and make it the active progression creature?'+(loadPreferred?'\n\nIts preferred setup will be loaded into the Studio draft for preview. Nothing changes on the physical UI until APPLY TO BEAST.':'\n\nYour current UI Experience will remain unchanged.')))return;btn.disabled=true;try{
   let x=await jfetch('/api/roster-switch',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id})});
-  let row=x.action_row||{};$('rosterStatus').textContent=row.status==='success'?'Active creature switched. Progression will follow this creature immediately.':'Switch failed.';
-  await loadRoster();await loadGlobalProfile()
+  let row=x.action_row||{};if(row.status!=='success')throw Error('switch failed');
+  if(loadPreferred){let p=await jfetch('/api/roster-preferred?id='+encodeURIComponent(id));if(p.has_preferred_presentation&&p.presentation){push();draft=Object.assign(clone(draft),clone(p.presentation));window._loadedExperienceId=p.presentation.experience_id||'';rebuild();$('status').textContent='Loaded '+name+'\'s preferred setup into the Studio draft. Review it, then APPLY TO BEAST if desired.'}}
+  $('rosterStatus').textContent='Active creature switched. Progression now follows '+name+'.';await loadRoster();await loadGlobalProfile()
 }catch(e){$('rosterStatus').textContent='Switch failed: '+e}finally{btn.disabled=false}}
 
 async function loadGlobalProfile(){try{let x=await jfetch('/api/global-profile');let p=x.policy||{};globalLocalRoster=x.local_roster||[];fillGlobalPolicy(p);$('globalPreview').textContent=JSON.stringify(x.snapshot||{},null,2);$('globalStatus').textContent='Network upload: disabled in this milestone · pending local revisions: '+((x.pending||[]).length)}catch(e){$('globalStatus').textContent='Global profile unavailable: '+e}}
@@ -465,6 +478,25 @@ class StudioState:
     def roster_switch(self,obj: dict)->dict:
         return self.actions.perform('roster.switch',{'id':str(obj.get('id') or '')})
 
+    def roster_preferred(self,obj: dict)->dict:
+        row=self.actions.plan('roster.presentation_get',{'id':str(obj.get('id') or '')})
+        return row.get('plan',row) if isinstance(row,dict) else {}
+
+    def roster_remember_presentation(self,obj: dict)->dict:
+        beast_id=str(obj.get('id') or '')
+        draft=obj.get('draft') if isinstance(obj.get('draft'),dict) else self.preferences()
+        cfg=self.validate(draft)
+        payload={k:cfg[k] for k in (
+            'theme','face_profile','animation_profile','renderers','theme_options','dashboard_widgets',
+            'custom_boards','context_decks','active_context_deck','palette_overrides','correlation_keys'
+        )}
+        experience_id=str(obj.get('experience_id') or '').strip()
+        if experience_id:payload['experience_id']=experience_id
+        return self.actions.perform('roster.presentation_set',{'id':beast_id,'presentation':payload})
+
+    def roster_clear_presentation(self,obj: dict)->dict:
+        return self.actions.perform('roster.presentation_clear',{'id':str(obj.get('id') or '')})
+
     def global_profile(self)->dict:
         row=self.actions.plan('global.preview',{})
         return row.get('plan',row) if isinstance(row,dict) else {}
@@ -614,6 +646,8 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/platform':return self._send(200,self.st.platform())
         if path=='/api/global-profile':return self._send(200,self.st.global_profile())
         if path=='/api/roster':return self._send(200,self.st.roster_snapshot())
+        if path=='/api/roster-preferred':
+            rid=parse_qs(urlsplit(self.path).query).get('id',[''])[0];return self._send(200,self.st.roster_preferred({'id':rid}))
         if path=='/api/update-policies':return self._send(200,self.st.update_policy_snapshot())
         if path=='/api/pack-history':return self._send(200,self.st.pack_history())
         if path=='/api/depot':
@@ -660,7 +694,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -692,6 +726,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/experience-draft':return self._send(200,self.st.experience_draft(obj))
             if path=='/api/global-policy':return self._send(200,self.st.global_policy_set(obj))
             if path=='/api/roster-switch':return self._send(200,self.st.roster_switch(obj))
+            if path=='/api/roster-presentation':return self._send(200,self.st.roster_remember_presentation(obj))
+            if path=='/api/roster-presentation-clear':return self._send(200,self.st.roster_clear_presentation(obj))
             if path=='/api/presentation-plan':return self._send(200,self.st.presentation_plan(obj))
         except (ValueError,UpdatePolicyError,ExperienceDraftError) as exc:return self._send(400,{'error':str(exc)})
         except Exception as exc:return self._send(500,{'error':type(exc).__name__})
