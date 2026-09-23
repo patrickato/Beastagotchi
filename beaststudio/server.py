@@ -403,6 +403,9 @@ class StudioState:
         row=self.actions.plan('pack.history',{'limit':30})
         return row.get('plan',row) if isinstance(row,dict) else {'items':[]}
 
+    def presentation_plan(self,obj: dict)->dict:
+        return self.actions.plan('presentation.plan',{'target':str(obj.get('target') or '')})
+
     def update_stage_plan(self,obj: dict)->dict:
         return self.actions.plan('update.stage',{'component':str(obj.get('component') or ''),'asset_name':str(obj.get('asset_name') or '')})
 
@@ -478,7 +481,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/update-stage-plan','/api/update-stage'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/update-stage-plan','/api/update-stage','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -501,6 +504,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/pack-rollback':return self._send(200,self.st.pack_rollback(obj))
             if path=='/api/update-stage-plan':return self._send(200,self.st.update_stage_plan(obj))
             if path=='/api/update-stage':return self._send(200,self.st.update_stage(obj))
+            if path=='/api/presentation-plan':return self._send(200,self.st.presentation_plan(obj))
         except (ValueError,UpdatePolicyError) as exc:return self._send(400,{'error':str(exc)})
         except Exception as exc:return self._send(500,{'error':type(exc).__name__})
         return self._send(404,{'error':'not found'})

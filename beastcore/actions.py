@@ -13,6 +13,7 @@ from .operator_sessions import OperatorSessionManager
 from .pack_intake import PackIntakeManager, PackIntakeError
 from .pack_install import PackInstallManager, PackInstallError
 from .update_downloads import VerifiedUpdateStager, UpdateStageError
+from .presentation_transition import PresentationTransitionPlanner
 
 
 class ActionBroker:
@@ -36,6 +37,7 @@ class ActionBroker:
         self.pack_intake = PackIntakeManager()
         self.pack_installer = PackInstallManager(state)
         self.update_stager = VerifiedUpdateStager(state)
+        self.presentation_planner = PresentationTransitionPlanner(state)
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
@@ -70,6 +72,8 @@ class ActionBroker:
             return {"allowed":True,"operation":"pack.history","items":self.pack_installer.history(int(payload.get("limit") or 30)),"blockers":[]}
         if action == "update.stage":
             return self.update_stager.plan(str(payload.get("component") or ""),asset_name=str(payload.get("asset_name") or ""))
+        if action == "presentation.plan":
+            return self.presentation_planner.plan(str(payload.get("target") or ""))
         raise ValueError("unsupported action")
 
     def perform(self, action: str, payload: dict[str, Any], *, actor: str = "local") -> dict[str, Any]:
