@@ -374,6 +374,7 @@ class ProgressionEngine:
         self.state.update_many('progression', self._state_values(), priority=88)
 
     def _award(self, amount: int, reason: str) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         amount = max(0, int(amount))
         if amount <= 0:
             return []
@@ -397,6 +398,7 @@ class ProgressionEngine:
         return out
 
     def _unlock_achievement(self, key: str) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         if key in set(self.profile.get('achievements') or []):
             return []
         label, bonus, rarity = ACHIEVEMENT_DEFS[key]
