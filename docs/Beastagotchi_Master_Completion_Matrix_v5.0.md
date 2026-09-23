@@ -3,7 +3,7 @@
 **Status date:** 2026-09-23  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** CI green after Experience-draft milestone + Python compile + shell syntax
+**Current v0.19 source gate:** 279 automated tests passing + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -160,6 +160,41 @@ approved scope.
 - [~] richer growth/evolution ceremony/presentation
 - [ ] full user-facing progression history
 - [ ] Beast customization/personality controls
+
+## 6A. Multi-Beast roster / lineages / Monsters
+
+- [x] architecture changed from one permanent save slot toward global + per-creature progression
+- [x] additive SQLite roster schema
+- [x] independent Beast identity/progression records
+- [x] active/resting Beast state
+- [x] legacy single `profile.json` migration into a non-destructive Founder Beast record
+- [x] independent XP/level persistence proven for multiple Beasts
+- [x] active Beast switching persistence foundation
+- [x] ancestry storage
+- [x] Monster synthesis transaction foundation
+- [x] first Monster globally unlocks `monstergotchi.core`
+- [x] parents are preserved and never reset/consumed
+- [x] v1 synthesis requires two distinct level-70+ Beast-class parents
+- [x] v1 prevents repeated reroll synthesis from the same unordered parent pair
+- [x] deterministic inheritance seed + parent lineage/preference snapshot recorded
+- [x] core synthesis is sex/gender agnostic; lineage Packs may present optional identity/family terminology
+- [ ] cut live ProgressionEngine over from legacy single profile to active roster Beast
+- [ ] canonical roster/active-Beast state publisher
+- [ ] Beast Roster UI / switcher
+- [ ] per-Beast preferred Experience/Theme/Face/Motion/Board
+- [ ] split global achievements/collections from per-Beast achievements
+- [ ] Beast-first versus device-first discovery accounting and anti-farming XP
+- [ ] per-Beast Expedition/rare-witness/personality history
+- [ ] deterministic hybrid visual/behavior trait generator
+- [ ] curated lineage-pair mutation/archetype unlocks
+- [ ] Monster-specific evolution vocabulary
+- [ ] Monster creation/reveal cinematic
+- [ ] Hall of Legends
+- [ ] ancestry/family-tree viewer
+- [ ] additional synthesis slots earned through high-level/rare milestones
+- [ ] evaluate later-generation Monster×Monster / Monster×Beast rules
+- [ ] privacy-safe cross-device Lineage Capsule exchange for optional community ancestry
+- [ ] physical roster/switch/synthesis usability validation
 
 ## 7. Achievements / secrets / rares / delight systems
 

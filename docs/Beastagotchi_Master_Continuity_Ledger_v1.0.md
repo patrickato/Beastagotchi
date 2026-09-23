@@ -42,6 +42,36 @@ The following are explicit product commitments, not disposable extras:
 
 Canonical detailed references include `Beastagotchi_Secrets_Achievements_Seasonal_Spec_v0.9.md`, `SPOILERS_SECRETS_AND_ACHIEVEMENTS.md`, `Beastagotchi_Rare_Cinematic_Pipeline_v0.9.1.md`, `Beastagotchi_Adaptive_Behavior_Progression_Spec_v0.1.md`, and `Beastagotchi_Expeditions_Spec_v0.11.md`.
 
+## Multi-Beast roster / lineage / Monster system — retained
+
+Progression is no longer intended to be one replaceable character skin around a
+single save slot. The approved direction is a persistent **Beast Roster**:
+multiple individual Beasts may coexist at independent levels 1–100, retain
+their own progression/history while resting, and be switched without losing
+state.
+
+The legacy single progression profile becomes the user's **Founder Beast**
+through a lossless migration path.
+
+Global/device progression and per-Beast progression are separate layers. Global
+records include the world/encounter archive, Capture Vault, device-wide Rare
+Moment schedule, shared collections/unlocks and meta-completion. Individual
+creatures own their XP/level/evolution, personal achievements, personality
+history, witnessed events, records, cosmetics and preferred Experiences.
+
+High-level Beast pairs may perform **Lineage Synthesis**. Core does not require
+male/female identity; animal-style Packs may call it breeding while robot,
+alien, abstract or AI lineages may present it as fusion/synthesis/recombination.
+Parents persist unchanged. The result is a new Monster with independent
+progression and recorded ancestry. Creating the first Monster is the approved
+unlock event for the future Monstergotchi layer.
+
+Retained extensions include deterministic inherited traits, rare curated
+mutations, Monster-specific evolution, Hall of Legends, ancestry/family-tree
+views, later-generation synthesis if playtesting supports it, and a future
+privacy-safe cross-device Lineage Capsule concept for optional community
+ancestry without sharing captures, logs, secrets or location history.
+
 ## Structural customization — retained
 
 Data, widgets, renderers, layouts, themes, face packs and Beast personality remain separate layers. Themes are structural identities, not simple recolors. Layouts remain independently selectable/editable. Visualizer Studio, Theme Studio, Spatial Studio/custom Boards, Context Decks and user-authored combinations remain part of the planned platform.

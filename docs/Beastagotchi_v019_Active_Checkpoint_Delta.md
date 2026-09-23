@@ -121,3 +121,25 @@ v0.19 now also has:
 
 Experience loading itself does not write preferences. Downloaded Board/Layout
 content is copied into the draft so Pack-owned source remains read-only.
+
+
+## Multi-Beast / Monster lineage milestone
+
+The first persistence foundation for the new roster architecture is now green at
+**279 automated tests**.
+
+Implemented:
+- additive SQLite Beast/Monster roster tables;
+- independent progress records;
+- active/resting state;
+- non-destructive Founder migration from the existing profile JSON;
+- persistent ancestry;
+- level-70+ two-parent v1 Lineage Synthesis;
+- preserved parents;
+- level-1 Monster offspring;
+- deterministic inheritance seed;
+- global `monstergotchi.core` unlock on first successful Monster synthesis.
+
+The live ProgressionEngine has deliberately not been cut over yet. That remains
+the next migration gate so current v0.19 behavior is not risked before the roster
+storage path is proven lossless.

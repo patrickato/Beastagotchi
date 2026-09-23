@@ -103,7 +103,29 @@ Next:
 - phone/tablet settings, logs, files, backups and control;
 - local Wi-Fi/Ethernet/USB and appropriate Bluetooth/BLE connectivity paths.
 
-### Gate 7 — Experience depth
+### Gate 7 — Beast Roster / Lineages / Monstergotchi
+
+Implemented foundation:
+- persistent multi-Beast SQLite roster;
+- Founder migration path for the existing single progression profile;
+- independent XP/levels and active/resting state;
+- ancestry and Monster synthesis records;
+- Alpha/level-70 v1 synthesis gate for both parents;
+- parents preserved after synthesis;
+- first Monster unlocks the future `monstergotchi.core` layer.
+
+Next:
+- cut live progression over to the active Beast without losing legacy data;
+- Roster/switcher UI;
+- global versus per-Beast achievement/collection split;
+- Beast-first versus device-first encounter rewards;
+- per-Beast preferred Experiences;
+- deterministic inheritance + curated mutation traits;
+- Monster reveal/evolution presentation;
+- Hall of Legends + ancestry tree;
+- later evaluate additional generations and privacy-safe cross-device Lineage Capsules.
+
+### Gate 8 — Experience depth
 - richer progression/evolution/personality presentation;
 - achievements/awards/rarity/trophy cabinet;
 - secrets/codes/ciphers/Cipher Console;
@@ -112,7 +134,7 @@ Next:
 - Expedition archive/replay and Memory Vault/scrapbook;
 - peer-Beast encounters and other retained delight systems.
 
-### Gate 8 — Recovery / self-maintenance
+### Gate 9 — Recovery / self-maintenance
 - live restore transaction with rescue backup;
 - service quiesce/apply/verify/rollback;
 - self-healing actions with explicit limits;
@@ -120,7 +142,7 @@ Next:
 - offline runbook UX;
 - bounded persistent log/export policy validated for SD-card wear.
 
-### Gate 9 — Public beta / v1.0
+### Gate 10 — Public beta / v1.0
 - supported-hardware matrix;
 - installer/upgrader/uninstaller + migration framework;
 - clean-machine preflight;
