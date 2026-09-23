@@ -100,3 +100,36 @@ Global interaction:
 8. add abuse/report/block/rate-limit controls before public deployment;
 9. conduct explicit privacy/security review before default community release.
 
+
+
+## Automatic public-profile synchronization
+
+Approved model: local Beast data remains authoritative; Global holds a sanitized
+public mirror.
+
+Automatic synchronization is optional and **off by default**. Enabling Global
+does not imply enabling auto-sync. The owner may choose:
+- active Beast only, entire roster, or selected creatures;
+- whether names are public;
+- lineage/kind/generation;
+- level/evolution stage;
+- synthesis/breeding eligibility;
+- Monsters;
+- ancestry;
+- preferred Experience presentation identifiers;
+- roster totals;
+- achievements: none / selected / all;
+- selected global unlocks.
+
+Internal Beast IDs are not published directly. A separate random public profile
+identity is created only after Global is enabled, and public creature IDs are
+pseudonymous derivations of that public identity.
+
+The v0.19 local sync foundation performs **no network I/O**. It builds sanitized
+snapshots, hashes them, and queues a new revision only when publishable content
+changes. A future connector drains that queue over the management Internet route.
+Private/local-only state changes do not produce a public revision when the
+corresponding category is disabled.
+
+This lets a user choose "keep my public Beast profile current" while preserving
+fine-grained control over what "public" means.

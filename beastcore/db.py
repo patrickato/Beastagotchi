@@ -250,6 +250,17 @@ CREATE TABLE IF NOT EXISTS peer_encounters (
   data_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_peer_encounters_last_seen ON peer_encounters(last_seen DESC);
+CREATE TABLE IF NOT EXISTS global_sync_queue (
+  id TEXT PRIMARY KEY,
+  created_at REAL NOT NULL,
+  content_hash TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payload_json TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at REAL,
+  last_error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_global_sync_queue_status_created ON global_sync_queue(status,created_at);
 """
 
 class Store:

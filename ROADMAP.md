@@ -144,6 +144,24 @@ Next:
 - explicit opt-in Lineage Capsule exchange;
 - remote-lineage synthesis only after local roster/synthesis is mature.
 
+### Gate 7B — Global Interaction
+
+Implemented local/privacy foundation:
+- Global is optional and off by default;
+- auto-sync is separately opt-in;
+- sanitized public snapshots can track selected roster/progression changes;
+- achievements can be none/selected/all;
+- public creature IDs are pseudonymous;
+- snapshots are content-hashed and queued only when public data changes;
+- no network I/O occurs until a future connector is configured.
+
+Next:
+- Global settings/privacy UI with exact public-profile preview;
+- provider/connector contract;
+- public profile create/update/delete and identity rotation;
+- directory/friends/community events/rarity statistics;
+- remote Lineage Capsules with block/report/rate-limit protections.
+
 ### Gate 8 — Experience depth
 - richer progression/evolution/personality presentation;
 - achievements/awards/rarity/trophy cabinet;

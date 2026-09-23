@@ -216,6 +216,31 @@ approved scope.
 - [ ] later peer group/party/cooperative survey concepts
 - [ ] later Meshtastic/LoRa peer-presence transport
 
+## 6C. Global Interaction / public profile sync
+
+- [x] Global Interaction architecture: optional and offline-independent
+- [x] separate local pwngrid identity from opt-in public Beast identity
+- [x] automatic sanitized public-profile mirror concept
+- [x] Global publishing disabled by default
+- [x] auto-sync independently disabled by default
+- [x] active/all/selected roster publication scopes
+- [x] granular publication categories for names/lineage/level/stage/synthesis eligibility/Monsters/ancestry/Experiences/roster totals
+- [x] achievements publication modes: none / selected / all
+- [x] pseudonymous public creature IDs instead of raw internal Beast IDs
+- [x] change-hashed local revision queue; unchanged/private-only changes do not create duplicate public revisions
+- [x] current sync foundation performs no network I/O until a connector is configured
+- [ ] Beast Studio Global privacy/settings UI
+- [ ] public-profile live preview: "this is exactly what others will see"
+- [ ] connector/provider interface
+- [ ] remote profile create/update/delete
+- [ ] public identity rotation/revocation UI
+- [ ] community directory/feed
+- [ ] friend/follow/block/report/rate-limit controls
+- [ ] global achievement rarity/statistics
+- [ ] community challenges/events
+- [ ] remote Lineage Capsule exchange
+- [ ] explicit privacy/security review before any public backend deployment
+
 ## 7. Achievements / secrets / rares / delight systems
 
 - [x] achievement/award foundation

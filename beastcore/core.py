@@ -37,6 +37,8 @@ from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .peerdex import PeerDex
+from .roster import BeastRoster
+from .global_sync import GlobalProfileSync
 from .actions import ActionBroker
 from .action_server import LocalActionServer
 from .collectors import *
@@ -83,6 +85,8 @@ class BeastCore:
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.peerdex = PeerDex(self.store)
+        self.roster = BeastRoster(self.store)
+        self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
         self.actions = ActionBroker(self.state, self.store, self.events)
@@ -511,6 +515,19 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
             except asyncio.TimeoutError: pass
 
+    async def _global_sync_loop(self) -> None:
+        # Privacy-first local publisher. This only creates sanitized revisions in
+        # the local queue; a separate future connector performs network I/O.
+        while not self.stop_event.is_set():
+            try:
+                changed=self.state.update_many("global_sync",self.global_sync.tick(),priority=62)
+                if changed:self.events.publish("global.changed","global_sync",{"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("global profile sync failed")
+                ev=self.events.publish("global.error","global_sync",{"error":repr(exc)},"warning");self.store.add_event(ev)
+            try:await asyncio.wait_for(self.stop_event.wait(),timeout=15.0)
+            except asyncio.TimeoutError:pass
+
     async def _sample_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -608,6 +625,7 @@ class BeastCore:
             asyncio.create_task(self._records_loop(), name="records"),
             asyncio.create_task(self._overview_loop(), name="overview"),
             asyncio.create_task(self._field_library_loop(), name="field-library"),
+            asyncio.create_task(self._global_sync_loop(), name="global-sync"),
             asyncio.create_task(self._incident_loop(), name="incidents"),
         ]
         await self.stop_event.wait()
