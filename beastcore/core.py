@@ -29,6 +29,7 @@ from .field_library import FieldLibraryEngine
 from .operator_policy import OperatorPolicy
 from .operator_tools import OperatorToolRegistry
 from .personality import PersonalityEngine
+from .presentation import PresentationBroker
 from .missions import MissionPackEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
@@ -71,6 +72,7 @@ class BeastCore:
         self.field_library = FieldLibraryEngine(self.state, self.store)
         self.operator_policy = OperatorPolicy()
         self.personality = PersonalityEngine(self.state)
+        self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
@@ -408,6 +410,22 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
             except asyncio.TimeoutError: pass
 
+    async def _presentation_loop(self) -> None:
+        # v0.19 continuously exposes presentation ownership truth but does not
+        # yet execute physical handoffs. v0.18 display scripts remain the
+        # validated path until owner adapters pass off-screen + physical gates.
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("presentation", self.presentation.tick(), priority=93)
+                if changed:
+                    self.events.publish("presentation.changed", "presentation", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("presentation broker failed")
+                ev = self.events.publish("presentation.error", "presentation", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
+            except asyncio.TimeoutError: pass
+
     async def _plugin_integration_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -511,6 +529,7 @@ class BeastCore:
             asyncio.create_task(self._expedition_loop(), name="expedition"),
             asyncio.create_task(self._channel_history_loop(), name="channel-history"),
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
+            asyncio.create_task(self._presentation_loop(), name="presentation"),
             asyncio.create_task(self._records_loop(), name="records"),
             asyncio.create_task(self._overview_loop(), name="overview"),
             asyncio.create_task(self._field_library_loop(), name="field-library"),
