@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-source gate is 253 passing tests plus compile/shell validation.
+preserved source gate is 332 passing tests plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -49,11 +49,13 @@ Already implemented:
 - Beast Pack SDK examples;
 - bounded Depot Catalog v1 parser with trust kept separate from discoverability.
 
+Also implemented since the original Gate 2 plan:
+- Face Pack consumer;
+- Animation Pack consumer;
+- local Depot browser/import/search/filter;
+- Experience draft/preview composition.
+
 Next:
-- Face Pack consumer — implemented;
-- Animation Pack consumer — implemented;
-- local Depot browser/import/search/filter — implemented;
-- Experience draft/preview composition — implemented;
 - audio/data/map asset consumers;
 - downloadable metadata/cache UX;
 - compatibility/version presentation;
@@ -139,9 +141,12 @@ Direction:
   secrets, logs or location history;
 - no cloud service is required.
 
+Current foundation:
+- persistent PeerDex storage/query implementation exists and accepts ordinary Pwnagotchi peer identities;
+- canonical Beast Bridge event wiring and user-facing social presentation remain incomplete.
+
 Next:
 - canonical peer events through Beast Bridge;
-- persistent PeerDex/social history;
 - Beast UI peer presentation and achievements;
 - public Beast peer descriptor/privacy schema;
 - explicit opt-in Lineage Capsule exchange;
@@ -158,8 +163,10 @@ Implemented local/privacy foundation:
 - snapshots are content-hashed and queued only when public data changes;
 - no network I/O occurs until a future connector is configured.
 
+Also implemented:
+- Global settings/privacy UI with exact public-profile preview.
+
 Next:
-- Global settings/privacy UI with exact public-profile preview;
 - provider/connector contract;
 - public profile create/update/delete and identity rotation;
 - directory/friends/community events/rarity statistics;
@@ -221,3 +228,8 @@ GitHub Releases are updated only for meaningful validated milestones.
 - Active checkpoint: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
 - UX gate: `docs/UX_POLISH_MILESTONE_v0.19.md`
 - Development/release workflow: `docs/Beastagotchi_Development_Release_Workflow.md`
+
+
+## Preservation checkpoint — 2026-09-23
+
+The recovered cross-chat/Library/repository state is preserved in `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`. That document records current branch/SHA provenance, superseded physical decisions, validation boundaries and recovered historical artifacts. Raw private chats are not required to reconstruct the engineering state.
