@@ -50,9 +50,11 @@ Already implemented:
 - bounded Depot Catalog v1 parser with trust kept separate from discoverability.
 
 Next:
-- Face Pack consumer;
-- animation/audio asset consumers;
-- Depot browser in Beast Studio;
+- Face Pack consumer — implemented;
+- Animation Pack consumer — implemented;
+- local Depot browser/import/search/filter — implemented;
+- Experience draft/preview composition — implemented;
+- audio/data/map asset consumers;
 - downloadable metadata/cache UX;
 - compatibility/version presentation;
 - remove/update flows and clearer rollback history;

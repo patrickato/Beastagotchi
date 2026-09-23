@@ -105,3 +105,19 @@ The public roadmap and detailed status matrix are now synchronized to:
 GitHub cadence is now explicit: development commits stay on the active milestone
 branch for CI/rollback; `main`, tags and Releases move only at meaningful
 validated milestone gates.
+
+
+## Experience composition milestone
+
+v0.19 now also has:
+- declarative no-code Face Packs;
+- declarative low-cost Animation Packs;
+- Beast Studio Face/Motion selectors;
+- persistent local Depot catalog import/search/filter browser;
+- Mission Pack Experience profiles that can compose Theme + Face + Motion +
+  Board/Layout + Context Deck into a Studio draft;
+- exact preview before persistence;
+- explicit APPLY TO BEAST remains the only preference mutation gate.
+
+Experience loading itself does not write preferences. Downloaded Board/Layout
+content is copied into the draft so Pack-owned source remains read-only.
