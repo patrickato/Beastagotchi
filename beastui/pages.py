@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import math
-from .design_system import PRIMARY_PAGES
-from .ui_components import capsule, progress_bar, stat_column
+from .design import PRIMARY_PAGES
 from .customization import dashboard_widget_box
 from .widgets import (
     panel, metric, channel_bars, line_area, multiline, bars, stacked_bars, histogram,
@@ -155,55 +154,66 @@ class Pages:
             rows=[('CHANNEL',self._v(state,'radio.primary.channel')),('CLIENTS',self._v(state,'wifi.client_count',0)),('TEMP',f"{self._v(state,'system.temp.cpu_c',0):.0f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--'),('CPU',f"{self._v(state,'system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--'),('RAM',f"{self._v(state,'system.memory.used_pct',0):.0f}%" if isinstance(state.get('system.memory.used_pct'),(int,float)) else '--'),('HANDSHAKES',self._v(state,'pwnagotchi.handshakes',0)),('DOCK',str(self._v(state,'dock.state','field')).upper())]
             for i,(k,v) in enumerate(rows):d.text((238,55+i*28),k,font=f['tiny'],fill=t.c('dim'));d.text((358,55+i*28),str(v),font=f['small'],fill=t.c('accent'))
             return
-        # v0.19 reference Home: creature/progression first, telemetry second.
-        # Theme backgrounds/geometry still define identity, but the information
-        # hierarchy is shared so every theme remains immediately understandable.
-        face_box=(10,48,214,226)
-        self.face.draw(d,face_box,t,state,ui.phase)
-
-        level=int(self._v(state,'progression.level',1) or 1)
-        max_level=int(self._v(state,'progression.max_level',100) or 100)
+        # v0.19 reference Home: the Beast is the primary object; operational
+        # telemetry is deliberately summarized instead of rendered as six equal
+        # diagnostic boxes. Theme identity still controls treatment/colors.
+        health=str(self._v(state,'health.core.state','starting')).upper()
+        mood=str(self._v(state,'pwnagotchi.mood','awake')).upper()
+        dock=str(self._v(state,'dock.state','field')).upper()
+        lvl=int(self._v(state,'progression.level',1))
         stage=str(self._v(state,'progression.stage','Hatchling')).upper()
         aura=str(self._v(state,'progression.aura','none')).upper()
-        progress=self._pct(state,'progression.level_progress_pct')
-        xp_cur=self._v(state,'progression.xp_current_level',0)
-        xp_next=self._v(state,'progression.xp_next_level',0)
+        try:growth=max(0.0,min(100.0,float(self._v(state,'progression.level_progress_pct',0))))
+        except Exception:growth=0.0
+        expression=str(self._v(state,'beast.expression',mood)).replace('_',' ').upper()
+
+        # Identity card.
+        panel(d,(8,43,228,216),t,accent=t.c('primary'),width=2)
+        self.face.draw(d,(20,52,216,165),t,state,ui.phase)
+        d.text((18,170),expression[:20],font=f['small'],fill=t.c('accent'))
+        d.text((18,187),f'LV {lvl:02d}',font=f['medium'],fill=t.c('primary'))
+        d.text((72,190),stage[:16],font=f['tiny'],fill=t.c('text'))
+        d.text((18,203),f'GROWTH {growth:3.0f}%',font=f['micro'],fill=t.c('dim'))
+        d.rectangle((88,205,216,210),fill=t.c('edge'))
+        d.rectangle((88,205,88+int(128*growth/100.0),210),fill=t.c('accent'))
+
+        # Operational summary card. Strong hierarchy replaces equal-weight tiles.
+        panel(d,(238,43,472,216),t,accent=t.c('edge'))
         mode=str(self._v(state,'context.mode.effective','pwn')).upper()
-        mood=str(self._v(state,'pwnagotchi.mood','awake')).upper()
+        d.text((250,54),'MODE',font=f['micro'],fill=t.c('dim'))
+        d.text((250,65),mode[:18],font=f['large'],fill=t.c('secondary'))
+        status_col=t.c('accent') if health=='HEALTHY' else t.c('warn')
+        d.text((250,89),f'CORE {health}',font=f['tiny'],fill=status_col)
+        d.line((250,103,460,103),fill=t.c('edge'))
+        rows=[
+            ('APS',self._v(state,'wifi.ap_count',0),t.c('primary')),
+            ('CH',self._v(state,'radio.primary.channel'),t.c('info')),
+            ('HS',self._v(state,'pwnagotchi.handshakes',0),t.c('accent')),
+            ('CPU',f"{self._v(state,'system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--',t.c('text')),
+            ('TEMP',f"{self._v(state,'system.temp.cpu_c',0):.0f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--',t.c('text')),
+            ('GPS','LOCK' if state.get('gps.fix') else '--',t.c('accent') if state.get('gps.fix') else t.c('dim')),
+        ]
+        for i,(label,value,col) in enumerate(rows):
+            cx=250+(i%3)*70;cy=115+(i//3)*42
+            d.text((cx,cy),label,font=f['micro'],fill=t.c('dim'))
+            d.text((cx,cy+11),str(value)[:8],font=f['medium'],fill=col)
+        d.text((250,199),f'{dock}  //  AURA {aura[:10]}',font=f['tiny'],fill=t.c('dim'))
 
-        # One strong identity surface replaces the old six equal-weight metric
-        # boxes. Level/evolution stay visually tied to the Beast itself.
-        panel(d,(226,48,470,226),t,accent=t.c('primary'),width=2)
-        d.text((240,60),f'LEVEL {level:02d}',font=f['large'],fill=t.c('accent'))
-        d.text((240,84),stage[:20],font=f['medium'],fill=t.c('text'))
-        progress_bar(d,(240,108,454,116),progress,t,accent=t.c('primary'))
-        if level>=max_level:
-            d.text((240,122),'MAX EVOLUTION',font=f['tiny'],fill=t.c('accent'))
+        # Calm context strip: enough identity/exploration information to make
+        # Home feel alive without turning it back into a dashboard.
+        panel(d,(8,224,472,268),t)
+        session=self._v(state,'wifi.encounters.session_unique',0)
+        life=self._v(state,'wifi.encounters.lifetime_unique',0)
+        d.text((18,232),'TODAY / SESSION',font=f['micro'],fill=t.c('dim'))
+        d.text((18,244),f'{session} UNIQUE SIGNALS',font=f['small'],fill=t.c('text'))
+        d.text((210,232),'LIFETIME',font=f['micro'],fill=t.c('dim'))
+        d.text((210,244),f'{life} DISCOVERIES',font=f['small'],fill=t.c('info'))
+        if state.get('power.telemetry.available'):
+            pct=state.get('power.battery.percent_estimate')
+            power=f'BAT {pct:.0f}%' if isinstance(pct,(int,float)) else 'BAT --'
         else:
-            d.text((240,122),f'{progress:3.0f}% TO NEXT // {xp_next} XP',font=f['tiny'],fill=t.c('dim'))
-
-        capsule(d,(240,142,334,163),mode,f,t,accent=t.c('info'))
-        capsule(d,(342,142,454,163),mood,f,t,accent=t.c('secondary'))
-
-        # Compact scan/status row: enough field awareness at a glance without
-        # forcing every measurement into a bordered tile.
-        stat_column(d,240,177,'APS',self._v(state,'wifi.ap_count',0),f,t,accent=t.c('primary'))
-        stat_column(d,307,177,'CH',self._v(state,'radio.primary.channel','--'),f,t,accent=t.c('info'))
-        temp=state.get('system.temp.cpu_c')
-        temp_text=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
-        stat_column(d,369,177,'TEMP',temp_text,f,t,accent=t.c('warn') if isinstance(temp,(int,float)) and temp>=70 else t.c('text'))
-        stat_column(d,425,177,'HS',self._v(state,'pwnagotchi.handshakes',0),f,t,accent=t.c('accent'))
-
-        # The bottom ribbon carries secondary identity/session context rather
-        # than another full panel of diagnostics.
-        d.line((10,238,470,238),fill=t.c('edge'))
-        d.text((12,246),f'AURA {aura[:10]}',font=f['tiny'],fill=t.c('accent'))
-        d.text((112,246),f'SESSION AP {self._v(state,"wifi.encounters.session_unique",0)}',font=f['tiny'],fill=t.c('text'))
-        gps='GPS LOCK' if state.get('gps.fix') else 'GPS --'
-        d.text((252,246),gps,font=f['tiny'],fill=t.c('info') if state.get('gps.fix') else t.c('dim'))
-        health=str(self._v(state,'health.core.state','starting')).upper()
-        d.text((356,246),f'CORE {health[:8]}',font=f['tiny'],fill=t.c('accent') if health=='HEALTHY' else t.c('warn'))
-        d.text((12,260),f'XP {xp_cur} // LIFE AP {self._v(state,"wifi.encounters.lifetime_unique",0)}',font=f['micro'],fill=t.c('dim'))
+            power='DOCKED' if state.get('dock.docked') else 'FIELD'
+        d.text((397,244),power,font=f['tiny'],fill=t.c('accent'))
 
     @staticmethod
     def _dashboard_value(key,value):
