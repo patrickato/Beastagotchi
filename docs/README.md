@@ -9,6 +9,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
 - `Beastagotchi_v019_Active_Checkpoint_Delta.md` — active v0.19 implementation checkpoint.
 - `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — recovered chats/Library/repository continuity and supersession record.
+- `Beastagotchi_Preservation_Recovery_Workflow.md` — required multi-layer long-term preservation process.
 - `../ROADMAP.md` — current execution order.
 - `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX acceptance milestone.
 - `GLOSSARY.md` — common terms used across the project.
