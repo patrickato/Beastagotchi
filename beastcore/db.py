@@ -185,6 +185,24 @@ CREATE TABLE IF NOT EXISTS beast_progress (
   updated_at REAL NOT NULL,
   FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS beast_wifi_encounters (
+  beast_id TEXT NOT NULL,
+  bssid TEXT NOT NULL,
+  first_seen REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  observation_count INTEGER NOT NULL DEFAULT 1,
+  device_new_on_first INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(beast_id,bssid),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_wifi_beast_seen ON beast_wifi_encounters(beast_id,last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_beast_wifi_bssid ON beast_wifi_encounters(bssid);
+CREATE TABLE IF NOT EXISTS global_achievements (
+  achievement_id TEXT PRIMARY KEY,
+  unlocked_at REAL NOT NULL,
+  context_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_global_achievements_unlocked ON global_achievements(unlocked_at DESC);
 CREATE TABLE IF NOT EXISTS beast_achievements (
   beast_id TEXT NOT NULL,
   achievement_id TEXT NOT NULL,
@@ -378,6 +396,65 @@ class Store:
                         (ts, ssid, vendor, ch, strongest, encryption, json.dumps(sorted(channels)), client_count, bssid),
                     )
         return {"new_count": len(new_bssids), "total": self.count_wifi_encounters(), "new_bssids": new_bssids}
+
+    def record_beast_wifi_encounters(
+        self,
+        beast_id: str,
+        aps: list[dict[str, Any]],
+        *,
+        device_new_bssids: list[str] | set[str] | None = None,
+        ts: float | None = None,
+    ) -> dict[str, Any]:
+        """Persist APs first encountered by one creature.
+
+        The global wifi_encounters table answers "new to this device". This table
+        separately answers "new to this Beast/Monster". Repeated observations never
+        become new again after reboot.
+        """
+        beast_id=str(beast_id or "").strip()
+        if not beast_id:
+            return {"new_count":0,"device_new_count":0,"familiar_new_count":0,"total":0,"new_bssids":[]}
+        ts=float(ts or __import__("time").time())
+        device_new={str(x).lower().strip() for x in (device_new_bssids or []) if str(x).strip()}
+        new_bssids=[];new_device=0
+        with self.conn:
+            for ap in aps or []:
+                if not isinstance(ap,dict):continue
+                bssid=str(ap.get("bssid") or ap.get("mac") or "").lower().strip()
+                if not bssid:continue
+                row=self.conn.execute(
+                    "SELECT observation_count FROM beast_wifi_encounters WHERE beast_id=? AND bssid=?",
+                    (beast_id,bssid),
+                ).fetchone()
+                if row is None:
+                    flag=1 if bssid in device_new else 0
+                    self.conn.execute(
+                        """INSERT INTO beast_wifi_encounters(
+                             beast_id,bssid,first_seen,last_seen,observation_count,device_new_on_first
+                           ) VALUES(?,?,?,?,1,?)""",
+                        (beast_id,bssid,ts,ts,flag),
+                    )
+                    new_bssids.append(bssid);new_device+=flag
+                else:
+                    self.conn.execute(
+                        "UPDATE beast_wifi_encounters SET last_seen=?,observation_count=observation_count+1 WHERE beast_id=? AND bssid=?",
+                        (ts,beast_id,bssid),
+                    )
+        total=self.count_beast_wifi_encounters(beast_id)
+        return {
+            "new_count":len(new_bssids),
+            "device_new_count":int(new_device),
+            "familiar_new_count":max(0,len(new_bssids)-int(new_device)),
+            "total":total,
+            "new_bssids":new_bssids,
+        }
+
+    def count_beast_wifi_encounters(self, beast_id: str) -> int:
+        row=self.conn.execute(
+            "SELECT COUNT(*) FROM beast_wifi_encounters WHERE beast_id=?",
+            (str(beast_id),),
+        ).fetchone()
+        return int(row[0] if row else 0)
 
     def count_wifi_encounters(self) -> int:
         row = self.conn.execute("SELECT COUNT(*) FROM wifi_encounters").fetchone()

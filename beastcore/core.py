@@ -16,6 +16,7 @@ from .semantic import SemanticEngine
 from .dock import DockEngine
 from .progression import ProgressionEngine
 from .roster_progression import ActiveBeastProgressionStore
+from .global_achievements import GlobalAchievementEngine
 from .rare import RareMomentEngine
 from .ambient import AmbientContextEngine
 from .governor import ResourceGovernor
@@ -66,11 +67,12 @@ class BeastCore:
         self.health: dict[str, dict[str, Any]] = {}
         self.context = ContextEngine(self.state)
         self.sampler = TimeSeriesSampler(self.state, self.store)
-        self.semantic = SemanticEngine(self.state, self.store)
         self.dock = DockEngine(self.state)
         self.progression_store = ActiveBeastProgressionStore(self.store)
         self.roster = self.progression_store.roster
         self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
+        self.semantic = SemanticEngine(self.state, self.store, active_beast_id=self.progression_store.current_id)
+        self.global_achievements = GlobalAchievementEngine(self.state,self.store,self.roster)
         self.rare = RareMomentEngine(self.state)
         self.ambient = AmbientContextEngine(self.state)
         self.governor = ResourceGovernor(self.state)
@@ -318,6 +320,19 @@ class BeastCore:
                 self.store.add_event(ev)
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
             except asyncio.TimeoutError: pass
+
+    async def _global_achievement_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                for etype,source,data,severity in self.global_achievements.tick():
+                    ev=self.events.publish(etype,source,data,severity)
+                    self.store.add_event(ev)
+            except Exception as exc:
+                log.exception("global achievement engine failed")
+                ev=self.events.publish("global.achievement_error","global_achievements",{"error":repr(exc)},"warning")
+                self.store.add_event(ev)
+            try:await asyncio.wait_for(self.stop_event.wait(),timeout=5.0)
+            except asyncio.TimeoutError:pass
 
     async def _progression_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -612,6 +627,7 @@ class BeastCore:
             asyncio.create_task(self._semantic_loop(), name="semantic"),
             asyncio.create_task(self._dock_loop(), name="dock"),
             asyncio.create_task(self._progression_loop(), name="progression"),
+            asyncio.create_task(self._global_achievement_loop(), name="global-achievements"),
             asyncio.create_task(self._personality_loop(), name="personality"),
             asyncio.create_task(self._mission_loop(), name="missions"),
             asyncio.create_task(self._rare_loop(), name="rare"),

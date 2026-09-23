@@ -31,6 +31,38 @@ class ActiveBeastProgressionStore:
         self._legacy_last_achievement = self._read_legacy_last_achievement()
         self.roster = BeastRoster(store, legacy_profile_path=self.legacy_profile_path, clock=clock)
         self.roster.bootstrap_founder()
+        self._seed_founder_encounter_memory()
+
+    def _seed_founder_encounter_memory(self) -> None:
+        """One-time migration: the Founder already knows the device's old world."""
+        key="migration.founder_wifi_encounters.v1"
+        if self._meta_get(key)=="done":
+            return
+        now=float(self.clock())
+        with self.conn:
+            self.conn.execute(
+                """INSERT OR IGNORE INTO beast_wifi_encounters(
+                     beast_id,bssid,first_seen,last_seen,observation_count,device_new_on_first
+                   )
+                   SELECT 'founder',bssid,first_seen,last_seen,
+                          MAX(1,COALESCE(observation_count,seen_sessions,1)),1
+                   FROM wifi_encounters"""
+            )
+            self._meta_set(key,"done")
+        # Keep legacy counter semantics coherent for the Founder even when the old
+        # profile predates per-creature encounter memory.
+        total=self.store.count_beast_wifi_encounters("founder")
+        row=self.conn.execute("SELECT counters_json FROM beast_progress WHERE beast_id='founder'").fetchone()
+        try:counters=json.loads((row or ["{}"])[0] or "{}")
+        except Exception:counters={}
+        if "beast_unique_aps" not in counters:
+            counters["beast_unique_aps"]=max(total,int(counters.get("lifetime_new_aps") or 0))
+            counters["lifetime_new_aps"]=counters["beast_unique_aps"]
+            with self.conn:
+                self.conn.execute(
+                    "UPDATE beast_progress SET counters_json=?,updated_at=? WHERE beast_id='founder'",
+                    (json.dumps(counters,separators=(",",":")),now),
+                )
 
     def _read_legacy_last_achievement(self) -> str | None:
         try:
@@ -87,6 +119,10 @@ class ActiveBeastProgressionStore:
         last = self._meta_get(f"progression.last_achievement.{beast['id']}")
         if not last and beast["id"] == "founder":
             last = self._legacy_last_achievement
+        counters=dict(beast.get("counters") or {})
+        if "beast_unique_aps" not in counters:
+            counters["beast_unique_aps"]=int(counters.get("lifetime_new_aps") or 0)
+        counters["lifetime_new_aps"]=int(counters.get("beast_unique_aps") or 0)
         return {
             "schema": 1,
             "created_at": float(beast.get("created_at") or self.clock()),
@@ -98,7 +134,7 @@ class ActiveBeastProgressionStore:
             "seen_vendors": list(beast.get("seen_vendors") or []),
             "achievements": list(beast.get("achievements") or []),
             "last_achievement": last,
-            "counters": dict(beast.get("counters") or {}),
+            "counters": counters,
         }
 
     def save_profile(self, beast_id: str, profile: dict[str, Any]) -> None:
