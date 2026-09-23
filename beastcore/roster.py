@@ -169,7 +169,7 @@ class BeastRoster:
             ).fetchall()
         ]
         out["level"] = level_for_xp(int(out["xp"] or 0))
-        out["stage"] = stage_for_level(out["level"])
+        out["stage"] = stage_for_level(out["level"], out["kind"])
         return out
 
     def list(self) -> list[dict[str, Any]]:

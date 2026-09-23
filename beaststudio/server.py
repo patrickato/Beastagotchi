@@ -55,7 +55,12 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <button id="rosterRefresh" style="margin-top:9px">REFRESH ROSTER</button>
 <div id="rosterStatus" class="status"></div>
 <div id="rosterList"></div>
-<div class="group"><h3>LINEAGE</h3><div class="mini">Level-70+ Beast-class creatures are marked Lineage Eligible. Monster synthesis remains a separate explicit action and is not triggered by switching. Starter/adoption controls will arrive with the lineage registry rather than creating anonymous generic Beasts here.</div></div>
+<div class="group"><h3>LINEAGE SYNTHESIS</h3><div class="mini">Two distinct level-70+ Beast-class parents may create one v1 Monster. Parents are never consumed or reset. Preview the transaction first; creation is always explicit.</div>
+<label>Parent A</label><select id="synthParentA"></select>
+<label>Parent B</label><select id="synthParentB"></select>
+<label>Monster name</label><input id="synthName" maxlength="64" placeholder="Nova">
+<div class="row" style="margin-top:8px"><button id="synthPlan">PREVIEW SYNTHESIS</button><button id="synthCreate" class="primary">CREATE MONSTER</button></div>
+<div id="synthStatus" class="status">Choose two eligible Beasts.</div></div>
 </section>
 <section id="global" class="section hidden"><h3>GLOBAL INTERACTION</h3>
 <div class="mini">Optional public/community layer. Local Beast data remains authoritative. No Global connector is configured in this milestone, so saving these settings performs no network upload.</div>
@@ -89,7 +94,7 @@ let schema=null,base=null,draft=null,undo=[],redo=[],timer=null,plugins=[],varia
 function clone(x){return JSON.parse(JSON.stringify(x))}function option(el,v,t){let o=document.createElement('option');o.value=v;o.textContent=t||v;el.appendChild(o)}function push(){undo.push(clone(draft));if(undo.length>60)undo.shift();redo=[]}
 async function jfetch(url,opt={}){opt.headers={...(opt.headers||{}),'X-Beast-Studio-Token':TOKEN};let r=await fetch(url,opt);if(!r.ok)throw Error(await r.text());return r.json()}
 function mutate(fn){push();fn();rebuild()}function queuePreview(){clearTimeout(timer);timer=setTimeout(preview,90)}
-function setTab(id){activeTab=id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));['visual','dashboard','decks','data','plugins','packs','search','ops'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='plugins')loadPlugins();if(id==='packs')loadPacks();if(id==='ops')loadOps();if(id==='dashboard'){draft.page='dashboard';draft.preview_board_id=boardEditorId;queuePreview();renderLayoutOverlay()}else renderLayoutOverlay()}
+function setTab(id){activeTab=id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));['visual','dashboard','decks','data','plugins','packs','roster','global','search','ops'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='plugins')loadPlugins();if(id==='packs')loadPacks();if(id==='roster')loadRoster();if(id==='global')loadGlobalProfile();if(id==='ops')loadOps();if(id==='dashboard'){draft.page='dashboard';draft.preview_board_id=boardEditorId;queuePreview();renderLayoutOverlay()}else renderLayoutOverlay()}
 document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
 function rebuild(){
  $('theme').innerHTML='';schema.themes.forEach(x=>option($('theme'),x.id,x.label));$('theme').value=draft.theme;
@@ -125,7 +130,7 @@ function renderLayoutOverlay(){let ov=$('layoutOverlay');if(!ov)return;ov.innerH
 function startLayoutDrag(e,i,mode){e.preventDefault();e.stopPropagation();selectedWidget=i;push();let w=currentWidgetList()[i];dragState={i,mode,sx:e.clientX,sy:e.clientY,x:Number(w.x||0),y:Number(w.y||0),w:Number(w.w||4),h:Number(w.h||3)};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.onpointermove=layoutDrag;e.currentTarget.onpointerup=endLayoutDrag;e.currentTarget.onpointercancel=endLayoutDrag;rebuildDashboard()}
 function layoutDrag(e){if(!dragState)return;let rect=$('layoutOverlay').getBoundingClientRect(),dx=Math.round((e.clientX-dragState.sx)/rect.width*12),dy=Math.round((e.clientY-dragState.sy)/rect.height*8),w=currentWidgetList()[dragState.i];if(dragState.mode==='move'){w.x=Math.max(0,Math.min(12-dragState.w,dragState.x+dx));w.y=Math.max(0,Math.min(8-dragState.h,dragState.y+dy))}else{w.w=Math.max(2,Math.min(12-dragState.x,dragState.w+dx));w.h=Math.max(2,Math.min(8-dragState.y,dragState.h+dy))}renderLayoutOverlay();queuePreview()}
 function endLayoutDrag(e){if(e.currentTarget){e.currentTarget.onpointermove=null;e.currentTarget.onpointerup=null;e.currentTarget.onpointercancel=null}dragState=null;rebuildDashboard();queuePreview()}
-$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=loadRoster;$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
+$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=loadRoster;$('synthPlan').onclick=previewSynthesis;$('synthCreate').onclick=createSynthesis;$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
 
 async function preview(){try{$('conn').textContent='RENDERING';updatePreviewOutputChrome();let r=await fetch('/api/preview',{method:'POST',headers:{'content-type':'application/json','X-Beast-Studio-Token':TOKEN},body:JSON.stringify(draft)});if(!r.ok)throw Error(await r.text());let b=await r.blob();let old=$('screen').src;$('screen').src=URL.createObjectURL(b);if(old&&old.startsWith('blob:'))URL.revokeObjectURL(old);$('conn').textContent='LIVE';let po=previewOutputInfo();$('previewMeta').textContent=`${draft.theme} · ${draft.page}${boardEditorId?' · '+(boardById(boardEditorId)?.label||boardEditorId):''} · ${po.width}×${po.height}`;renderLayoutOverlay()}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}}
 async function loadPlugins(){try{let x=await jfetch('/api/plugins');plugins=x.items||[];renderPlugins()}catch(e){$('pluginList').innerHTML='<div class="status">Plugin catalog unavailable: '+e+'</div>'}}
@@ -192,8 +197,9 @@ function fillGlobalPolicy(p){
   $('globalAchievementIds').value=(p.selected_achievement_ids||[]).join(', ');$('globalUnlocks').checked=!!p.publish_global_unlocks;$('globalUnlockIds').value=(p.selected_global_unlock_ids||[]).join(', ');
   drawGlobalRoster(p)
 }
+let rosterRows=[];
 async function loadRoster(){try{
-  let x=await jfetch('/api/roster');let box=$('rosterList');box.innerHTML='';
+  let x=await jfetch('/api/roster');rosterRows=x.items||[];let box=$('rosterList');box.innerHTML='';
   (x.items||[]).forEach(r=>{let d=document.createElement('div');d.className='plugin';
     let active=!!r.active,eligible=!!r.synthesis_eligible,hasPref=!!r.has_preferred_presentation;
     d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.name||r.id}</span><span class="pill ${active?'on':''}">${active?'ACTIVE':String(r.status||'RESTING').toUpperCase()}</span></div>
@@ -207,7 +213,25 @@ async function loadRoster(){try{
     box.append(d)
   });
   $('rosterStatus').textContent=(x.count||0)+' persistent creatures · '+((x.items||[]).filter(r=>r.active).length?'one active':'no active creature');
+  let elig=rosterRows.filter(r=>r.synthesis_eligible),a=$('synthParentA'),b=$('synthParentB');a.innerHTML='';b.innerHTML='';
+  option(a,'','SELECT ELIGIBLE BEAST');option(b,'','SELECT ELIGIBLE BEAST');
+  elig.forEach(r=>{option(a,r.id,(r.name||r.id)+' · LV '+r.level+' '+r.stage);option(b,r.id,(r.name||r.id)+' · LV '+r.level+' '+r.stage)});
+  $('synthPlan').disabled=elig.length<2;$('synthCreate').disabled=elig.length<2;
+
 }catch(e){$('rosterStatus').textContent='Roster unavailable: '+e}}
+async function previewSynthesis(){let a=$('synthParentA').value,b=$('synthParentB').value,name=$('synthName').value.trim()||'Monster';if(!a||!b){$('synthStatus').textContent='Choose two eligible Beasts.';return}try{
+  let x=await jfetch('/api/roster-synthesis-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({parent_a:a,parent_b:b,name:name})});
+  let blockers=x.blockers||[];if(blockers.length){$('synthStatus').textContent='BLOCKED · '+blockers.join(' · ');return}
+  let pa=x.parent_a||{},pb=x.parent_b||{},chance=Number(x.mutation_chance_basis_points||0)/100;
+  $('synthStatus').textContent=`READY · ${pa.name} LV${pa.level} + ${pb.name} LV${pb.level} → ${name}, Monster LV1 · parents preserved · mutation chance ${chance.toFixed(2)}% · first successful synthesis unlocks Monstergotchi core`;
+}catch(e){$('synthStatus').textContent='Synthesis preview failed: '+e}}
+async function createSynthesis(){let a=$('synthParentA').value,b=$('synthParentB').value,name=$('synthName').value.trim()||'Monster';if(!a||!b){$('synthStatus').textContent='Choose two eligible Beasts.';return}
+  let plan;try{plan=await jfetch('/api/roster-synthesis-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({parent_a:a,parent_b:b,name:name})})}catch(e){$('synthStatus').textContent='Synthesis preview failed: '+e;return}
+  if((plan.blockers||[]).length){$('synthStatus').textContent='BLOCKED · '+plan.blockers.join(' · ');return}
+  let pa=plan.parent_a||{},pb=plan.parent_b||{};if(!confirm(`Create ${name} from ${pa.name} and ${pb.name}?\n\nBoth parents remain unchanged. The Monster starts at level 1. This v1 parent pair cannot be rerolled repeatedly.`))return;
+  $('synthCreate').disabled=true;try{let x=await jfetch('/api/roster-synthesize',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({parent_a:a,parent_b:b,name:name})});let row=x.action_row||{},res=row.result||{},m=res.monster||{};if(row.status!=='success')throw Error(res.error||'synthesis failed');
+    let h=((m.identity||{}).heritage||{}).generated||{},mut=h.mutation;$('synthStatus').textContent=`CREATED · ${m.name||name} · GEN ${m.generation||1} · ${m.stage||'Origin'} · ${mut?'MUTATION '+mut.id+' ('+mut.rarity+')':'no mutation'} · ancestry recorded`;await loadRoster();await loadGlobalProfile()
+  }catch(e){$('synthStatus').textContent='Synthesis failed: '+e}finally{$('synthCreate').disabled=false}}
 async function rememberRosterPresentation(id,name,btn){if(!confirm('Remember the current Studio draft as '+name+'\'s preferred setup?\n\nThis stores the preference but does not apply or change the physical UI.'))return;btn.disabled=true;try{
   let x=await jfetch('/api/roster-presentation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:id,draft:draft,experience_id:window._loadedExperienceId||''})});
   $('rosterStatus').textContent=(x.action_row||{}).status==='success'?'Preferred setup saved for '+name+'.':'Could not save preferred setup.';await loadRoster()
@@ -471,6 +495,20 @@ class StudioState:
         if mission is None:raise ExperienceDraftError('Experience not found')
         return compose_experience_draft(self.preferences(),mission,self.schema())
 
+    def roster_synthesis_plan(self,obj: dict)->dict:
+        return self.actions.plan('roster.synthesis_plan',{
+            'parent_a':str(obj.get('parent_a') or ''),
+            'parent_b':str(obj.get('parent_b') or ''),
+            'name':str(obj.get('name') or 'Monster'),
+        })
+
+    def roster_synthesize(self,obj: dict)->dict:
+        return self.actions.perform('roster.synthesize',{
+            'parent_a':str(obj.get('parent_a') or ''),
+            'parent_b':str(obj.get('parent_b') or ''),
+            'name':str(obj.get('name') or 'Monster'),
+        })
+
     def roster_snapshot(self)->dict:
         row=self.actions.plan('roster.snapshot',{})
         return row.get('plan',row) if isinstance(row,dict) else {"items":[]}
@@ -694,7 +732,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -726,6 +764,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/experience-draft':return self._send(200,self.st.experience_draft(obj))
             if path=='/api/global-policy':return self._send(200,self.st.global_policy_set(obj))
             if path=='/api/roster-switch':return self._send(200,self.st.roster_switch(obj))
+            if path=='/api/roster-synthesis-plan':return self._send(200,self.st.roster_synthesis_plan(obj))
+            if path=='/api/roster-synthesize':return self._send(200,self.st.roster_synthesize(obj))
             if path=='/api/roster-presentation':return self._send(200,self.st.roster_remember_presentation(obj))
             if path=='/api/roster-presentation-clear':return self._send(200,self.st.roster_clear_presentation(obj))
             if path=='/api/presentation-plan':return self._send(200,self.st.presentation_plan(obj))

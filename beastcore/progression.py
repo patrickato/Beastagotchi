@@ -21,6 +21,18 @@ STAGES = [
     (100, 'Monstergotchi'),
 ]
 
+MONSTER_STAGES = [
+    (1, 'Origin'),
+    (5, 'Awakened'),
+    (10, 'Morph'),
+    (20, 'Adapted'),
+    (35, 'Chimera'),
+    (50, 'Ascendant'),
+    (70, 'Prime'),
+    (85, 'Mythic'),
+    (100, 'Monstergotchi'),
+]
+
 AURAS = [
     (0, 'none'),
     (10, 'static'),
@@ -145,9 +157,10 @@ def level_for_xp(xp: int) -> int:
     return lo
 
 
-def stage_for_level(level: int) -> str:
-    stage = STAGES[0][1]
-    for threshold, name in STAGES:
+def stage_for_level(level: int, kind: str = 'beast') -> str:
+    table = MONSTER_STAGES if str(kind).lower() == 'monster' else STAGES
+    stage = table[0][1]
+    for threshold, name in table:
         if level >= threshold:
             stage = name
     return stage
@@ -351,7 +364,7 @@ class ProgressionEngine:
             'progression.xp_current_level': max(0, xp - current),
             'progression.xp_next_level': next_needed,
             'progression.level_progress_pct': round(pct, 2),
-            'progression.stage': stage_for_level(level),
+            'progression.stage': stage_for_level(level, self._active_identity.get('kind') if self.profile_store is not None else 'beast'),
             'progression.aura': aura,
             'progression.session_unique': session_unique_i,
             'progression.achievements.count': len(self.profile.get('achievements') or []),
@@ -394,10 +407,10 @@ class ProgressionEngine:
         if amount <= 0:
             return []
         before_level = level_for_xp(int(self.profile.get('xp') or 0))
-        before_stage = stage_for_level(before_level)
+        before_stage = stage_for_level(before_level, self._active_identity.get('kind') if self.profile_store is not None else 'beast')
         self.profile['xp'] = int(self.profile.get('xp') or 0) + amount
         after_level = level_for_xp(int(self.profile['xp']))
-        after_stage = stage_for_level(after_level)
+        after_stage = stage_for_level(after_level, self._active_identity.get('kind') if self.profile_store is not None else 'beast')
         self._save(); self._publish_state()
         out: list[tuple[str, str, dict[str, Any], str]] = [
             ('progression.xp_awarded', 'progression', {'amount': amount, 'reason': reason, 'xp': self.profile['xp']}, 'info')

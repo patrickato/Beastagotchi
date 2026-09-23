@@ -257,3 +257,33 @@ records a `cross_lineage` marker.
 
 This engine generates declarative identity only. It does not yet force a Monster
 Face/Theme or bypass the user's presentation preferences.
+
+
+## User-facing synthesis gate
+
+Beast Studio now exposes Lineage Synthesis only when at least two distinct
+Beast-class roster members are eligible.
+
+The flow is:
+1. choose Parent A and Parent B;
+2. enter the proposed Monster name;
+3. preview a non-mutating synthesis plan;
+4. review parent preservation, offspring level and current mutation chance;
+5. explicitly confirm;
+6. execute through the audited Action Broker;
+7. persist ancestry, heritage and the Monstergotchi global unlock.
+
+No synthesis occurs merely because two eligible Beasts exist or because a user
+switches between them.
+
+## Monster fallback evolution vocabulary
+
+Until individual Lineage Packs can provide their own evolution vocabulary,
+Monster-class creatures use:
+
+Origin → Awakened → Morph → Adapted → Chimera → Ascendant → Prime → Mythic →
+Monstergotchi
+
+at the same numeric level thresholds used by Beast progression. Numeric
+progression therefore stays compatible while presentation can diverge by kind
+and, later, by lineage.

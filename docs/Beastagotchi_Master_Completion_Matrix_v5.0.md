@@ -189,7 +189,8 @@ approved scope.
 - [ ] per-Beast Expedition/rare-witness/personality history
 - [x] deterministic hybrid visual/behavior heritage trait generator
 - [~] mutation framework + generic rare mutation vocabulary; curated lineage-pair/archetype rules pending
-- [ ] Monster-specific evolution vocabulary
+- [x] Monster-specific fallback evolution vocabulary (Origin → Awakened → Morph → Adapted → Chimera → Ascendant → Prime → Mythic → Monstergotchi)
+- [x] Beast Studio non-mutating synthesis plan + explicit audited Monster creation
 - [ ] Monster creation/reveal cinematic
 - [ ] Hall of Legends
 - [ ] ancestry/family-tree viewer

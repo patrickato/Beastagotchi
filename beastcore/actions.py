@@ -108,6 +108,26 @@ class ActionBroker:
                 "allowed":True,"operation":"roster.snapshot","active_id":active.get("id") if active else None,
                 "items":items,"count":len(items),"blockers":[]
             }
+        if action == "roster.synthesis_plan":
+            parent_a=str(payload.get("parent_a") or "")
+            parent_b=str(payload.get("parent_b") or "")
+            plan=self.roster.synthesis_plan(parent_a,parent_b)
+            if plan.get("parent_a") and plan.get("parent_b"):
+                from .heritage import mutation_chance_basis_points
+                plan["mutation_chance_basis_points"]=mutation_chance_basis_points(plan["parent_a"],plan["parent_b"])
+            plan["child_name"]=str(payload.get("name") or "Monster")[:64]
+            plan["creates_immediately"]=False
+            return plan
+        if action == "roster.synthesize":
+            parent_a=str(payload.get("parent_a") or "")
+            parent_b=str(payload.get("parent_b") or "")
+            plan=self.roster.synthesis_plan(parent_a,parent_b)
+            if plan.get("parent_a") and plan.get("parent_b"):
+                from .heritage import mutation_chance_basis_points
+                plan["mutation_chance_basis_points"]=mutation_chance_basis_points(plan["parent_a"],plan["parent_b"])
+            plan["operation"]="roster.synthesize"
+            plan["child_name"]=str(payload.get("name") or "Monster")[:64]
+            return plan
         if action == "roster.presentation_get":
             beast=self.roster.get(str(payload.get("id") or self.roster.active()["id"]))
             pref=self.roster.presentation_preferences(beast["id"])
@@ -190,6 +210,26 @@ class ActionBroker:
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),True)
             elif action == "pack.deactivate":
                 result=self.pack_activation.set_enabled(str(requested.get("id") or ""),False)
+            elif action == "roster.synthesize":
+                result=self.roster.synthesize(
+                    str(requested.get("parent_a") or ""),
+                    str(requested.get("parent_b") or ""),
+                    name=str(requested.get("name") or "Monster")[:64],
+                )
+                monster=result.get("monster") or {}
+                self.state.update_many("roster",{
+                    "roster.last_monster.id":monster.get("id"),
+                    "roster.last_monster.name":monster.get("name"),
+                    "roster.last_monster.generation":monster.get("generation"),
+                    "roster.count":len(self.roster.list()),
+                },priority=89)
+                mev=self.events.publish("roster.monster_created","roster",{
+                    "id":monster.get("id"),"name":monster.get("name"),
+                    "generation":monster.get("generation"),
+                    "parents":list(monster.get("parents") or []),
+                    "mutation":((monster.get("appearance") or {}).get("mutation")),
+                },"info")
+                self.store.add_event(mev)
             elif action == "roster.presentation_set":
                 beast=self.roster.set_presentation_preferences(
                     str(requested.get("id") or self.roster.active()["id"]),
