@@ -248,10 +248,11 @@ class UpdatePolicyEngine:
             "updates.check_errors": errors,
             "updates.metadata_fetch_enabled": True,
             "updates.download_executor_enabled": True,
-            "updates.executor_enabled": True,
-            "updates.executor_scope": "verified_staging_plus_inert_beast_pack_transactions",
+            "updates.pack_auto_install_enabled": True,
+            "updates.executor_enabled": False,
+            "updates.executor_scope": "generic_component_install_locked",
             "updates.executor_reason": (
-                "trusted SHA-256 verified release staging is enabled; automatic transactional install is limited "
-                "to inert Beast Packs with rollback, while core/platform integrations remain stage-only"
+                "trusted SHA-256 verified release staging is enabled and inert Beast Packs have a scoped rollback-aware "
+                "auto-install path; the generic component installer remains locked for core/platform integrations"
             ),
         }
