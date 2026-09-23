@@ -26,7 +26,8 @@ from .rare_overlay import render_rare_overlay, acknowledge_rare_event
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
-from .ui_components import status_dot
+from .design import TOKENS
+from . import __version__ as UI_VERSION
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
 from .customization import (
     validate_dashboard_widgets, dashboard_history_keys, validate_context_decks,
@@ -37,7 +38,7 @@ log = logging.getLogger('beastui')
 
 
 class BeastUI:
-    W,H=480,320; HEADER_H=34; FOOTER_Y=278
+    W,H=TOKENS.canvas_w,TOKENS.canvas_h; HEADER_H=TOKENS.header_h; FOOTER_Y=TOKENS.footer_y
     THEMES=['pwn_native_raw','pwn_native_dark','pwn_native_light','pwn_native_chroma','pwn_dark','pwn_light','pwn_chroma','classic','matrix','starcore','blackice','hunter','minimal','synthwave','amber_tactical','ghost_minimal','cyberpunk','wopr_norad','lcars','retro_crt']
     RENDERER_CHOICES={
         'recon':['radar','polar','bars','signal'],
@@ -871,80 +872,90 @@ class BeastUI:
         return False
 
     def _header(self,d,title):
-        """Quiet global chrome: identity + page + only persistent essentials."""
         t=self.theme; f=self.fonts
-        d.rectangle((0,0,480,34),fill=t.c('ink'))
-        d.line((0,33,480,33),fill=t.c('edge'))
-
+        d.rectangle((0,0,self.W,self.HEADER_H),fill=t.c('ink'))
+        d.line((0,self.HEADER_H-1,self.W,self.HEADER_H-1),fill=t.c('edge'))
         if t.id in {'pwn_dark','pwn_light','pwn_chroma'}:
-            brand='PWN'
+            brand='PWNAGOTCHI'
         else:
             brand='BEAST'
-        d.text((8,7),brand,font=f['title'],fill=t.c('primary'))
-        title_x=60 if brand=='PWN' else 82
-        d.text((title_x,11),str(title)[:22],font=f['small'],fill=t.c('text'))
+        if t.geometry=='lcars':
+            d.rounded_rectangle((4,4,88,29),radius=TOKENS.radius_l,fill=t.c('secondary'))
+            d.text((13,8),brand[:5],font=f['medium'],fill=t.c('ink'))
+            title_x=96
+        else:
+            d.text((TOKENS.space_s,7),brand,font=f['title'],fill=t.c('primary'))
+            title_x=142 if brand=='PWNAGOTCHI' else 92
 
-        # Deliberately reduce the old five-item header status strip. Detailed
-        # telemetry belongs on pages; global chrome should orient, not compete.
+        # Page title is deliberately stronger in v0.19: the user should know
+        # where they are without decoding a crowded status strip.
+        d.text((title_x,10),str(title).upper()[:18],font=f['small'],fill=t.c('text'))
         level=self.state.get('progression.level')
         if isinstance(level,(int,float)):
-            d.text((332,11),f'L{int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
-        d.text((370,11),f"CH{self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
+            d.text((278,10),f'LV {int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
+        d.text((326,10),f"CH {self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
 
         if self.state.get('dock.docked'):
-            power='DCK'
+            right='DOCK'; col=t.c('accent')
         elif self.state.get('power.telemetry.available'):
             pct=self.state.get('power.battery.percent_estimate')
-            power=f'{pct:.0f}%' if isinstance(pct,(int,float)) else 'BAT'
+            right=f"BAT {pct:.0f}%" if isinstance(pct,(int,float)) else 'BAT'
+            col=t.c('accent')
         else:
-            power=''
-        if power:d.text((411,11),power,font=f['tiny'],fill=t.c('accent'))
-
-        health=str(self.state.get('health.core.state','unknown')).lower()
-        status_dot(d,(466,16),t,health)
+            health=str(self.state.get('health.core.state','--')).upper()
+            right=health[:7]
+            col=t.c('accent') if health=='HEALTHY' else t.c('warn')
+        tw=d.textbbox((0,0),right,font=f['tiny'])[2]
+        d.text((472-tw,10),right,font=f['tiny'],fill=col)
 
     def _footer(self,d,idx=None):
-        """Visible navigation matches the measured physical touch zones."""
-        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx
-        count=len(self.pages.IDS);page_id=self.pages.IDS[idx];name=self.pages.TITLES[page_id]
-        if page_id=='dashboard' and self.active_board_id:
+        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx;count=len(self.pages.IDS)
+        cur_id=self.pages.IDS[idx];name=self.pages.TITLES[cur_id]
+        if cur_id=='dashboard' and self.active_board_id:
             name=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),name)
+        prev_name=self.pages.TITLES[self.pages.IDS[max(0,idx-1)]] if idx>0 else ''
+        next_name=self.pages.TITLES[self.pages.IDS[min(count-1,idx+1)]] if idx<count-1 else ''
 
-        d.rectangle((0,278,480,320),fill=t.c('ink'))
-        d.line((0,278,480,278),fill=t.c('edge'))
-        flash=self.button_flash if time.monotonic()-self.button_flash_at<.28 else None
+        d.rectangle((0,self.FOOTER_Y,self.W,self.H),fill=t.c('ink'))
+        d.line((0,self.FOOTER_Y,self.W,self.FOOTER_Y),fill=t.c('edge'))
+        flash=self.button_flash if time.monotonic()-self.button_flash_at<TOKENS.motion_notice_s else None
 
-        # These rectangles now closely match the actual left/center/right touch
-        # regions. The old artwork showed narrow 88 px arrows over much larger
-        # invisible hit zones.
-        left_fill=t.c('accent') if flash=='prev' else t.c('panel2')
-        right_fill=t.c('accent') if flash=='next' else t.c('panel2')
-        left_ink=t.c('ink') if flash=='prev' else t.c('primary')
-        right_ink=t.c('ink') if flash=='next' else t.c('primary')
-        center_edge=t.c('accent') if flash=='home' else t.c('edge')
+        # Large Touch Lab hit zones are retained. Visible controls now explain
+        # where left/right will go instead of showing unlabeled tiny arrows.
+        left_fill=t.c('panel2') if flash!='prev' else t.c('accent')
+        right_fill=t.c('panel2') if flash!='next' else t.c('accent')
+        left_text=t.c('primary') if flash!='prev' else t.c('ink')
+        right_text=t.c('primary') if flash!='next' else t.c('ink')
+        d.rounded_rectangle((6,283,112,314),radius=TOKENS.radius_m,fill=left_fill,outline=t.c('edge'))
+        d.rounded_rectangle((368,283,474,314),radius=TOKENS.radius_m,fill=right_fill,outline=t.c('edge'))
 
-        d.rounded_rectangle((4,282,118,317),radius=7,fill=left_fill,outline=t.c('primary'),width=1)
-        d.text((54,287),'‹',font=f['large'],fill=left_ink)
-        d.rounded_rectangle((362,282,476,317),radius=7,fill=right_fill,outline=t.c('primary'),width=1)
-        d.text((412,287),'›',font=f['large'],fill=right_ink)
+        d.text((14,288),'‹',font=f['medium'],fill=left_text)
+        if prev_name:
+            d.text((31,290),prev_name[:11],font=f['tiny'],fill=t.c('dim') if flash!='prev' else t.c('ink'))
+        if next_name:
+            tw=d.textbbox((0,0),next_name[:11],font=f['tiny'])[2]
+            d.text((449-tw,290),next_name[:11],font=f['tiny'],fill=t.c('dim') if flash!='next' else t.c('ink'))
+        d.text((453,288),'›',font=f['medium'],fill=right_text)
 
-        d.rounded_rectangle((124,282,356,317),radius=7,fill=t.c('panel2'),outline=center_edge,width=1)
-        action='APPS' if idx==0 else 'HOME'
-        d.text((136,287),str(name)[:20],font=f['small'],fill=t.c('text'))
-        d.text((310,287),action,font=f['tiny'],fill=t.c('accent'))
-        d.text((314,301),f'{idx+1}/{count}',font=f['micro'],fill=t.c('dim'))
+        center_col=t.c('accent') if flash=='home' else t.c('text')
+        tw=d.textbbox((0,0),name,font=f['small'])[2]
+        d.text((240-tw//2,285),name,font=f['small'],fill=center_col)
+        index=f'{idx+1} / {count}'
+        iw=d.textbbox((0,0),index,font=f['micro'])[2]
+        d.text((240-iw//2,299),index,font=f['micro'],fill=t.c('dim'))
 
-        # Compact page rail remains useful for spatial orientation without
-        # becoming a second navigation bar.
-        rail_w=count*8-3;start=240-rail_w//2
+        # Tab rail reinforces that pages remain a persistent spatial model.
+        total=(count-1)*7+13; x=240-total//2
         for i in range(count):
-            w=6 if i==idx else 4
-            x=start+i*8
-            d.rectangle((x,309,x+w,312),fill=t.c('accent') if i==idx else t.c('edge'))
+            w=13 if i==idx else 5
+            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=t.c('accent') if i==idx else t.c('edge'))
+            x+=w+2
 
         if flash and str(flash).startswith('renderer:'):
-            d.rectangle((126,281,354,303),fill=t.c('panel2'),outline=t.c('accent'))
-            d.text((153,288),f"SPECTRUM -> {str(flash).split(':',1)[1].upper()}",font=f['small'],fill=t.c('accent'))
+            label=str(flash).split(':')[-1].upper()[:18]
+            d.rounded_rectangle((132,281,348,302),radius=TOKENS.radius_s,fill=t.c('panel2'),outline=t.c('accent'))
+            tw=d.textbbox((0,0),label,font=f['small'])[2]
+            d.text((240-tw//2,287),label,font=f['small'],fill=t.c('accent'))
 
     @staticmethod
     def _reaction_label(ev):
