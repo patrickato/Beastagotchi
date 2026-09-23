@@ -187,6 +187,8 @@ class UpdatePolicyEngine:
                 row["update_available"] = self._is_newer(available, row["installed_version"])
                 verification = release.get("verification") if isinstance(release.get("verification"), dict) else {}
                 row["verification_available"] = bool(verification.get("sha256_path_available"))
+                row["release_assets"] = list(release.get("assets") or [])
+                row["download_stage_supported"] = row["id"] != "pwnagotchi"
                 if cached.get("ok") is False:
                     row["last_result"] = "check_error_cached_release"
                 elif row["update_available"] is True:
@@ -200,6 +202,12 @@ class UpdatePolicyEngine:
                     and row["source_trusted"]
                     and row["verification_available"]
                     and row["compatibility"] == "compatible"
+                    and row.get("download_stage_supported")
+                    and any(
+                        str(a.get("name") or "").lower().endswith((".zip",".tar.gz",".tgz"))
+                        and not str(a.get("name") or "").lower().endswith((".sha256",".sha256.txt","_sha256.txt"))
+                        for a in row["release_assets"] if isinstance(a,dict)
+                    )
                 )
             elif cached.get("ok") is False:
                 row["last_result"] = "check_error"

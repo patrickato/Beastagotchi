@@ -100,10 +100,19 @@ class GitHubReleaseChecker:
         for asset in (obj.get("assets") or [])[:128]:
             if not isinstance(asset, dict):
                 continue
+            download_url = str(asset.get("browser_download_url") or "").strip()
+            try:
+                du = urllib.parse.urlsplit(download_url)
+                if du.scheme != "https" or (du.hostname or "").lower() not in {"github.com", "www.github.com"}:
+                    download_url = ""
+            except Exception:
+                download_url = ""
             assets.append({
+                "id": int(asset.get("id") or 0),
                 "name": str(asset.get("name") or "")[:180],
                 "size_bytes": int(asset.get("size") or 0),
                 "digest": str(asset.get("digest") or "")[:160],
+                "download_url": download_url,
             })
         has_digest = any(str(a.get("digest") or "").lower().startswith("sha256:") for a in assets)
         has_sidecar = any(str(a.get("name") or "").lower().endswith((".sha256", ".sha256.txt", "_sha256.txt")) for a in assets)

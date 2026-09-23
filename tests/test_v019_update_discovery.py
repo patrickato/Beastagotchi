@@ -30,7 +30,10 @@ class FakeChecker:
             "repository": repo,
             "version": versions.get(repo, "v1.0.0"),
             "published_at": "2026-09-23T00:00:00Z",
-            "assets": [{"name": "release.sha256", "size_bytes": 100, "digest": ""}],
+            "assets": [
+                {"name": "release.tar.gz", "size_bytes": 1000, "digest": "", "download_url": "https://github.com/example/release.tar.gz"},
+                {"name": "release.tar.gz.sha256", "size_bytes": 100, "digest": "", "download_url": "https://github.com/example/release.tar.gz.sha256"}
+            ],
             "verification": {
                 "sha256_digest_asset": False,
                 "sha256_sidecar_asset": True,

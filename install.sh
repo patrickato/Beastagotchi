@@ -4,7 +4,7 @@ SRC="$(cd "$(dirname "$0")" && pwd)"
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then echo "Run with sudo: sudo ./install.sh"; exit 1; fi
 getent group beastagotchi >/dev/null 2>&1 || groupadd --system beastagotchi
 systemctl stop beast-core.service 2>/dev/null || true
-install -d -o root -g beastagotchi -m 0750 /var/lib/beastagotchi/support
+install -d -o root -g beastagotchi -m 0750 /var/lib/beastagotchi/support /var/lib/beastagotchi/updates /var/lib/beastagotchi/updates/staged
 install -d -o root -g beastagotchi -m 0750 /var/lib/beastagotchi/packs /var/lib/beastagotchi/packs/installed /var/lib/beastagotchi/packs/staged /var/lib/beastagotchi/packs/transactions
 install -d -o root -g beastagotchi -m 0770 /var/lib/beastagotchi/packs/inbox
 install -d -m 0755 /opt/beast-core /etc/beastagotchi /var/lib/beastagotchi
