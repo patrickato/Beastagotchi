@@ -59,13 +59,15 @@ def discover_enabled_pack_boards(
                 obj = json.loads(fp.read_text())
                 rows = obj.get("boards") if isinstance(obj, dict) and isinstance(obj.get("boards"), list) else [obj]
                 for row in validate_custom_boards(rows, catalog=catalog):
-                    bid = _scoped_id(pack_id, str(row.get("id") or fp.stem))
+                    local_id = str(row.get("id") or fp.stem)
+                    bid = _scoped_id(pack_id, local_id)
                     if bid in used:
                         continue
                     used.add(bid)
                     out.append({
                         **row,
                         "id": bid,
+                        "local_id": local_id,
                         "source_pack": pack_id,
                         "source_file": str(fp),
                         "readonly": True,

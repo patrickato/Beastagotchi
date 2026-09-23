@@ -28,6 +28,7 @@ from .action_client import BeastActionClient
 from .library_files import LibraryFileManager, LibraryFileError
 from .update_policies import UpdatePolicyStore, UpdatePolicyError
 from .pack_files import PackFileManager, PackFileError
+from .experiences import compose_experience_draft, ExperienceDraftError
 from beastcore.depot_catalog import DepotCatalogStore, DepotCatalogError
 
 
@@ -130,10 +131,16 @@ function renderDepot(localPacks=[]){let q=String($('depotSearch')?.value||'').tr
 async function loadDepot(localPacks=[]){try{let x=await jfetch('/api/depot');depotCache=x.items||[];$('depotMeta').textContent=(x.catalog_count||0)+' catalog(s) · '+(x.count||0)+' entries · '+(x.conflicts||[]).length+' duplicate-ID conflict(s) · remote refresh '+(x.remote_refresh_enabled?'enabled':'not yet enabled');renderDepot(localPacks)}catch(e){depotCache=[];$('depotMeta').textContent='Depot catalogs unavailable: '+e;renderDepot(localPacks)}}
 async function uploadDepot(){let f=$('depotFile').files[0];if(!f){$('status').textContent='Choose a Depot catalog JSON first.';return}let btn=$('uploadDepot');btn.disabled=true;try{let r=await fetch('/api/depot-upload?name='+encodeURIComponent(f.name),{method:'PUT',headers:{'X-Beast-Studio-Token':TOKEN,'Content-Type':'application/json'},body:f});let x=await r.json();if(!r.ok)throw Error(x.error||r.statusText);$('status').textContent='Imported '+x.name+' · '+x.count+' valid Pack entries. Catalog does not grant trust.';$('depotFile').value='';await loadPacks()}catch(e){$('status').textContent='Depot import failed: '+e}finally{btn.disabled=false}}
 $('uploadDepot').onclick=uploadDepot;$('depotSearch').oninput=()=>renderDepot(window._localPackRows||[]);$('depotType').onchange=()=>renderDepot(window._localPackRows||[]);
+async function previewExperience(r,btn){btn.disabled=true;try{
+  let out=await jfetch('/api/experience-draft',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:r.id})});
+  draft=clone(out.draft);undo=[];redo=[];rebuild();setTab('visual');
+  $('status').textContent='Experience loaded into draft only. '+(out.warnings||[]).join(' · ')+(out.warnings&&out.warnings.length?' · ':'')+'Review the live preview, adjust anything you want, then use APPLY TO BEAST if you want to keep it.';
+}catch(e){$('status').textContent='Experience preview failed: '+e}finally{btn.disabled=false}}
+
 async function loadPacks(){try{
   let [x,prefs,hist]=await Promise.all([jfetch('/api/platform'),jfetch('/api/update-policies'),jfetch('/api/pack-history')]);
   let packs=x.packs||{},updates=x.updates||{};window._localPackRows=packs.items||[];await loadDepot(window._localPackRows);
-  let ex=$('experienceList');ex.innerHTML='';let missions=x.missions||{};(missions.items||[]).filter(r=>r.experience).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${ready?'READY':'NEEDS INPUTS'}</span></div><div class="mini">${r.description||''}</div><div class="mini">Theme ${r.theme||'—'} · Face ${r.face_profile||'—'} · Motion ${r.animation_profile||'—'} · Board ${r.board||r.layout||'—'} · Deck ${r.deck||'—'}</div><div class="status">${r.source_pack?'Pack '+r.source_pack+' · ':''}preview only · transactional Apply not enabled yet</div>`;ex.append(d)});if(!(missions.items||[]).some(r=>r.experience))ex.innerHTML='<div class="status">No Experience profiles available yet.</div>';
+  let ex=$('experienceList');ex.innerHTML='';let missions=x.missions||{};(missions.items||[]).filter(r=>r.experience).forEach(r=>{let d=document.createElement('div');d.className='plugin';let ready=!!r.requirements_met;d.innerHTML=`<div class="pluginTop"><span class="pluginName">${r.label||r.id}</span><span class="pill ${ready?'on':''}">${ready?'READY':'NEEDS INPUTS'}</span></div><div class="mini">${r.description||''}</div><div class="mini">Theme ${r.theme||'—'} · Face ${r.face_profile||'—'} · Motion ${r.animation_profile||'—'} · Board ${r.board||r.layout||'—'} · Deck ${r.deck||'—'}</div><div class="status">${r.source_pack?'Pack '+r.source_pack+' · ':''}loads into the Studio draft; nothing changes until APPLY TO BEAST</div>`;let eb=document.createElement('button');eb.textContent='LOAD EXPERIENCE INTO PREVIEW';eb.disabled=!ready;eb.onclick=()=>previewExperience(r,eb);d.append(eb);ex.append(d)});if(!(missions.items||[]).some(r=>r.experience))ex.innerHTML='<div class="status">No Experience profiles available yet.</div>';
   let sum=$('packSummary');sum.innerHTML='';
   let c=document.createElement('div');c.className='widget';
   c.innerHTML=`<div class="widgetHead"><b>DEPOT FOUNDATION</b><span class="pill">${packs.count||0} PACKS</span></div><div class="mini">${packs.enabled_count||0} enabled · ${packs.staged_count||0} staged · ${packs.compatible_count||0} requirements-ready · ${packs.error_count||0} manifest errors</div><div class="mini">Registry install: ${packs.executor_enabled?'ENABLED':'LOCKED'} · activation ${packs.activation_enabled?'ENABLED':'LOCKED'} · ${packs.executor_reason||''}</div>`;
@@ -369,6 +376,13 @@ class StudioState:
         if not fp.is_file():raise ValueError('variant not found')
         fp.unlink();return {'ok':True,'id':slug}
 
+    def experience_draft(self,obj: dict)->dict:
+        mission_id=str(obj.get('id') or '')
+        platform=self.platform();missions=((platform or {}).get('missions') or {}).get('items') or []
+        mission=next((m for m in missions if isinstance(m,dict) and str(m.get('id') or '')==mission_id),None)
+        if mission is None:raise ExperienceDraftError('Experience not found')
+        return compose_experience_draft(self.preferences(),mission,self.schema())
+
     def platform(self)->dict:
         return self.api.platform_bundle()
 
@@ -555,7 +569,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
@@ -584,8 +598,9 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/update-stage':return self._send(200,self.st.update_stage(obj))
             if path=='/api/update-pack-plan':return self._send(200,self.st.update_pack_plan(obj))
             if path=='/api/update-pack-apply':return self._send(200,self.st.update_pack_apply(obj))
+            if path=='/api/experience-draft':return self._send(200,self.st.experience_draft(obj))
             if path=='/api/presentation-plan':return self._send(200,self.st.presentation_plan(obj))
-        except (ValueError,UpdatePolicyError) as exc:return self._send(400,{'error':str(exc)})
+        except (ValueError,UpdatePolicyError,ExperienceDraftError) as exc:return self._send(400,{'error':str(exc)})
         except Exception as exc:return self._send(500,{'error':type(exc).__name__})
         return self._send(404,{'error':'not found'})
 

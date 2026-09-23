@@ -45,7 +45,7 @@ class FaceEngine:
     def animation_profile_options(self):
         rows=[{"id":"none","label":"None · static face motion","source_pack":None,"target":"face"}]
         for pid,row in sorted(self.animation_profiles.items(),key=lambda x:(str(x[1].get("label") or x[0]).lower(),x[0])):
-            rows.append({"id":pid,"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"target":row.get("target")})
+            rows.append({"id":pid,"local_id":row.get("local_id"),"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"target":row.get("target")})
         return rows
 
     def set_profile(self, profile_id: str):
@@ -56,7 +56,7 @@ class FaceEngine:
     def profile_options(self):
         rows=[{"id":"builtin","label":"Built-in · follows theme","source_pack":None,"renderer":"builtin"}]
         for pid,row in sorted(self.profiles.items(),key=lambda x:(str(x[1].get("label") or x[0]).lower(),x[0])):
-            rows.append({"id":pid,"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"renderer":row.get("renderer")})
+            rows.append({"id":pid,"local_id":row.get("local_id"),"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"renderer":row.get("renderer")})
         return rows
 
     def resolve(self,state:dict)->dict:
