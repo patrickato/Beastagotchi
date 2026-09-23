@@ -15,6 +15,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX acceptance milestone.
 - `GLOSSARY.md` — common terms used across the project.
 - `REPOSITORY_MAP.md` — where code and docs live.
+- `REPOSITORY_HYGIENE.md` — living cleanup/archive policy and unresolved consolidation candidates.
 
 ## v0.19 / platform evolution
 
