@@ -196,6 +196,26 @@ approved scope.
 - [ ] privacy-safe cross-device Lineage Capsule exchange for optional community ancestry
 - [ ] physical roster/switch/synthesis usability validation
 
+## 6B. Peer encounters / Beast social layer
+
+- [x] architecture recognizes existing Pwnagotchi pwngrid peer layer as reusable substrate
+- [x] compatibility decision: ordinary Pwnagotchi peers count as Beastagotchi encounters even when remote device has no Beastagotchi
+- [x] two-tier interaction model defined: Pwnagotchi-compatible encounter vs Beast-to-Beast encounter
+- [x] privacy-safe cross-device Lineage Capsule concept protected
+- [ ] Beast Bridge canonical peer_detected / peer_lost events
+- [ ] persistent PeerDex / social encounter table keyed by pwngrid fingerprint
+- [ ] first-meeting / reunion / recurring-friend achievement families
+- [ ] capped/diminishing social XP to prevent proximity farming
+- [ ] peer encounters attached to Expeditions / Memory Vault
+- [ ] Beast UI nearby-peer / old-friend presentation
+- [ ] Beast peer-extension public descriptor schema
+- [ ] explicit opt-in Beast-to-Beast descriptor exchange
+- [ ] Lineage Capsule export/import
+- [ ] automatic nearby Lineage Capsule exchange after explicit user approval
+- [ ] local Beast + remote lineage synthesis path
+- [ ] later peer group/party/cooperative survey concepts
+- [ ] later Meshtastic/LoRa peer-presence transport
+
 ## 7. Achievements / secrets / rares / delight systems
 
 - [x] achievement/award foundation

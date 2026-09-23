@@ -125,6 +125,25 @@ Next:
 - Hall of Legends + ancestry tree;
 - later evaluate additional generations and privacy-safe cross-device Lineage Capsules.
 
+### Gate 7A — Peer encounters / Beast social layer
+
+Direction:
+- reuse Pwnagotchi's existing pwngrid peer identity/encounter substrate;
+- ordinary Pwnagotchi peers can count locally even when they do not run Beastagotchi;
+- Beast-to-Beast features add a separate privacy-safe capability layer;
+- first-meeting/reunion/friend/bond events feed progression with anti-farming limits;
+- future Lineage Capsules allow cross-device ancestry without sharing captures,
+  secrets, logs or location history;
+- no cloud service is required.
+
+Next:
+- canonical peer events through Beast Bridge;
+- persistent PeerDex/social history;
+- Beast UI peer presentation and achievements;
+- public Beast peer descriptor/privacy schema;
+- explicit opt-in Lineage Capsule exchange;
+- remote-lineage synthesis only after local roster/synthesis is mature.
+
 ### Gate 8 — Experience depth
 - richer progression/evolution/personality presentation;
 - achievements/awards/rarity/trophy cabinet;

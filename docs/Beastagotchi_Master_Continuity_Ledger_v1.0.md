@@ -72,6 +72,23 @@ views, later-generation synthesis if playtesting supports it, and a future
 privacy-safe cross-device Lineage Capsule concept for optional community
 ancestry without sharing captures, logs, secrets or location history.
 
+## Peer encounters / social lineage — retained
+
+Beastagotchi must preserve interoperability with ordinary Pwnagotchi peers.
+Existing pwngrid peer advertisements/fingerprints are treated as the low-level
+encounter substrate. A remote Pwnagotchi does **not** need Beastagotchi installed
+for the local Beastagotchi to notice it, record the encounter, react socially or
+award bounded local progression/achievements.
+
+Richer two-way Beast features require both peers to implement the compatible
+Beast peer extension. Approved direction includes persistent PeerDex/friend
+history, reunion/bond milestones, Expedition-linked encounters, privacy-safe
+public Beast descriptors and future Lineage Capsules.
+
+Cross-device lineage must not expose captures, Wi-Fi history, credentials,
+private logs, precise location history or owner secrets. QR/file/local-network/
+Bluetooth/Meshtastic transports may be explored. No cloud account is required.
+
 ## Structural customization — retained
 
 Data, widgets, renderers, layouts, themes, face packs and Beast personality remain separate layers. Themes are structural identities, not simple recolors. Layouts remain independently selectable/editable. Visualizer Studio, Theme Studio, Spatial Studio/custom Boards, Context Decks and user-authored combinations remain part of the planned platform.
