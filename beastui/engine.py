@@ -24,6 +24,7 @@ from .reactions import ReactionGovernor
 from .theme import load_theme, discover_enabled_pack_themes
 from .pack_content import discover_enabled_pack_boards
 from .rare_overlay import render_rare_overlay, acknowledge_rare_event
+from .monster_reveal import render_monster_reveal, reveal_active
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
@@ -108,7 +109,7 @@ class BeastUI:
             try:self.touch=TouchInput(str(cfg),self._on_physical_input)
             except Exception:self.touch=None
         self.last_render=0.0; self.last_input=None; self.last_input_at=0.0
-        self.touching=False; self.button_flash=None; self.button_flash_at=0.0; self.transition=None
+        self.touching=False; self.button_flash=None; self.button_flash_at=0.0; self.transition=None; self.monster_reveal_dismissed_id=None; self._monster_reveal_was_active=False
         self.test_mode_path=Path('/run/beastagotchi/ui-test-mode'); self.runtime_path=Path('/run/beastagotchi/ui-runtime.json'); self.rare_preview_path=Path('/var/lib/beastagotchi/ui/rare_preview.json')
         self._render_samples=[]; self._compose_samples=[]; self._write_samples=[]; self._frame_count=0; self._runtime_started=time.monotonic()
         self.reactions=ReactionGovernor(); self._last_reaction_id=None
@@ -537,6 +538,10 @@ class BeastUI:
         if kind in {'touch_down','drag'}: self.touching=True; self.dirty.set(); return
         if kind=='touch_up': self.touching=False; self.dirty.set(); return
 
+        if kind=='tap' and reveal_active(self.state,dismissed_id=self.monster_reveal_dismissed_id):
+            self.monster_reveal_dismissed_id=str(self.state.get('roster.monster_reveal.id') or '')
+            self.dirty.set();return
+
         # Rare moments sit above every normal UI layer. A deliberate tap while
         # the cinematic is active is the only acknowledgement used for the
         # corresponding hidden achievement.
@@ -899,6 +904,9 @@ class BeastUI:
         now=time.monotonic() if now is None else float(now)
         if self.transition:return True
         if self.state.get('rare.omen.active') or self.state.get('rare.moment.active'):return True
+        mr=reveal_active(self.state,dismissed_id=self.monster_reveal_dismissed_id)
+        if mr:self._monster_reveal_was_active=True;return True
+        if self._monster_reveal_was_active:self._monster_reveal_was_active=False;return True
         if self.button_flash:
             age=now-self.button_flash_at
             if age<.30:return True
@@ -1751,8 +1759,8 @@ class BeastUI:
         # Dark/Light: the untouched Jayofelony composition is the point.
         # Chroma only recolors/glows the exact native foreground mask.
         self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
-        # Rare omens/moments remain a Beast-wide top layer by design, including
-        # while the native Pwnagotchi profile is selected.
+        # Monster reveals remain available above Native; Rare Moments still win final priority.
+        im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         return render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
 
     def _background_cadence(self,opts):
@@ -1800,7 +1808,8 @@ class BeastUI:
             # Protected scanline layer: always painted after normal/foreground
             # theme effects so Matrix rain can never segment it.
             col=self.theme.c('scanline',self.theme.c('edge'));d.rectangle((0,y,479,y+width-1),fill=col)
-        # Rare omens/moments are the final compositing layer by design.
+        # Monster reveals are celebratory, but Rare Moments remain the absolute top layer.
+        im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         im=render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
         return im
 

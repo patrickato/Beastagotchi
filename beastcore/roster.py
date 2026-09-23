@@ -339,6 +339,7 @@ class BeastRoster:
             "generated": generated,
         }
         lineage = "monster.hybrid"
+        first_monstergotchi_unlock = self.conn.execute("SELECT 1 FROM global_unlocks WHERE unlock_id=?", (MONSTER_GLOBAL_UNLOCK,)).fetchone() is None
         with self.conn:
             self.conn.execute(
                 """INSERT INTO beasts(id,name,kind,lineage_id,status,active,generation,created_at,updated_at,trait_seed,identity_json,appearance_json,preferences_json)
@@ -372,6 +373,7 @@ class BeastRoster:
             "synthesis_id": synthesis_id,
             "monster": self.get(child_id),
             "global_unlock": MONSTER_GLOBAL_UNLOCK,
+            "first_monstergotchi_unlock": bool(first_monstergotchi_unlock),
             "parents": [self.get(a["id"]), self.get(b["id"])],
             "parents_consumed": False,
             "parents_reset": False,

@@ -253,11 +253,22 @@ class ActionBroker:
                     name=str(requested.get("name") or "Monster")[:64],
                 )
                 monster=result.get("monster") or {}
+                reveal_now=time.time();mutation=((monster.get("appearance") or {}).get("mutation"))
                 self.state.update_many("roster",{
                     "roster.last_monster.id":monster.get("id"),
                     "roster.last_monster.name":monster.get("name"),
                     "roster.last_monster.generation":monster.get("generation"),
                     "roster.count":len(self.roster.list()),
+                    "roster.monster_reveal.id":monster.get("id"),
+                    "roster.monster_reveal.name":monster.get("name"),
+                    "roster.monster_reveal.generation":monster.get("generation"),
+                    "roster.monster_reveal.stage":monster.get("stage"),
+                    "roster.monster_reveal.parents":[p.get("name") for p in result.get("parents") or []],
+                    "roster.monster_reveal.traits":((monster.get("identity") or {}).get("traits") or {}),
+                    "roster.monster_reveal.mutation":mutation,
+                    "roster.monster_reveal.first_unlock":bool(result.get("first_monstergotchi_unlock")),
+                    "roster.monster_reveal.created_at":reveal_now,
+                    "roster.monster_reveal.until":reveal_now+12.0,
                 },priority=89)
                 mev=self.events.publish("roster.monster_created","roster",{
                     "id":monster.get("id"),"name":monster.get("name"),
