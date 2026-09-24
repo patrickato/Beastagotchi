@@ -4,6 +4,7 @@ import pytest
 from PIL import Image, ImageDraw, ImageFont
 
 from beastui.home_scenes import render_home_scene
+from beastui.concept_creatures import concept_creature
 from beastui.scene_compositor import (
     ambient_glow,
     clear_compositor_caches,
@@ -107,12 +108,10 @@ def test_home_hero_publishes_layer_registry(tmp_path: Path):
     assert {
         "home.environment",
         "home.creature.art",
-        "home.creature.identity",
-        "home.field_hud",
-        "home.status_ribbon",
-        "home.system_chips",
+        "home.live_field",
+        "home.identity_status",
     }.issubset(ids)
-    hud = next(row for row in snap["layers"] if row["id"] == "home.field_hud")
+    hud = next(row for row in snap["layers"] if row["id"] == "home.live_field")
     assert "wifi.ap_count" in hud["signals"]
     env = next(row for row in snap["layers"] if row["id"] == "home.environment")
     assert env["decorative"] is True
@@ -136,3 +135,12 @@ def test_compositor_reuses_glow_and_asset_preprocessing(tmp_path: Path):
     assert paste_scene_asset(base, asset, (8, 38, 278, 269), phase=0.9, edge_fade=30)
     fourth = compositor_cache_telemetry()
     assert fourth["asset_hits"] == 1
+
+
+def test_flagship_concept_creatures_decode_with_alpha():
+    for name in ("classic", "cyberpunk", "blackice"):
+        image = concept_creature(name)
+        assert image is not None
+        assert image.mode == "RGBA"
+        assert image.width >= 80 and image.height >= 80
+        assert image.getchannel("A").getbbox() is not None
