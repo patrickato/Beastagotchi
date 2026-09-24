@@ -102,7 +102,7 @@ class SystemCollector(Collector):
                 uptime = float(up[0]); values["system.uptime_sec"] = uptime; values["system.boot_time"] = time.time() - uptime
             except Exception: pass
         if self._static is None:
-            static = {"system.hostname": socket.gethostname(), "system.kernel": platform.release()}
+            static = {"system.hostname": socket.gethostname(), "system.kernel": platform.release(), "system.architecture": platform.machine(), "system.os": platform.system()}
             model = read_text("/proc/device-tree/model").replace("\x00", "").strip()
             if model: static["system.model"] = model
             self._static = static
