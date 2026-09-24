@@ -69,6 +69,9 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
     final_state_raw = _read_json(root / "state-final.json")
     final_state = final_state_raw.get("state") if isinstance(final_state_raw.get("state"), dict) else final_state_raw
     runtime_final = _read_json(root / "ui-runtime-final.json")
+    deployment = _read_json(root / "deployment-provenance.json")
+    if not deployment and isinstance(preflight.get("deployment"), dict):
+        deployment = dict(preflight.get("deployment") or {})
 
     temp = _metric(_nested(r, "state", "system.temp.cpu_c") for r in samples)
     cpu = _metric(_nested(r, "state", "system.cpu.total") for r in samples)
@@ -139,6 +142,12 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
         "evidence_class": "target_physical_session",
         "physical_user_judgment": "required",
         "sample_count": len(samples),
+        "deployment": {
+            "source_commit": deployment.get("source_commit"),
+            "ci_tested_commit": deployment.get("ci_tested_commit"),
+            "archive_sha256": deployment.get("archive_sha256"),
+            "staged_at_utc": deployment.get("staged_at_utc"),
+        },
         "metrics": {
             "cpu_temp_c": temp,
             "cpu_pct": cpu,
@@ -181,6 +190,9 @@ def write_text_report(summary: dict[str, Any]) -> str:
         "=" * 47,
         f"Session: {summary.get('session_dir')}",
         f"Samples: {summary.get('sample_count')}",
+        f"Source commit: {(summary.get('deployment') or {}).get('source_commit')}",
+        f"CI-tested commit: {(summary.get('deployment') or {}).get('ci_tested_commit')}",
+        f"Source archive SHA-256: {(summary.get('deployment') or {}).get('archive_sha256')}",
         "",
         "Objective telemetry",
     ]
