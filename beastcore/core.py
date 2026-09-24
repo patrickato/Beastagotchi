@@ -44,6 +44,7 @@ from .roster import BeastRoster
 from .global_sync import GlobalProfileSync
 from .memories import BeastMemoryEngine
 from .actions import ActionBroker
+from .owner_mode import OwnerModeManager
 from .action_server import LocalActionServer
 from .collectors import *
 
@@ -96,9 +97,11 @@ class BeastCore:
         self.peerdex = PeerDex(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
+        self.owner_mode = OwnerModeManager()
+        self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
-        self.actions = ActionBroker(self.state, self.store, self.events)
+        self.actions = ActionBroker(self.state, self.store, self.events, owner_mode=self.owner_mode)
         self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)
         self.api.backup_manager = self.actions.backup_manager
