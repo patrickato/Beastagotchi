@@ -1087,3 +1087,54 @@ The next major gate is no longer "build a test harness." It is now:
 
 This still does not authorize merging Draft PR #9 to `main`.
 
+## Beast Studio Capsule Workshop checkpoint — 2026-09-24
+
+The offline Capsule system now has a browser-side exact-share workflow in
+addition to the TFT Capsule Share surface.
+
+Implemented:
+- **CAPSULES** is a first-class Beast Studio tab;
+- persistent roster creature selection;
+- explicit share controls for chosen creature name, curated appearance traits,
+  and earned achievement IDs;
+- read-only /api/capsule-preview Studio bridge to Beast Core Lineage export;
+- exact Capsule envelope JSON shown before sharing;
+- local /api/capsule-qr renderer for the exact selected BCQ1 frame;
+- manual previous/next QR frame navigation;
+- visible integrity/authenticity wording and privacy summary;
+- explicit statement that no import or publication occurred.
+
+Security/architecture:
+- Studio API pairing token still gates both Capsule endpoints;
+- QR rendering accepts only bounded BCQ1 transport frames;
+- no external CDN/QR web service is used;
+- optional QR dependency remains in the Beast-owned Python boundary;
+- Workshop preview does not synthesize, import, publish or mutate roster state.
+
+Code-bearing validation:
+- commit 9ce74f318e7830c5134d9aa94dda10a9a4c81dca;
+- GitHub Actions run 35979568253 (#367): success;
+- **406 tests passed in 9.84s**;
+- Python compile passed;
+- shell syntax passed;
+- sanitized real-state UX gallery passed;
+- commit-pinned Pi acceptance source bundle passed;
+- gallery artifact 10799348667;
+- gallery digest
+  sha256:fdb13817aa906147ecf3721e033e76de23cc032a4119cb68030fe69cab556097;
+- Pi source artifact 10799498051;
+- Pi artifact digest
+  sha256:cc781a848340d47b2d3ee0c72dc7964c73d562e22c20c2e0ab80a0de598d4d13.
+
+Validation boundary:
+this remains source/CI evidence. Physical TFT QR scanning and target-runtime
+Capsule UX are still part of the pending bounded Pi acceptance session.
+
+Next Capsule work after the physical evidence:
+- file export;
+- receive/scan preview with no roster mutation;
+- signed authenticity design;
+- Beast Card / PeerDex Capsule;
+- Challenge Capsule;
+- only later confirmed remote-lineage import/synthesis semantics.
+
