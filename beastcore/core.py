@@ -46,6 +46,8 @@ from .global_sync import GlobalProfileSync
 from .memories import BeastMemoryEngine
 from .actions import ActionBroker
 from .owner_mode import OwnerModeManager
+from .provider_preferences import ProviderPreferenceManager
+from .doctor import BeastDoctor
 from .action_server import LocalActionServer
 from .collectors import *
 
@@ -58,6 +60,8 @@ class BeastCore:
         self.store = Store(db_path)
         self.channel_history = ChannelActivityEngine(self.state)
         self.telemetry = TelemetryCatalog(self.state)
+        self.provider_preferences = ProviderPreferenceManager()
+        self.state.update_many("provider_preferences", self.provider_preferences.state_patch(), priority=98)
         self.dependencies = DependencyCapabilityResolver(self.state)
         self.plugin_integration = PluginIntegrationEngine(self.state, resolver=self.dependencies)
         self.template_tokens = TemplateTokenRegistry(self.state)
@@ -96,6 +100,7 @@ class BeastCore:
         self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
+        self.doctor = BeastDoctor(self.state)
         self.peerdex = PeerDex(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
@@ -103,11 +108,18 @@ class BeastCore:
         self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
-        self.actions = ActionBroker(self.state, self.store, self.events, owner_mode=self.owner_mode)
+        self.actions = ActionBroker(
+            self.state,
+            self.store,
+            self.events,
+            owner_mode=self.owner_mode,
+            provider_preferences=self.provider_preferences,
+        )
         self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)
         self.api.backup_manager = self.actions.backup_manager
         self.api.operator_tools = self.operator_tools
+        self.api.doctor = self.doctor
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
         self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
@@ -548,6 +560,21 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
             except asyncio.TimeoutError: pass
 
+    async def _doctor_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("doctor", self.doctor.state_patch(), priority=76)
+                if changed:
+                    self.events.publish("doctor.changed", "doctor", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("Beast Doctor failed")
+                ev = self.events.publish("doctor.error", "doctor", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                pass
+
     async def _global_sync_loop(self) -> None:
         # Privacy-first local publisher. This only creates sanitized revisions in
         # the local queue; a separate future connector performs network I/O.
@@ -653,6 +680,7 @@ class BeastCore:
             asyncio.create_task(self._channel_history_loop(), name="channel-history"),
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
             asyncio.create_task(self._packs_loop(), name="packs"),
+            asyncio.create_task(self._doctor_loop(), name="doctor"),
             asyncio.create_task(self._updates_loop(), name="updates"),
             asyncio.create_task(self._update_automation_loop(), name="update-automation"),
             asyncio.create_task(self._presentation_loop(), name="presentation"),
