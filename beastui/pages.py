@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from .design import PRIMARY_PAGES
 from .customization import dashboard_widget_box
-from .components import card, label_value, progress_bar, divider, status_badge, section_title
+from .components import card, label_value, progress_bar, divider, status_badge, section_title, empty_state, summary_strip
 from .widgets import (
     panel, metric, channel_bars, line_area, multiline, bars, stacked_bars, histogram,
     waveform, waterfall, radial, donut, radar, polar, signal_meter, heatmap, timeline, microtrend,
@@ -302,39 +302,73 @@ class Pages:
         d.text((12,269),f'{board_label.upper()[:18]} // LIVE CANONICAL TELEMETRY // long-press tile for source',font=f['micro'],fill=t.c('dim'))
 
     def recon(self,d,state,ui):
-        t=ui.theme;f=ui.fonts;aps=state.get('wifi.aps') or [];mode=ui.renderer_for('recon')
-        d.text((12,44),f'RECON // {mode.upper()} // LIVE BETTERCAP OBSERVATIONS',font=f['tiny'],fill=t.c('dim'))
-        left=(8,58,252,268)
-        rows=sorted([a for a in aps if isinstance(a,dict)],key=lambda a:a.get('rssi',-999),reverse=True)
+        t=ui.theme;f=ui.fonts
+        aps=[a for a in (state.get('wifi.aps') or []) if isinstance(a,dict)]
+        mode=ui.renderer_for('recon')
+        rows=sorted(aps,key=lambda a:a.get('rssi',-999),reverse=True)
+        strongest=rows[0] if rows else {}
+        strongest_rssi=strongest.get('rssi','--')
+        channels=len(self._channel_counts(rows))
+        summary_strip(
+            d,(8,43,472,91),
+            [
+                ('OBSERVED',len(rows),t.c('primary')),
+                ('CHANNELS',channels,t.c('info')),
+                ('STRONGEST',f"{strongest_rssi} dBm" if isinstance(strongest_rssi,(int,float)) else '--',t.c('accent')),
+                ('VIEW',str(mode).upper(),t.c('secondary')),
+            ],
+            f,t,
+        )
+
+        left=(8,99,286,268)
+        right=(294,99,472,268)
         strengths=[]
-        for ap in rows[:16]:
+        for ap in rows[:18]:
             try:strengths.append(max(0,min(100,100+float(ap.get('rssi',-100)))))
             except Exception:strengths.append(0)
-        if mode=='radar':
-            panel(d,left,t);cx,cy=130,164
-            for r in (32,64,94):d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=t.c('edge'))
-            d.line((cx-98,cy,cx+98,cy),fill=t.c('edge'));d.line((cx,cy-98,cx,cy+98),fill=t.c('edge'))
-            # Sweep is decorative UI chrome only; plotted geometry is truthful:
-            # radius = RSSI, angle = observed Wi-Fi channel (not bearing).
-            sweep=(ui.phase*55)%360;ex=cx+int(math.cos(math.radians(sweep))*94);ey=cy+int(math.sin(math.radians(sweep))*94)
+
+        if not rows:
+            empty_state(
+                d,left,'NO OBSERVATIONS','Waiting for live Bettercap AP state.',f,t,
+                hint='RECON STAYS EMPTY UNTIL REAL DATA ARRIVES',
+            )
+        elif mode=='radar':
+            card(d,left,t);cx,cy=147,184
+            for r in (28,54,76):d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=t.c('edge'))
+            d.line((cx-80,cy,cx+80,cy),fill=t.c('edge'));d.line((cx,cy-80,cx,cy+80),fill=t.c('edge'))
+            sweep=(ui.phase*55)%360;ex=cx+int(math.cos(math.radians(sweep))*76);ey=cy+int(math.sin(math.radians(sweep))*76)
             d.line((cx,cy,ex,ey),fill=t.c('grid'),width=1)
             for i,ap in enumerate(rows[:18]):
                 try:rssi=float(ap.get('rssi',-100))
                 except Exception:rssi=-100
                 a=self._channel_angle(ap.get('channel'))
                 if a is None:continue
-                strength=max(0.0,min(1.0,(rssi+100.0)/70.0));rr=max(10,int(94*(1.0-strength)))
+                strength=max(0.0,min(1.0,(rssi+100.0)/70.0));rr=max(9,int(76*(1.0-strength)))
                 x=cx+int(math.cos(math.radians(a))*rr);y=cy+int(math.sin(math.radians(a))*rr)
                 d.ellipse((x-3,y-3,x+3,y+3),fill=t.c('accent') if i==0 else t.c('primary'))
-            d.text((18,247),'R=RSSI  ANGLE=CHANNEL',font=f['tiny'],fill=t.c('dim'))
+            section_title(d,(18,108),'LIVE FIELD',f,t)
+            d.text((18,249),'RADIUS = RSSI · ANGLE = CHANNEL',font=f['micro'],fill=t.c('dim'))
         elif mode=='polar':polar(d,left,strengths[:12],t,t.c('accent'))
         elif mode=='bars':bars(d,left,strengths[:16],t,t.c('primary'))
         elif mode=='signal':signal_meter(d,left,max(strengths or [0]),t,t.c('accent'))
         else:radar(d,left,strengths[:8] or [0,0,0],list(range(8)),t,t.c('accent'))
-        panel(d,(260,58,472,268),t);d.text((270,66),'STRONGEST / RECENT',font=f['tiny'],fill=t.c('dim'))
-        for i,ap in enumerate(rows[:7]):
-            y=84+i*25;ssid=str(ap.get('hostname') or ap.get('ssid') or '<hidden>')[:17];ch=ap.get('channel','--');rssi=ap.get('rssi','--')
-            d.text((270,y),ssid,font=f['small'],fill=t.c('text'));d.text((400,y),f'{ch}/{rssi}',font=f['tiny'],fill=t.c('accent'))
+
+        card(d,right,t)
+        section_title(d,(304,108),'STRONGEST / RECENT',f,t)
+        if rows:
+            for i,ap in enumerate(rows[:5]):
+                y=128+i*27
+                ssid=str(ap.get('hostname') or ap.get('ssid') or '<hidden>').strip() or '<hidden>'
+                ch=ap.get('channel','--');rssi=ap.get('rssi','--')
+                d.text((304,y),ssid[:18],font=f['small'],fill=t.c('text'))
+                d.text((304,y+12),f'CH {ch}',font=f['micro'],fill=t.c('dim'))
+                val=f'{rssi} dBm' if isinstance(rssi,(int,float)) else '--'
+                vb=d.textbbox((0,0),val,font=f['tiny']);vw=vb[2]-vb[0]
+                d.text((462-vw,y+10),val,font=f['tiny'],fill=t.c('accent') if i==0 else t.c('info'))
+                if i<4:divider(d,304,y+24,462,t)
+        else:
+            d.text((304,143),'NO LIVE AP ROWS',font=f['small'],fill=t.c('dim'))
+        d.text((304,249),'Detail/search keeps the full catalog.',font=f['micro'],fill=t.c('dim'))
 
     def networks(self,d,state,ui):
         t=ui.theme;f=ui.fonts
@@ -378,35 +412,60 @@ class Pages:
             d.text((12,266),f'+ {len(rows)-6} MORE · open detail/search for complete list',font=f['micro'],fill=t.c('dim'))
 
     def spectrum(self,d,state,ui):
-        t=ui.theme;f=ui.fonts;aps=state.get('wifi.aps') or [];mode=ui.renderer_for('spectrum');counts=self._channel_counts(aps);channels=sorted(counts);vals=[counts[ch] for ch in channels]
-        d.text((12,44),f'OBSERVED WI-FI CHANNEL ACTIVITY // {mode.upper()}',font=f['tiny'],fill=t.c('dim'))
-        box=(8,60,472,185)
+        t=ui.theme;f=ui.fonts
+        aps=[a for a in (state.get('wifi.aps') or []) if isinstance(a,dict)]
+        mode=ui.renderer_for('spectrum')
+        counts=self._channel_counts(aps);channels=sorted(counts);vals=[counts[ch] for ch in channels]
+        current=self._v(state,'radio.primary.channel')
+        band=self._v(state,'radio.primary.band')
+        busiest=max(counts,key=counts.get) if counts else '--'
+        summary_strip(
+            d,(8,43,472,91),
+            [
+                ('CURRENT',current,t.c('accent')),
+                ('BAND',band,t.c('info')),
+                ('BUSIEST',busiest,t.c('secondary')),
+                ('APS',len(aps),t.c('primary')),
+            ],
+            f,t,
+        )
+
+        box=(8,99,472,211)
         channel_hist=ui.aux.get('channel_history') if isinstance(getattr(ui,'aux',None),dict) else []
         hist_channels,matrix=self._channel_history_matrix(channel_hist,'ap_count')
-        if mode=='bars':channel_bars(d,box,aps,t)
+        if not aps and not matrix:
+            empty_state(
+                d,box,'COLLECTING CHANNEL HISTORY','No real channel observations are available yet.',f,t,
+                hint='THIS VIEW DOES NOT SYNTHESIZE RF POWER',
+            )
+        elif mode=='bars':channel_bars(d,box,aps,t)
         elif mode=='line':line_area(d,box,vals,t,t.c('accent'),fill_area=False)
         elif mode=='area':line_area(d,box,vals,t,t.c('accent'),fill_area=True)
         elif mode in {'heatmap','waterfall'}:
             if matrix:
-                # Every cell is a real successive per-channel Bettercap sample.
                 shown=matrix[-18:] if mode=='heatmap' else matrix[-28:]
                 heatmap(d,box,shown,t,t.c('accent') if mode=='waterfall' else t.c('primary'))
                 if hist_channels:
-                    d.text((14,171),f'CH {hist_channels[0]}',font=f['tiny'],fill=t.c('dim'))
-                    d.text((423,171),f'{hist_channels[-1]}',font=f['tiny'],fill=t.c('dim'))
+                    d.text((14,195),f'CH {hist_channels[0]}',font=f['tiny'],fill=t.c('dim'))
+                    d.text((423,195),f'{hist_channels[-1]}',font=f['tiny'],fill=t.c('dim'))
             else:
-                panel(d,box,t);d.text((120,115),'COLLECTING REAL CHANNEL HISTORY...',font=f['small'],fill=t.c('dim'))
+                empty_state(d,box,'HISTORY NOT READY','Waiting for successive real channel samples.',f,t)
         elif mode=='radar':
-            top=sorted(counts.items(),key=lambda kv:(-kv[1],kv[0]))[:8];radar(d,box,[v for _,v in top],[str(ch) for ch,_ in top],t,t.c('accent'))
+            top=sorted(counts.items(),key=lambda kv:(-kv[1],kv[0]))[:8]
+            radar(d,box,[v for _,v in top],[str(ch) for ch,_ in top],t,t.c('accent'))
         elif mode=='polar':polar(d,box,vals,t,t.c('accent'))
         elif mode=='histogram':histogram(d,box,vals,t,t.c('primary'),bins=10)
         elif mode=='donut':donut(d,box,vals,t,[t.c('primary'),t.c('accent'),t.c('secondary'),t.c('info')],center_text=sum(vals),font=f['small'])
         elif mode=='waveform':waveform(d,box,vals,t,t.c('accent'))
         else:channel_bars(d,box,aps,t)
+
         hist=ui.histories.get('wifi.ap_count') or []
-        microtrend(d,(8,194,238,264),self._v(state,'wifi.ap_count',0),hist,t,t.c('accent'),font=f['small'],label='TOTAL OBSERVED AP TREND')
-        metric(d,(246,194,356,264),'Current',self._v(state,'radio.primary.channel'),f,t,t.c('accent'));metric(d,(364,194,472,264),'Band',self._v(state,'radio.primary.band'),f,t)
-        d.text((270,254),'NOT RAW RF POWER',font=f['tiny'],fill=t.c('dim'))
+        card(d,(8,219,472,268),t)
+        section_title(d,(18,227),f'OBSERVED ACTIVITY · {str(mode).upper()}',f,t)
+        d.text((18,241),'Wi-Fi occupancy derived from observed AP/channel data.',font=f['tiny'],fill=t.c('text'))
+        d.text((18,254),'NOT RAW RF POWER',font=f['micro'],fill=t.c('warn'))
+        if hist:
+            d.text((338,241),f'{len(hist)} AP samples',font=f['tiny'],fill=t.c('dim'))
 
     def captures(self,d,state,ui):
         t=ui.theme;f=ui.fonts;mode=ui.renderer_for('captures');total=self._v(state,'captures.total',self._v(state,'pwnagotchi.cache.handshake_ap_count',0));session=self._v(state,'pwnagotchi.handshakes',0);better=self._v(state,'wifi.handshake_ap_count',0)
