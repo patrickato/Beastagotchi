@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-_VERSION_RE = re.compile(r'__version__\\s*=\\s*["\\']([^"\\']+)["\\']')
+_VERSION_RE = re.compile(r"__version__\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"]")
 _MAX_SOURCE_BYTES = 1_500_000
 
 
