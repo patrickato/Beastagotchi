@@ -262,6 +262,11 @@ class DependencyCapabilityResolver:
         native = self.native_providers()
         if req in native:
             return self._result(requirement, "capability", "satisfied", remediation="none", providers=native[req], optional=optional)
+        if req in self._capability_names():
+            return self._result(
+                requirement, "capability", "satisfied", remediation="none",
+                providers=[f"native:capability:{req}"], optional=optional,
+            )
 
         if req.endswith(".service"):
             return self._resolve_service(requirement, req, optional=optional)
@@ -325,18 +330,20 @@ class DependencyCapabilityResolver:
             cid = str(raw.get("id") or raw.get("name") or f"component-{i}").strip()
             if not cid:
                 continue
+            enabled_default = bool(raw.get("enabled", raw.get("active", True)))
             normalized.append({
                 **raw,
                 "_id": cid,
                 "_norm": self._norm(cid).replace("-", "_"),
-                "_enabled": bool(raw.get("enabled", raw.get("active", True))),
+                "_available": bool(raw.get("available", enabled_default)),
+                "_selected": bool(raw.get("selected", enabled_default)),
             })
 
         provider_index: dict[str, list[str]] = {
             cap: list(providers) for cap, providers in self.native_providers().items()
         }
         for row in normalized:
-            if not row["_enabled"]:
+            if not row["_available"]:
                 continue
             for capability in row.get("provides") or []:
                 cap = self._norm(capability)
@@ -374,7 +381,7 @@ class DependencyCapabilityResolver:
             conflicts = {self._norm(x).replace("-", "_") for x in row.get("conflicts") or []}
             if conflicts:
                 for other in normalized:
-                    if other["_norm"] in conflicts and other["_enabled"]:
+                    if other["_norm"] in conflicts and other["_selected"]:
                         conflict_rows.append(self._result(
                             f"conflict:{other['_id']}", "conflict", "conflict",
                             remediation="choose_provider",
@@ -410,7 +417,7 @@ class DependencyCapabilityResolver:
             technical_total += len(technical)
             policy_total += len(policy)
             unresolved_total += len(unresolved)
-            if row["_enabled"]:
+            if row["_selected"]:
                 active_technical_total += len(technical)
                 active_policy_total += len(policy)
                 active_unresolved_total += len(unresolved)
@@ -423,7 +430,8 @@ class DependencyCapabilityResolver:
 
             results[row["_id"]] = {
                 "requirements_resolution": "read_only",
-                "selected": bool(row["_enabled"]),
+                "available": bool(row["_available"]),
+                "selected": bool(row["_selected"]),
                 "requirements_ready": not technical and not policy,
                 "requirements_status": readiness,
                 "technical_blockers": technical,
@@ -445,7 +453,8 @@ class DependencyCapabilityResolver:
             "used_by": {k: sorted(v) for k, v in sorted(used_by.items())},
             "summary": {
                 "component_count": len(results),
-                "selected_component_count": sum(1 for row in normalized if row["_enabled"]),
+                "available_component_count": sum(1 for row in normalized if row["_available"]),
+                "selected_component_count": sum(1 for row in normalized if row["_selected"]),
                 "active_technical_blocker_count": active_technical_total,
                 "active_policy_blocker_count": active_policy_total,
                 "active_unresolved_count": active_unresolved_total,
