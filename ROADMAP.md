@@ -33,6 +33,10 @@ The first capability-first `PlatformProfile` is implemented in Core and exposed
 at `/platform-profile`; board names refine defaults but do not define the product
 boundary.
 
+PwnDoctor cross-pollination and the on-demand Doctor Knowledge/Skill Cache direction are preserved in
+`docs/Beastagotchi_Doctor_Knowledge_Runtime_CrossPollination_2026-09-24.md`.
+The Doctor should remain a small trusted kernel that resolves versioned condition/runbook/probe knowledge on demand; downloaded knowledge does not automatically gain Action authority.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
