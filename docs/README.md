@@ -8,6 +8,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `Beastagotchi_Master_Continuity_Ledger_v1.0.md` — explicit anti-forgetting ledger.
 - `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
 - `Beastagotchi_v019_Active_Checkpoint_Delta.md` — active v0.19 implementation checkpoint.
+- `Beastagotchi_Current_Gate_Status_2026-09-24.md` — concise finished-vs-remaining gate ledger and immediate physical closure path.
 - `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — recovered chats/Library/repository continuity and supersession record.
 - `Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md` — sanitized recovered v0.19 design/provenance decisions from the pinned-chat reconstruction.
 - `Beastagotchi_Preservation_Recovery_Workflow.md` — required multi-layer long-term preservation process.
