@@ -24,7 +24,11 @@ The script does **not** automatically declare these things acceptable. Objective
 
 ## Installed command
 
-After the current v0.19 UI package is installed:
+After the current v0.19 UI package is installed, prepare the optional QR renderer if the Capsule phone-scan sub-gate will be exercised:
+
+    sudo beast-v019-accept prepare-qr
+
+Then start the bounded display session:
 
     sudo beast-v019-accept start 15
 
@@ -169,18 +173,30 @@ reviewed/sanitized for publication.
 
 The Capsule Share UI uses qrcode only when the module is available.
 
-The acceptance harness **does not install it**.
+The v0.19 acceptance tool now provides an **explicit** Beast-owned preparation
+path using the exact CI-tested qrcode 8.2 package:
 
-This is intentional. The project has not yet approved silently adding optional Beast dependencies into Pwnagotchi's protected /opt/.pwn environment.
+    sudo beast-v019-accept prepare-qr
 
-Long-term direction:
+This command:
+- downloads the qrcode 8.2 wheel before installation;
+- records the wheel SHA-256;
+- installs with pip --target into /opt/beast-python/site-packages;
+- records provenance under /var/lib/beastagotchi/dependencies;
+- does not install into /opt/.pwn site-packages;
+- makes the Beast-owned path visible to Beast UI/Studio through PYTHONPATH.
 
-- Beast-owned optional Python dependency location;
-- capability/BOM awareness;
-- explicit install/removal provenance;
-- no accidental Pwnagotchi dependency pollution.
+Removal is equally explicit:
 
-Until that packaging boundary is implemented, the physical session truthfully records whether the QR renderer exists.
+    sudo beast-v019-accept remove-qr
+
+The normal UI installer creates the Beast-owned package directory but does not
+silently fetch optional packages. Network/package mutation only occurs when the
+owner explicitly runs prepare-qr.
+
+This is the first concrete implementation of the broader Beast optional-runtime
+dependency boundary. Capability/BOM integration and generalized package
+remediation remain future work.
 
 ## Existing safety model retained
 
