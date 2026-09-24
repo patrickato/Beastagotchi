@@ -11,19 +11,165 @@ from .theme_manager_interop import ThemeManagerProbe
 # plugin is the exclusive source of a value; Beast may prefer a better native
 # collector (for example gpsd) while still integrating the plugin's capability.
 KNOWN_BINDINGS: dict[str, dict[str, Any]] = {
-    "gps": {"namespaces": ["gps."], "role": "location", "integration": "canonical"},
-    "gpsd": {"namespaces": ["gps."], "role": "location", "integration": "canonical"},
-    "memtemp": {"namespaces": ["system.cpu.", "system.memory.", "system.temp."], "role": "system_telemetry", "integration": "canonical"},
-    "session-stats": {"namespaces": ["pwnagotchi."], "role": "session_stats", "integration": "canonical"},
-    "session_stats": {"namespaces": ["pwnagotchi."], "role": "session_stats", "integration": "canonical"},
-    "ups_lite": {"namespaces": ["power."], "role": "power", "integration": "adapter"},
-    "pisugar": {"namespaces": ["power."], "role": "power", "integration": "adapter"},
-    "bt-tether": {"namespaces": ["network."], "role": "connectivity", "integration": "managed"},
-    "bt_tether": {"namespaces": ["network."], "role": "connectivity", "integration": "managed"},
-    "webgpsmap": {"namespaces": ["gps.", "expedition."], "role": "map", "integration": "superseded_by_beast"},
-    "theme_manager": {"namespaces": [], "role": "legacy_ui", "integration": "isolated"},
-    "fancygotchi": {"namespaces": [], "role": "legacy_ui", "integration": "isolated"},
-    "beast_bridge": {"namespaces": ["pwnagotchi.", "radio.hop."], "role": "bridge", "integration": "native"},
+    # Jayofelony stock/default plugin family.  Requirement metadata here is a
+    # declarative compatibility catalog, not permission to install packages or
+    # start services.  The future Dependency & Capability Resolver will turn
+    # these declarations into live SATISFIED / NEEDS_SETUP / CONFLICT states.
+    "auto_backup": {
+        "namespaces": ["backups."], "role": "backup", "integration": "superseded_by_beast",
+        "provides": ["backup.pwnagotchi"], "requires": ["storage.writable"],
+        "egress": "none", "credential_required": False,
+    },
+    "auto-update": {
+        "namespaces": ["updates."], "role": "updater", "integration": "superseded_by_beast",
+        "provides": ["update.pwnagotchi"], "requires": ["network.internet"],
+        "egress": "software_update", "credential_required": False,
+    },
+    "bt-tether": {
+        "namespaces": ["network."], "role": "connectivity", "integration": "managed",
+        "provides": ["network.internet", "network.bluetooth_tether"],
+        "requires": ["bluetooth.adapter", "phone.bluetooth_tether"],
+        "provider_group": "internet", "egress": "network", "hardware_specific": True,
+    },
+    "bt_tether": {
+        "namespaces": ["network."], "role": "connectivity", "integration": "managed",
+        "provides": ["network.internet", "network.bluetooth_tether"],
+        "requires": ["bluetooth.adapter", "phone.bluetooth_tether"],
+        "provider_group": "internet", "egress": "network", "hardware_specific": True,
+    },
+    "fix_services": {
+        "namespaces": [], "role": "pwnagotchi_resilience", "integration": "config_only",
+        "provides": ["pwnagotchi.self_repair"], "requires": ["radio.onboard"],
+        "egress": "none", "hardware_specific": True,
+    },
+    "gpio_buttons": {
+        "namespaces": [], "role": "input", "integration": "config_only",
+        "provides": ["input.buttons"], "requires": ["gpio.available"],
+        "provider_group": "input", "egress": "none", "hardware_specific": True,
+    },
+    "gps": {
+        "namespaces": ["gps."], "role": "location", "integration": "canonical",
+        "provides": ["location.position", "location.fix", "location.satellites"],
+        "requires": ["location.receiver_or_gpsd"], "provider_group": "location",
+        "egress": "none", "hardware_specific": True,
+    },
+    "gpsd": {
+        "namespaces": ["gps."], "role": "location", "integration": "canonical",
+        "provides": ["location.position", "location.fix", "location.satellites"],
+        "requires": ["gpsd.service"], "provider_group": "location", "egress": "none",
+    },
+    "gps_listener": {
+        "namespaces": ["gps."], "role": "location", "integration": "config_only",
+        "provides": ["location.position"], "requires": ["location.source"],
+        "provider_group": "location", "egress": "none",
+    },
+    "grid": {
+        "namespaces": ["peerdex."], "role": "peer_network", "integration": "config_only",
+        "provides": ["peer.pwngrid_publish"], "requires": ["network.internet"],
+        "egress": "peer_metadata", "credential_required": False,
+    },
+    "logtail": {
+        "namespaces": ["incidents."], "role": "logs", "integration": "superseded_by_beast",
+        "provides": ["logs.pwnagotchi_view"], "requires": ["pwnagotchi.logs"],
+        "egress": "none",
+    },
+    "memtemp": {
+        "namespaces": ["system.cpu.", "system.memory.", "system.temp."],
+        "role": "system_telemetry", "integration": "canonical",
+        "provides": ["system.telemetry"], "requires": [], "provider_group": "system_telemetry",
+        "egress": "none",
+    },
+    "ohcapi": {
+        "namespaces": [], "role": "external_capture_processor", "integration": "config_only",
+        "provides": ["capture.external_processing"], "requires": ["network.internet", "capture.handshake"],
+        "egress": "capture_artifacts", "credential_required": True,
+    },
+    "pisugar": {
+        "namespaces": ["power."], "role": "power", "integration": "adapter",
+        "provides": ["power.battery.telemetry"], "requires": ["hardware.pisugar"],
+        "provider_group": "power", "egress": "none", "hardware_specific": True,
+    },
+    "pisugarx": {
+        "namespaces": ["power."], "role": "power", "integration": "config_only",
+        "provides": ["power.battery.telemetry"], "requires": ["hardware.pisugar"],
+        "provider_group": "power", "egress": "none", "hardware_specific": True,
+    },
+    "pwncrack": {
+        "namespaces": [], "role": "external_capture_processor", "integration": "config_only",
+        "provides": ["capture.external_processing"], "requires": ["network.internet", "capture.handshake"],
+        "egress": "capture_artifacts", "credential_required": True,
+    },
+    "pwndroid": {
+        "namespaces": ["gps.", "network."], "role": "phone_provider", "integration": "config_only",
+        "provides": ["location.position", "network.phone_link"],
+        "requires": ["phone.pwndroid"], "provider_group": "location",
+        "egress": "phone_link", "hardware_specific": True,
+    },
+    "session-stats": {
+        "namespaces": ["pwnagotchi."], "role": "session_stats", "integration": "canonical",
+        "provides": ["session.metrics"], "requires": [], "egress": "none",
+    },
+    "session_stats": {
+        "namespaces": ["pwnagotchi."], "role": "session_stats", "integration": "canonical",
+        "provides": ["session.metrics"], "requires": [], "egress": "none",
+    },
+    "switcher": {
+        "namespaces": [], "role": "scheduler", "integration": "config_only",
+        "provides": ["automation.legacy_scheduler"], "requires": ["systemd"],
+        "egress": "command_dependent",
+    },
+    "ups_lite": {
+        "namespaces": ["power."], "role": "power", "integration": "adapter",
+        "provides": ["power.battery.telemetry"], "requires": ["hardware.ups_lite", "i2c"],
+        "provider_group": "power", "egress": "none", "hardware_specific": True,
+    },
+    "ups_hat_c": {
+        "namespaces": ["power."], "role": "power", "integration": "config_only",
+        "provides": ["power.battery.telemetry"], "requires": ["hardware.ups_hat_c", "i2c"],
+        "provider_group": "power", "egress": "none", "hardware_specific": True,
+    },
+    "webcfg": {
+        "namespaces": [], "role": "configuration", "integration": "superseded_by_beast",
+        "provides": ["pwnagotchi.runtime_config"], "requires": ["pwnagotchi.webui"],
+        "egress": "local_web",
+    },
+    "webgpsmap": {
+        "namespaces": ["gps.", "expedition."], "role": "map", "integration": "superseded_by_beast",
+        "provides": ["map.handshake_history"], "requires": ["location.position"],
+        "egress": "local_web",
+    },
+    "wigle": {
+        "namespaces": [], "role": "external_location_exporter", "integration": "config_only",
+        "provides": ["location.external_export"], "requires": ["network.internet", "location.position"],
+        "egress": "location_and_network_metadata", "credential_required": True,
+    },
+    "wittypi": {
+        "namespaces": ["power."], "role": "power", "integration": "config_only",
+        "provides": ["power.battery.telemetry"], "requires": ["hardware.wittypi", "i2c"],
+        "provider_group": "power", "egress": "none", "hardware_specific": True,
+    },
+    "wpa-sec": {
+        "namespaces": [], "role": "external_capture_processor", "integration": "config_only",
+        "provides": ["capture.external_processing"], "requires": ["network.internet", "capture.handshake"],
+        "egress": "capture_artifacts", "credential_required": True,
+    },
+
+    # Presentation / Beast-native integration entries.
+    "theme_manager": {
+        "namespaces": [], "role": "legacy_ui", "integration": "isolated",
+        "provides": ["presentation.theme_manager"], "requires": ["display.primary"],
+        "provider_group": "presentation", "egress": "local_web",
+    },
+    "fancygotchi": {
+        "namespaces": [], "role": "legacy_ui", "integration": "isolated",
+        "provides": ["presentation.fancygotchi"], "requires": ["display.primary"],
+        "provider_group": "presentation", "egress": "none",
+    },
+    "beast_bridge": {
+        "namespaces": ["pwnagotchi.", "radio.hop."], "role": "bridge", "integration": "native",
+        "provides": ["beast.pwnagotchi_bridge"], "requires": ["pwnagotchi.service"],
+        "egress": "local_only",
+    },
 }
 
 
@@ -48,7 +194,10 @@ class PluginIntegrationEngine:
             return dict(direct)
         # tolerate common hyphen/underscore spelling differences
         direct = KNOWN_BINDINGS.get(key.replace("-", "_")) or KNOWN_BINDINGS.get(key.replace("_", "-"))
-        return dict(direct or {"namespaces": [], "role": "plugin", "integration": "config_only"})
+        return dict(direct or {
+            "namespaces": [], "role": "plugin", "integration": "config_only",
+            "provides": [], "requires": [], "egress": "unknown",
+        })
 
     def tick(self) -> dict[str, Any]:
         raw = self.state.get("platform.plugins", []) or []
@@ -86,6 +235,14 @@ class PluginIntegrationEngine:
                     "role": bind.get("role", "plugin"),
                     "integration": level,
                     "namespaces": list(bind.get("namespaces") or []),
+                    "provides": list(bind.get("provides") or []),
+                    "requires": list(bind.get("requires") or []),
+                    "optional_requirements": list(bind.get("optional_requirements") or []),
+                    "provider_group": bind.get("provider_group"),
+                    "data_egress": str(bind.get("egress") or "unknown"),
+                    "credential_required": bool(bind.get("credential_required", False)),
+                    "hardware_specific": bool(bind.get("hardware_specific", False)),
+                    "requirements_resolution": "catalog_only",
                     "display_policy": "beast_adapter" if level not in {"isolated", "config_only"} else "legacy_isolated" if level == "isolated" else "config_only",
                     "status": "enabled" if is_enabled else "disabled",
                     "protected": protected,
@@ -104,6 +261,8 @@ class PluginIntegrationEngine:
             "plugins.display_conflicts_enabled": enabled_display_conflicts,
             "plugins.display_conflict_count": len(enabled_display_conflicts),
             "plugins.integration_policy": "canonical_data_first",
+            "plugins.requirements_model": "dependency_capability_resolver_v0.1_catalog_only",
+            "plugins.requirements_executor_enabled": False,
             "plugins.theme_manager.inspectable": bool(theme_manager_interop and theme_manager_interop.get("inspectable")),
             "plugins.theme_manager.version": theme_manager_interop.get("version") if theme_manager_interop else None,
             "plugins.theme_manager.capabilities": list(theme_manager_interop.get("capabilities") or []) if theme_manager_interop else [],
