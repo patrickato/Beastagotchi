@@ -57,37 +57,65 @@ def paste_scene_asset(
     tint_strength: float = 0.0,
     edge_fade: int = 0,
 ) -> bool:
-    """Place concept-derived artwork as a true scene layer rather than a framed tile."""
+    """Place concept artwork using cached fit/tint/alpha preprocessing.
+
+    Per-frame luminance pulse is applied to a copy of the prepared layer, so
+    richer art can stay alive without reopening/resampling the source each frame.
+    """
     path = Path(path)
     if not path.is_file():
         return False
     try:
         x1, y1, x2, y2 = [int(v) for v in box]
         size = (max(1, x2-x1), max(1, y2-y1))
-        with Image.open(path) as src:
-            art = ImageOps.fit(src.convert("RGB"), size, method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
-        pulse = 1.0 + float(brightness_pulse) * math.sin(float(phase) * 1.55)
-        art = ImageEnhance.Brightness(art).enhance(max(0.5, pulse))
-        if tint is not None and tint_strength > 0:
-            wash = Image.new("RGB", art.size, tuple(tint[:3]))
-            art = Image.blend(art, wash, max(0.0, min(1.0, float(tint_strength))))
+        stat = path.stat()
+        key = (
+            str(path.resolve()), int(stat.st_mtime_ns), int(stat.st_size), size,
+            max(0, min(255, int(opacity))),
+            None if tint is None else tuple(tint[:3]),
+            round(max(0.0, min(1.0, float(tint_strength))), 4),
+            max(0, int(edge_fade)),
+        )
+        prepared = _cache_get(_ASSET_CACHE, key, "asset_hits", "asset_misses")
+        if prepared is None:
+            with Image.open(path) as src:
+                art = ImageOps.fit(
+                    src.convert("RGB"), size, method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
+            if tint is not None and tint_strength > 0:
+                wash = Image.new("RGB", art.size, tuple(tint[:3]))
+                art = Image.blend(
+                    art, wash, max(0.0, min(1.0, float(tint_strength)))
+                )
+            alpha = Image.new("L", art.size, max(0, min(255, int(opacity))))
+            fade = max(0, min(int(edge_fade), art.size[0] // 2))
+            if fade:
+                ad = ImageDraw.Draw(alpha)
+                for i in range(fade):
+                    a = int(opacity * (i / max(1, fade-1)))
+                    ad.line(
+                        (art.size[0]-fade+i, 0, art.size[0]-fade+i, art.size[1]),
+                        fill=max(0, min(int(opacity), a)),
+                    )
+            prepared = art.convert("RGBA")
+            prepared.putalpha(alpha)
+            _cache_put(_ASSET_CACHE, key, prepared)
 
-        alpha = Image.new("L", art.size, max(0, min(255, int(opacity))))
-        fade = max(0, min(int(edge_fade), art.size[0] // 2))
-        if fade:
-            ad = ImageDraw.Draw(alpha)
-            for i in range(fade):
-                a = int(255 * (i / max(1, fade-1)))
-                ad.line((art.size[0]-fade+i, 0, art.size[0]-fade+i, art.size[1]), fill=min(a, opacity))
-        rgba = art.convert("RGBA")
-        rgba.putalpha(alpha)
+        rgba = prepared.copy()
+        pulse = 1.0 + float(brightness_pulse) * math.sin(float(phase) * 1.55)
+        if abs(pulse - 1.0) > 0.0005:
+            alpha = rgba.getchannel("A")
+            rgb = ImageEnhance.Brightness(rgba.convert("RGB")).enhance(max(0.5, pulse))
+            rgba = rgb.convert("RGBA")
+            rgba.putalpha(alpha)
+
         base = image.convert("RGBA")
         base.alpha_composite(rgba, (x1, y1))
         image.paste(base.convert("RGB"))
         return True
     except Exception:
         return False
-
 
 def scene_particles(image: Image.Image, phase: float, color, *, count=12, region=(0, 34, 480, 278), alpha=80):
     """Deterministic low-cost ambient motion. Decorative only; never telemetry."""
