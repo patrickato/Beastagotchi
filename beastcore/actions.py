@@ -19,6 +19,7 @@ from .pack_activation import PackActivationManager, PackActivationError
 from .roster import BeastRoster, BeastRosterError
 from .global_sync import GlobalProfileSync, GlobalPublishPolicyError, clean_policy
 from .memories import BeastMemoryEngine
+from .owner_mode import OwnerModeManager
 
 
 class ActionBroker:
@@ -29,7 +30,7 @@ class ActionBroker:
     Network/API exposure is a separate security decision.
     """
 
-    def __init__(self, state, store, events, *, plugin_broker: PluginBroker | None = None, service_broker: ServiceBroker | None = None, container_broker: ContainerBroker | None = None) -> None:
+    def __init__(self, state, store, events, *, plugin_broker: PluginBroker | None = None, service_broker: ServiceBroker | None = None, container_broker: ContainerBroker | None = None, owner_mode: OwnerModeManager | None = None) -> None:
         self.state = state
         self.store = store
         self.events = events
@@ -48,10 +49,35 @@ class ActionBroker:
         self.roster = BeastRoster(store)
         self.global_sync = GlobalProfileSync(state,store,self.roster)
         self.memories = BeastMemoryEngine(state,store,self.roster)
+        self.owner_mode = owner_mode or OwnerModeManager()
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
-            return self.plugin_broker.plan_toggle(str(payload.get("name") or ""), bool(payload.get("enabled")))
+            expert = bool(self.owner_mode.snapshot().get("expert_mode_enabled"))
+            return self.plugin_broker.plan_toggle(
+                str(payload.get("name") or ""),
+                bool(payload.get("enabled")),
+                owner_override=bool(payload.get("owner_override", False)),
+                expert_mode=expert,
+            )
+        if action == "owner.expert_mode_get":
+            return {"allowed": True, "operation": "owner.expert_mode_get", "state": self.owner_mode.snapshot(), "blockers": []}
+        if action == "owner.expert_mode_set":
+            requested = bool(payload.get("enabled", False))
+            session = self.operator_sessions.current()
+            allowed = bool(session.get("active")) and str(session.get("level") or "") == "administrator"
+            return {
+                "allowed": allowed,
+                "operation": "owner.expert_mode_set",
+                "current": self.owner_mode.snapshot(),
+                "requested_enabled": requested,
+                "requires_level": "administrator",
+                "warnings": [
+                    "Expert Mode allows explicit owner overrides of Beast managed-policy blockers. Technical blockers still apply.",
+                    "Unsupported changes may reduce compatibility or rollback guarantees and will be marked as customized when an override is used.",
+                ],
+                "blockers": [] if allowed else ["active administrator session required"],
+            }
         if action == "service.restart":
             return self.service_broker.plan_restart(str(payload.get("unit") or ""))
         if action == "backup.create":
@@ -215,7 +241,14 @@ class ActionBroker:
         requested = dict(payload or {})
         try:
             plan = self.plan(action, requested)
-            if action == "operator.authorize":
+            if action == "owner.expert_mode_set":
+                if not plan.get("allowed"):
+                    raise ValueError("; ".join(plan.get("blockers") or ["Expert Mode change blocked"]))
+                result = {"ok": True, "state": self.owner_mode.set_expert(bool(requested.get("enabled", False)), actor=actor)}
+                self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
+            elif action == "owner.expert_mode_get":
+                result = {"ok": True, "state": self.owner_mode.snapshot()}
+            elif action == "operator.authorize":
                 result=self.operator_sessions.authorize(str(requested.get("level") or ""),int(requested.get("duration_sec") or 900),actor=actor)
             elif action == "operator.revoke":
                 result=self.operator_sessions.revoke()
@@ -318,7 +351,24 @@ class ActionBroker:
                 self.state.update_many("global_sync",patch,priority=62)
                 result={"ok":True,"policy":policy,"snapshot":self.global_sync.build_snapshot(policy),"state":patch,"network_io_performed":False}
             elif action == "plugin.toggle":
-                result = self.plugin_broker.toggle(str(requested.get("name") or ""), bool(requested.get("enabled")), restart=True)
+                expert = bool(self.owner_mode.snapshot().get("expert_mode_enabled"))
+                result = self.plugin_broker.toggle(
+                    str(requested.get("name") or ""),
+                    bool(requested.get("enabled")),
+                    restart=True,
+                    owner_override=bool(requested.get("owner_override", False)),
+                    expert_mode=expert,
+                )
+                p = result.get("plan") if isinstance(result.get("plan"), dict) else plan
+                if result.get("ok") and p.get("owner_override_executed"):
+                    mode = self.owner_mode.record_override(
+                        action="plugin.toggle",
+                        target=str(requested.get("name") or ""),
+                        actor=actor,
+                        policy_blockers=list(p.get("policy_blockers") or []),
+                    )
+                    self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
+                    result["owner_mode"] = mode
             elif action == "service.restart":
                 result = self.service_broker.restart(str(requested.get("unit") or ""))
             elif action == "container.control":
@@ -355,6 +405,13 @@ class ActionBroker:
         }
         self.store.add_action(row)
         ev = self.events.publish("action.completed", "action_broker", {"id": action_id, "action": action, "target": row["target"], "status": status}, "warning" if status not in {"success"} else "info")
+        if status == "success" and action == "owner.expert_mode_set":
+            mode = self.owner_mode.snapshot()
+            mev = self.events.publish("owner.expert_mode.changed", "owner_mode", {"enabled": bool(mode.get("expert_mode_enabled")), "support_state": mode.get("support_state")}, "warning" if mode.get("expert_mode_enabled") else "info")
+            self.store.add_event(mev)
+        elif status == "success" and action == "plugin.toggle" and bool((result.get("plan") or {}).get("owner_override_executed")):
+            mev = self.events.publish("owner.override.used", "owner_mode", {"action": action, "target": row["target"], "policy_blockers": list((result.get("plan") or {}).get("policy_blockers") or [])}, "warning")
+            self.store.add_event(mev)
         self.store.add_event(ev)
         self.state.update_many("action_broker", {
             "actions.last.id": action_id,
