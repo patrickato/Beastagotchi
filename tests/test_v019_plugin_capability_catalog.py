@@ -29,7 +29,7 @@ def test_stock_plugin_catalog_has_capability_and_requirement_metadata():
     assert rows["wigle"]["data_egress"] == "location_and_network_metadata"
     assert "gpio.available" in rows["gpio_buttons"]["requires"]
 
-    assert out["plugins.requirements_model"] == "dependency_capability_resolver_v0.1_catalog_only"
+    assert out["plugins.requirements_model"] == "dependency_capability_resolver_v0.1_read_only"
     assert out["plugins.requirements_executor_enabled"] is False
 
 
@@ -57,7 +57,33 @@ def test_overlapping_provider_plugins_are_cataloged_not_double_counted_as_truth(
 
     assert rows["gps"]["provider_group"] == rows["pwndroid"]["provider_group"] == "location"
     assert rows["ups_lite"]["provider_group"] == rows["pisugarx"]["provider_group"] == "power"
-    # This milestone only catalogs provider overlap. It deliberately does not
-    # select or activate providers, install dependencies or mutate configuration.
-    assert all(row["requirements_resolution"] == "catalog_only" for row in rows.values())
+    # Resolver is read-only: it may explain providers/requirements but does not
+    # select providers, install dependencies or mutate configuration.
+    assert all(row["requirements_resolution"] == "read_only" for row in rows.values())
     assert out["plugins.requirements_executor_enabled"] is False
+    assert out["plugins.requirements_summary"]["component_count"] == 4
+
+def test_sensitive_plugin_config_exposes_presence_not_secret_value():
+    state = _S({
+        "platform.plugins": [
+            {
+                "name": "wigle",
+                "enabled": True,
+                "configured": True,
+                "config_fields": [
+                    {"key": "api_name", "type": "str", "sensitive": True, "present": True, "preview": None},
+                    {"key": "api_token", "type": "str", "sensitive": True, "present": True, "preview": None},
+                ],
+            },
+        ],
+        "network.internet.state": "online",
+        "gps.state": "fixed",
+    })
+    out = PluginIntegrationEngine(state).tick()
+    row = out["plugins.catalog"][0]
+    assert row["credential_required"] is True
+    assert row["credential_present"] is True
+    assert row["requirements_status"] == "ready"
+    assert row["technical_blockers"] == []
+    assert all("api_token" not in str(x.get("evidence")) for x in row["required_results"])
+
