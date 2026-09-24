@@ -87,3 +87,26 @@ def test_sensitive_plugin_config_exposes_presence_not_secret_value():
     assert row["technical_blockers"] == []
     assert all("api_token" not in str(x.get("evidence")) for x in row["required_results"])
 
+def test_disabled_but_configured_plugin_is_available_alternate_not_active_provider():
+    state = _S({
+        "gps.state": "fixed",
+        "platform.plugins": [
+            {
+                "name": "pwndroid",
+                "enabled": False,
+                "configured": True,
+                "installed_custom": False,
+            }
+        ],
+    })
+    out = PluginIntegrationEngine(state).tick()
+    row = out["plugins.catalog"][0]
+    decision = out["plugins.provider_decisions"]["location.position"]
+
+    assert row["available"] is True
+    assert row["selected"] is False
+    assert decision["active_provider"] == "native:gps"
+    assert "component:pwndroid" in decision["alternates"]
+    assert out["plugins.provider_selection_enabled"] is False
+    assert out["plugins.automatic_failover_enabled"] is False
+
