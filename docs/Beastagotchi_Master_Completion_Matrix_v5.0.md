@@ -372,7 +372,19 @@ approved scope.
 - [x] automatic rollback on failed plugin transaction
 - [x] Plugin Manager in Beast UI/Studio
 - [x] legacy display-owner conflict awareness
+- [x] Jayofelony stock/stock-known plugin compatibility class cataloged
+- [x] stock plugin role / provides / requires / provider-group / data-egress / credential / hardware metadata foundation
+- [x] dependency metadata remains catalog-only; automatic requirements executor explicitly disabled
+- [x] shared Dependency & Capability Resolver architecture approved across Plugins/Packs/Hardware/Experiences/Apps/Services
+- [x] reference-build superset BOM policy: catalog broadly, install only selected-feature dependency closure
 - [~] plugin compatibility/dependency metadata coverage
+- [ ] side-effect-free declared-requirement probes (package/module/executable/service/hardware/config/credential/version)
+- [ ] reverse dependency / `used_by` graph
+- [ ] provider arbitration for overlapping location/power/network/presentation providers
+- [ ] Plugin & Capability Center requirement/remediation UX
+- [ ] Beast Doctor/Explain integration with dependency graph
+- [ ] build-specific BOM generator/export: full / installed / missing / unused / conflicts
+- [ ] transactional dependency remediation with dry-run/provenance/rollback
 - [ ] generalized plugin install/update path
 - [ ] schema-driven config editor for plugin options
 - [ ] broader Beast adapter library for useful plugin data
