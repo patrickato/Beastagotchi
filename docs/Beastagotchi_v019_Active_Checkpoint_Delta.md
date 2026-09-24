@@ -1216,3 +1216,39 @@ Physical validation is still pending. This work makes the next user/Pi session
 simpler and more reproducible; it does not claim that the TFT, touch, camera QR
 scan, thermal behavior or subjective polish have passed.
 
+## Current gate-status ledger / pre-physical visual audit — 2026-09-24
+
+A concise current gate ledger now exists at:
+
+`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`
+
+The ledger explicitly distinguishes:
+- closed/stable release boundaries;
+- source/CI preparation that is complete;
+- Gate 1 being ready for physical close but **not physically accepted**;
+- major foundations that are implemented but still have planned depth;
+- later/future project gates that are not immediate v0.19 blockers.
+
+Important release-roadmap clarification:
+the numbered project gates are execution tracks, not a requirement that every
+future gate through Gate 10 be completed before the current v0.19 visual branch
+can ever be promoted. The immediate major truth gate is the real reference-Pi
+Gate 1 acceptance session.
+
+Fresh review of the latest CI gallery at the current pre-physical state found no
+reason for another broad off-screen redesign before target testing.
+
+Current visual observations to verify physically:
+- small secondary labels remain the highest readability uncertainty;
+- 48px+ navigation/overlay controls appear geometrically appropriate but need
+  real resistive-touch judgment;
+- Capsule QR remains clean/off-screen-decodable, but real ILI9486 + phone-camera
+  scanning is still unproven;
+- current theme family is coherent, while the degree of structural (not merely
+  palette) differentiation should be judged on the actual display;
+- no source image can establish glare, enclosure viewing angle, touch feel,
+  perceived animation smoothness or thermal comfort.
+
+The next design changes should be driven by physical evidence rather than another
+speculative gallery-wide rewrite.
+
