@@ -190,6 +190,178 @@ def _instrument_rail(d, box, t, f, state, *, cyber=False):
         _text_right(d,x2-8,ya+15,val,f['small'],col)
 
 
+def _concept_hero_scene(d,state,ui, *, style='classic'):
+    """Concept-fidelity Home composition for the three flagship visual worlds.
+
+    Decorative world art is visually dominant; every numeric/status value is
+    still drawn live from StateRegistry data rather than baked into artwork.
+    """
+    t=ui.theme;f=ui.fonts
+    canvas=getattr(d,'_image',None)
+    if canvas is None:return False
+    style=str(style).lower()
+    d=ImageDraw.Draw(canvas)
+
+    aps=_v(state,'wifi.ap_count',0);clients=_v(state,'wifi.client_count',0)
+    hs=_v(state,'pwnagotchi.handshakes',0)
+    pmkid=_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0))
+    ch=_v(state,'radio.primary.channel','--')
+    mode=str(_v(state,'context.mode.effective','pwn')).upper()
+    cpu=_v(state,'system.cpu.total','--');mem=_v(state,'system.memory.used_pct','--')
+    temp=_v(state,'system.temp.cpu_c','--')
+    cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+    mem=f'{mem:.0f}%' if isinstance(mem,(int,float)) else '--'
+    temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+    gps='GPS FIX' if state.get('gps.fix') else 'GPS SEARCH'
+    name=str(_v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
+    lvl=int(_v(state,'progression.level',1) or 1)
+    stage=str(_v(state,'progression.stage','Hatchling')).upper()
+    mood=str(_v(state,'beast.expression',_v(state,'pwnagotchi.mood','awake'))).replace('_',' ').upper()
+    status=str(_v(state,'pwnagotchi.status',_v(state,'beast.status_text','SCANNING THE FIELD'))).strip()
+    if not status or status=='--':status='SCANNING THE FIELD'
+
+    with _scene_layer(
+        ui,'home.environment','environment',(0,34,480,278),z=10,
+        update_class='ambient',resource_class='moderate',
+        reduced_motion='static_world',decorative=True,
+    ):
+        d.rectangle((0,34,480,278),fill=t.c('bg'))
+        if style=='cyberpunk':
+            # Neon city + perspective deck: decorative atmosphere, not data.
+            ambient_glow(canvas,(126,126),145,t.c('secondary'),strength=.34)
+            ambient_glow(canvas,(350,122),125,t.c('primary'),strength=.20)
+            d=ImageDraw.Draw(canvas)
+            horizon=190
+            skyline=[(0,145,28,190),(30,121,55,190),(58,153,82,190),(84,108,116,190),
+                     (120,138,145,190),(149,96,183,190),(187,128,212,190),(216,113,248,190),
+                     (252,147,276,190),(280,104,316,190),(320,134,345,190),(350,91,388,190),
+                     (393,123,420,190),(425,101,461,190),(464,145,480,190)]
+            for i,box in enumerate(skyline):
+                col=_mix(t.c('bg'),t.c('secondary' if i%3==0 else 'primary'),.17)
+                d.rectangle(box,fill=col)
+                if i%2==0:
+                    d.line((box[0]+5,box[1]+7,box[0]+5,box[3]-5),fill=_mix(col,t.c('accent'),.45))
+            d.line((0,horizon,480,horizon),fill=t.c('secondary'),width=1)
+            van=(240,horizon)
+            for x in range(-80,561,48):d.line((van[0],van[1],x,274),fill=t.c('grid'))
+            for y in (202,218,239,264):d.line((0,y,480,y),fill=t.c('grid'))
+            for i in range(20):
+                x=(19+i*53)%468+6;y=52+(i*37)%120
+                col=t.c('secondary') if (i+int(ui.phase*2))%3==0 else t.c('primary')
+                d.rectangle((x,y,x+2,y+4),fill=_mix(t.c('bg'),col,.65))
+        elif style=='blackice':
+            ambient_glow(canvas,(205,128),162,t.c('primary'),strength=.27)
+            d=ImageDraw.Draw(canvas)
+            for x in range(8,480,34):d.line((x,42,x,270),fill=t.c('grid'))
+            for y in range(46,271,27):d.line((6,y,474,y),fill=t.c('grid'))
+            shards=[
+                [(5,232),(55,121),(84,248)],[(46,260),(108,154),(134,270)],
+                [(284,270),(331,135),(360,260)],[(343,267),(405,111),(432,263)],
+                [(400,273),(457,164),(480,266)],
+            ]
+            for i,poly in enumerate(shards):
+                edge=t.c('secondary') if i%2 else t.c('primary')
+                d.polygon(poly,fill=_mix(t.c('bg'),edge,.09),outline=_mix(t.c('bg'),edge,.62))
+            for i in range(18):
+                x=(17+i*59)%470;y=48+(i*43+int(ui.phase*5))%177
+                r=1+(i%3==0);d.ellipse((x-r,y-r,x+r,y+r),fill=_mix(t.c('bg'),t.c('text'),.7))
+        else:
+            # Classic evolved: restrained instrumentation behind a real creature,
+            # closer to the approved concept than the old framed pixel portrait.
+            ambient_glow(canvas,(150,137),160,t.c('primary'),strength=.24)
+            d=ImageDraw.Draw(canvas)
+            for y in range(46,270,18):d.line((12,y,468,y),fill=_mix(t.c('bg'),t.c('grid'),.72))
+            d.line((14,46,14,268),fill=t.c('primary'),width=2)
+            for y in range(56,258,20):d.line((7,y,20,y),fill=t.c('secondary'))
+            for x in (270,348,468):d.line((x,48,x,226),fill=t.c('edge'))
+            # subtle arc/range marks around the creature
+            for r in (74,102,132):
+                d.arc((142-r,142-r,142+r,142+r),205,335,fill=_mix(t.c('bg'),t.c('primary'),.55),width=1)
+
+    creature_box=(24,58,260,226) if style!='blackice' else (72,55,318,222)
+    with _scene_layer(
+        ui,'home.creature.art','creature',creature_box,z=20,
+        signals=('pwnagotchi.mood','beast.expression'),update_class='ambient',
+        cacheable=True,resource_class='moderate',reduced_motion='static_art',
+    ):
+        used=_paste_concept_creature(canvas,style,creature_box,ui.phase,opacity=252)
+        d=ImageDraw.Draw(canvas)
+        if not used:
+            _portrait(d,creature_box,t,state,ui.phase,
+                      variant='cyber' if style=='cyberpunk' else 'ice' if style=='blackice' else 'classic')
+
+    with _scene_layer(
+        ui,'home.live_field','instrument',(18,48,470,232),z=35,
+        signals=('context.mode.effective','radio.primary.channel','wifi.ap_count',
+                 'wifi.client_count','pwnagotchi.handshakes','pwnagotchi.pmkids',
+                 'captures.pmkid_count','system.cpu.total','system.memory.used_pct',
+                 'system.temp.cpu_c','gps.fix'),update_class='live',resource_class='light',
+    ):
+        d=ImageDraw.Draw(canvas)
+        if style=='blackice':
+            d.text((18,54),f'APS {aps}',font=f['small'],fill=t.c('primary'))
+            d.text((18,76),f'CH  {ch}',font=f['small'],fill=t.c('info'))
+            d.text((18,98),mode[:12],font=f['tiny'],fill=t.c('dim'))
+            d.line((18,118,64,118),fill=t.c('edge'))
+            d.text((18,128),f'HS  {hs}',font=f['small'],fill=t.c('secondary'))
+            d.text((18,150),f'PM  {pmkid}',font=f['small'],fill=t.c('accent'))
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('info')),('TEMP',temp,t.c('secondary')))):
+                yy=72+i*39
+                d.text((365,yy),lab,font=f['micro'],fill=t.c('dim'))
+                _text_right(d,462,yy+7,val,f['medium'],col)
+            d.text((350,194),gps,font=f['tiny'],fill=t.c('dim'))
+        elif style=='cyberpunk':
+            d.text((268,55),'NEON RECON',font=f['medium'],fill=t.c('secondary'))
+            d.text((269,77),f'{mode}  //  CH {ch}',font=f['tiny'],fill=t.c('info'))
+            rows=(('NETWORKS',aps,t.c('primary')),('CLIENTS',clients,t.c('info')),
+                  ('HANDSHAKES',hs,t.c('accent')),('PMKIDS',pmkid,t.c('secondary')))
+            yy=103
+            for lab,val,col in rows:
+                d.text((270,yy),lab,font=f['tiny'],fill=t.c('dim'))
+                _text_right(d,390,yy-2,val,f['medium'],col);yy+=27
+            d.line((404,56,404,205),fill=t.c('edge'))
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('secondary')),('TEMP',temp,t.c('accent')))):
+                yy=67+i*44;d.text((415,yy),lab,font=f['micro'],fill=t.c('dim'));d.text((415,yy+12),val,font=f['small'],fill=col)
+            d.text((413,199),gps,font=f['micro'],fill=t.c('dim'))
+        else:
+            d.text((267,55),'RECON ACTIVE',font=f['medium'],fill=t.c('secondary'))
+            d.text((268,78),f'{mode}  ·  CH {ch}',font=f['tiny'],fill=t.c('dim'))
+            rows=(('APS',aps),('CLIENTS',clients),('HANDSHAKES',hs),('PMKIDS',pmkid))
+            yy=103
+            for lab,val in rows:
+                d.text((270,yy),lab,font=f['tiny'],fill=t.c('dim'))
+                _text_right(d,337,yy-2,val,f['medium'],t.c('text'));yy+=26
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('info')),('TEMP',temp,t.c('accent')))):
+                yy=67+i*48
+                d.text((365,yy),lab,font=f['micro'],fill=t.c('dim'))
+                _text_right(d,460,yy+6,val,f['medium'],col)
+            d.text((365,211),gps,font=f['micro'],fill=t.c('dim'))
+
+    with _scene_layer(
+        ui,'home.identity_status','text',(16,218,468,269),z=50,
+        signals=('progression.beast.name','progression.level','progression.stage',
+                 'beast.expression','pwnagotchi.mood','pwnagotchi.status','beast.status_text'),
+        update_class='live',resource_class='tiny',
+    ):
+        d=ImageDraw.Draw(canvas)
+        if style=='cyberpunk':
+            d.line((18,226,462,226),fill=t.c('secondary'))
+            d.text((20,232),f'{name[:12]} // LV {lvl:02d} {stage[:10]}',font=f['tiny'],fill=t.c('primary'))
+            _text_right(d,460,232,mood[:15],f['tiny'],t.c('secondary'))
+            d.text((20,249),status[:52],font=f['small'],fill=t.c('text'))
+        elif style=='blackice':
+            d.line((18,227,462,227),fill=t.c('primary'))
+            d.text((20,233),f'{name[:12]}  LV {lvl:02d}  {stage[:10]}',font=f['tiny'],fill=t.c('info'))
+            _text_right(d,460,233,mood[:15],f['tiny'],t.c('dim'))
+            d.text((20,250),status[:52],font=f['small'],fill=t.c('text'))
+        else:
+            d.line((18,227,462,227),fill=t.c('edge'))
+            d.text((20,233),f'{name[:12]}  LV {lvl:02d}  {stage[:10]}',font=f['tiny'],fill=t.c('primary'))
+            _text_right(d,460,233,mood[:15],f['tiny'],t.c('dim'))
+            d.text((20,250),f'“{status[:48]}”',font=f['small'],fill=t.c('text'))
+    return True
+
+
 def _hero_scene(d,state,ui, *, variant='classic'):
     """Layered Home scene: creature + atmosphere + live instruments.
 
