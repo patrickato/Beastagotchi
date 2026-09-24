@@ -5,7 +5,7 @@
 
 ## Why this exists
 
-A long Beastagotchi development conversation reached the ChatGPT conversation limit before the project could be moved into a more durable long-term workspace. Cross-chat retrieval did not expose that entire conversation verbatim, so the missing section was reconstructed from repository history, Library artifacts and **78 readable screenshots supplied in six ordered recovery batches**, plus two earlier preserved source images (the first end-of-chat screenshot and a compressed long-scroll image). The private recovery therefore currently contains **80 preserved image artifacts** for this conversation-recovery pass.
+A long Beastagotchi development conversation reached the ChatGPT conversation limit before the project could be moved into a more durable long-term workspace. Cross-chat retrieval did not expose that entire conversation verbatim, so the missing section was reconstructed from repository history, Library artifacts and **93 readable screenshots supplied in seven ordered recovery batches**, plus two earlier preserved source images (the first end-of-chat screenshot and a compressed long-scroll image). The private recovery therefore currently contains **95 preserved image artifacts** for this conversation-recovery pass.
 
 The recovery now strongly overlaps the existing repository record. The major engineering/design gaps needed to continue the project correctly are closed. Exact word-for-word chat history remains a separate archival problem.
 
@@ -29,6 +29,45 @@ Permanent development rules recovered from the conversation:
 - **Design for real users.** The reference Pi remains important, but first-time setup, different displays, missing hardware, discoverability, defaults, accessibility and documentation are now first-class concerns.
 
 The conversation also established an informal practice of **Lightbulb Reviews**: periodically examine adjacent Raspberry Pi, Pwnagotchi, embedded-device, Flipper/Bjorn/M5Stack-style, SDR/Bluetooth/GPS, home-lab dashboard, offline-AI, mapping and hardware ecosystems for ideas worth adapting. Not every idea must survive; useful outcomes include implement now, defer, place in a Pack, reject as wrong for Beast, or redesign around it.
+
+## Recovered GitHub bootstrap / early v0.19 bridge
+
+A seventh private screenshot batch substantially fills the earlier literal-history
+bridge that had remained around repository creation and the first v0.19 work.
+Sanitized chronology recovered from that batch:
+
+- ChatGPT first gained working access to the user's GitHub installation and
+  `patrickato/Beastagotchi`;
+- the validated v0.18.1 source tree was populated into a proper public repository
+  with normal README/roadmap/changelog/contributor/security/support material,
+  CI, issue templates, ADR/collaboration material and GPL-3.0 licensing;
+- issues #1-#8 were created to make the major workstreams durable outside chat;
+- `v0.19-unified-experience` and Draft PR #9 began with the Presentation Broker
+  control-plane for Native Pwnagotchi / Korrie Theme Manager / Beast UI ownership;
+- the first visible Unified UX pass refactored Home around the Beast and revised
+  Overview/System/Networks while preserving pages/tabs/swipes and real-state
+  rendering;
+- the user explicitly asked for periodic visual renders between physical Pi
+  installs, then rejected early alternatives that still felt like variations of
+  the same dashboard; this directly reinforced the later complete-Experience
+  direction rather than locking one visual style too early;
+- development then moved into safe Pack intake/staging, content-only activation,
+  Theme/Board/Layout consumers, the Pack SDK and Depot Catalog v1 while preserving
+  the ability to redesign presentation later;
+- the batch reaches the Experience milestone at historical head
+  `972d1b7c19450727ae969e79eaea05b8144980d9` and then the user's multi-Beast
+  longevity question that triggered the roster/progression pivot already covered
+  elsewhere in this addendum.
+
+Historical repository anchors visible in the screenshots include documentation
+synchronization around `59d3b2f564fc15cfb92fe1c87c406337433763f9`, Pack/Depot
+progress around `94c43a1cf186280d59ac66b05156b23a216f5c82`, and the
+Experience head above.
+
+This closes the main previously noted exact-history gaps around initial GitHub
+setup, first PR #9/Presentation Broker work, early Unified UX and first Packs/Depot
+architecture. Additional older screenshots are now most valuable for **pre-GitHub
+context, rejected alternatives, smaller idea sparks and literal-history completeness**.
 
 ## GitHub development cadence recovered
 
