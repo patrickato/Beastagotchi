@@ -267,3 +267,44 @@ Condition packs, runbooks, compatibility notes and specialist knowledge resolved
 Contract sentence:
 
 **Patient Chart says what is true. Standing Orders say what is permitted. Toolbox says what is available. Medical Library says what is known.**
+## 22. PwnDoctor collaboration split
+
+The standalone PwnDoctor collaboration now has an explicit division of labor based on demonstrated strengths.
+
+### Claude lane — standalone Pwnagotchi product implementation
+- collectors/effectors and new ailments
+- built-in condition migration to bundled JSON packs
+- ACTION_META-driven local policy engine
+- plugin lifecycle/UI
+- incident/verification loop implementation
+- release engineering and physical-validation checklist
+- offline-first standalone product behavior
+
+### OpenAI lane — shared contract and hardening
+- Condition Pack schema evolution
+- canonical Signal/key stewardship
+- loader/security/truth semantics
+- Patient Chart model and chronic/recurrence memory
+- guard-intent vocabulary
+- provenance/signing later
+- Jayofelony compatibility contracts
+- Beastagotchi adapters/interoperability
+
+### Shared review
+Canonical-key changes, public schema changes, treatment-authority changes and public compatibility decisions require both sides to review before being treated as stable.
+
+## 23. Chronic/recurrence Patient Chart rule
+
+Patient Chart recurrence is **episode based, not scan based**.
+
+A condition that stays open across many scans is one episode. Clearing and later reappearing creates another episode. This avoids false recurrence inflation and avoids needless SD writes.
+
+The Chart may remember compact per-condition recurrence and remedy efficacy fields, while the Incident Engine remains the source of truth for the detailed open/resolved incident lifecycle.
+
+## 24. Shared Condition Pack truth semantics
+
+Condition expressions should be internally tri-state: true / false / unknown.
+
+Detection fires only on proven true. Verification preserves unknown so missing post-action evidence yields `executed_verification_unknown`, never a false success or false failure.
+
+This truth rule should be preserved when Beast Doctor eventually binds the same neutral Condition Pack schema to canonical Beast Signals.
