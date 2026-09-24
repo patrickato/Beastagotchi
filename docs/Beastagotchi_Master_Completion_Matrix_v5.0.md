@@ -51,6 +51,7 @@ approved scope.
 - [x] bounded v0.19 physical-acceptance harness reusing proven auto-rollback handoff
 - [x] physical-session objective sampler for render/compose/fb-write/temp/CPU/governor/touch evidence
 - [x] timestamped physical evidence bundle + machine/human summary generator
+- [x] optional dependency preparation integrated into physical acceptance without silently mutating Pwnagotchi Python packages
 - [x] native Pwnagotchi RAW/Dark/Light/Chroma bridge
 - [x] logical 480×320 canvas separated from physical output
 - [x] aspect-preserving transform + reverse touch mapping
@@ -405,7 +406,8 @@ approved scope.
 - [x] offline/sneakernet ecosystem direction: QR/file/USB/SD/NFC/Bluetooth/local/Beast-to-Beast transports share one Capsule contract
 - [x] Capsule Share Beast App overlay wired to real Beast Core Lineage export
 - [x] truthful QR dependency/unavailable behavior; no decorative fake QR fallback
-- [~] optional `qrcode` runtime classified in BOM; production packaging boundary pending
+- [x] Beast-owned optional Python runtime path for QR renderer (`/opt/beast-python/site-packages`)
+- [x] explicit `prepare-qr` / `remove-qr` flow with qrcode 8.2 wheel SHA-256 provenance; Pwnagotchi site-packages untouched
 - [~] plugin compatibility/dependency metadata coverage
 - [x] shared read-only DependencyCapabilityResolver used by Plugins + Beast Packs
 - [x] side-effect-free declared-requirement probes for capability/service/package/module/executable/path/config/credential presence
