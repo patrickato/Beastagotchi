@@ -184,6 +184,14 @@ def test_support_bundle_reports_expert_and_customized_state_without_secrets(tmp_
             "owner.support_state": "customized",
             "owner.last_override.action": "plugin.toggle",
             "owner.last_override.target": "theme_manager",
+            "providers.preferences": {"location.position": "component:pwndroid"},
+            "providers.preference_count": 1,
+            "providers.preferences.updated_at": 100.0,
+            "providers.preferences.updated_by": "owner",
+            "doctor.state": "attention",
+            "doctor.attention_count": 2,
+            "doctor.explainable_capability_count": 4,
+            "plugins.provider_summary": {"active_count": 3, "choice_required_count": 1},
         },
         priority=99,
     )
@@ -200,6 +208,11 @@ def test_support_bundle_reports_expert_and_customized_state_without_secrets(tmp_
         assert manifest["customized"] is True
         assert safe_state["owner.override_count"] == 3
         assert safe_state["owner.last_override.target"] == "theme_manager"
+        assert manifest["provider_preference_count"] == 1
+        assert manifest["doctor_state"] == "attention"
+        assert manifest["doctor_attention_count"] == 2
+        assert safe_state["providers.preferences"]["location.position"] == "component:pwndroid"
+        assert safe_state["doctor.state"] == "attention"
     finally:
         store.close()
 
