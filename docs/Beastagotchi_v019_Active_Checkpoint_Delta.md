@@ -514,3 +514,54 @@ work may continue with side-effect-free requirement modeling/probes, semantic
 render metadata and Doctor/Explain, but package/service mutation requires a later
 explicit transactional executor.
 
+## Owner Sovereignty / Unrestricted Mode milestone — 2026-09-24
+
+The project now explicitly separates **managed safety policy** from **owner
+authority over the machine**.
+
+Approved product rule:
+- Beastagotchi is not a locked appliance;
+- safe defaults, compatibility checks, snapshots, rollback and curated sources
+  are the preferred managed path;
+- technically possible operations blocked only by Beast policy/support rules
+  require an eventual explicit owner-override path;
+- true technical impossibility remains distinct and cannot be made successful by
+  a warning bypass.
+
+New specification:
+- `docs/Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`
+
+Implemented code foundation:
+- `PluginBroker.plan_toggle()` now reports:
+  - `technical_blockers`
+  - `policy_blockers`
+  - `owner_override_available`
+  - `owner_override_executed`
+  - `managed_allowed`
+- protected Beast Bridge disablement and live display-owner conflicts are now
+  explicitly classified as policy blockers;
+- an actually missing/unconfigured plugin remains a technical blocker;
+- current executor behavior is unchanged: owner override is not yet executed.
+
+Retained next work:
+- persistent Expert Mode + visible indicator;
+- per-action "Proceed unsupported anyway";
+- unsupported/custom support-state reporting;
+- unsupported plugin/source import;
+- exact manual/root instructions for self-disabling operations;
+- later direct owner administration surface with explicit local-auth/audit/recovery
+  boundaries.
+
+Security boundary:
+Owner Override is intended for the authenticated local owner. It must not become a
+remote unauthenticated bypass for plugins or network clients.
+
+Legal/documentation boundary:
+The repository remains GPLv3; sections 15/16 provide the existing warranty and
+liability limitation to the extent permitted by law. Project documentation may
+warn that unsupported/custom modifications are at the user's risk, but does not
+claim that UI wording can eliminate every possible liability under every
+jurisdiction.
+
+No current managed safety check was silently removed by this milestone.
+
