@@ -38,6 +38,7 @@ External reviewers are especially invited to critique:
 - Theme Manager coexistence/merge strategy.
 - plugin compatibility and configuration safety.
 - dependency/capability graph design, provider arbitration and how to keep a maximal known-universe BOM without a kitchen-sink runtime.
+- provider arbitration, common resolver adoption by Experiences/Apps/Hardware Studio, and generated BOM/Doctor UX now that the shared read-only graph exists.
 - owner sovereignty / Expert Mode design: preserve owner freedom without turning local policy override into unauthenticated remote privilege.
 - performance/thermal behavior on Pi 4.
 - code organization, duplicated historical code and migration path to v1.0.
@@ -55,3 +56,5 @@ Please distinguish architectural critique from personal preferences and cite fil
 - Build substantial, test-backed blocks before asking for another physical Pi test.
 - Cataloging the full software/service universe is approved; bulk-installing/enabling that universe is not. Optional dependencies remain feature/hardware driven.
 - A Beast policy blocker is not ownership authority: technically possible unsupported operations need an explicit owner override/manual escape path; technical impossibility remains distinct.
+- The shared DependencyCapabilityResolver is read-only and already used by Plugins + Packs. Do not add package/service mutation to it; remediation execution belongs to separately planned/audited transactions.
+- Secret-bearing plugin config may expose presence only; do not surface credential values into canonical state, dependency evidence, logs or support bundles.
