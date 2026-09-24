@@ -604,6 +604,16 @@ class BeastUI:
                 elif axis=='x':
                     cats=self._app_categories();delta=1 if e.get('dx',0)<0 else -1;self.app_category_idx=(self.app_category_idx+delta)%len(cats);self.app_offset=0;self.dirty.set()
                 return
+            if self.capsule_share_overlay:
+                if e.get('axis')=='x':
+                    frames=((self.capsule_share.get('qr') or {}).get('frames') or []) if isinstance(self.capsule_share,dict) else []
+                    if frames:
+                        delta=1 if e.get('dx',0)<0 else -1
+                        self.capsule_frame_idx=(self.capsule_frame_idx+delta)%len(frames)
+                        self.dirty.set()
+                elif e.get('axis')=='y' and e.get('dy',0)>30:
+                    self.capsule_share_overlay=False;self.app_launcher=True;self.dirty.set()
+                return
             if self.telemetry_overlay:
                 if e.get('axis')=='y':
                     rows=list((self.aux.get('telemetry') or []));step=4 if e.get('dy',0)<0 else -4;maxoff=max(0,((len(rows)-1)//4)*4)
@@ -687,6 +697,16 @@ class BeastUI:
                         if x<155:self.app_offset=max(0,self.app_offset-self.APP_PAGE_SIZE);self.dirty.set()
                         elif x>324:self.app_offset=min(maxoff,self.app_offset+self.APP_PAGE_SIZE);self.dirty.set()
                         else:self.app_launcher=False;self.dirty.set()
+            elif self.capsule_share_overlay:
+                frames=((self.capsule_share.get('qr') or {}).get('frames') or []) if isinstance(self.capsule_share,dict) else []
+                if hit('capsule-prev',self.CAPSULE_PREV,x,y,minimum=48):
+                    if frames:self.capsule_frame_idx=(self.capsule_frame_idx-1)%len(frames)
+                    self.dirty.set()
+                elif hit('capsule-next',self.CAPSULE_NEXT,x,y,minimum=48):
+                    if frames:self.capsule_frame_idx=(self.capsule_frame_idx+1)%len(frames)
+                    self.dirty.set()
+                elif hit('capsule-close',self.CAPSULE_CLOSE,x,y,minimum=48):
+                    self.capsule_share_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.telemetry_overlay:
                 if 238<=y<=277:
                     rows=list(self.aux.get('telemetry') or []);maxoff=max(0,((len(rows)-1)//4)*4)
