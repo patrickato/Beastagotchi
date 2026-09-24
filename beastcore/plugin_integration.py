@@ -232,6 +232,11 @@ class PluginIntegrationEngine:
                 if normalized == "theme_manager":
                     interop = self.theme_manager_probe.probe(item.get("path"))
                     theme_manager_interop = interop
+                config_fields = item.get("config_fields") if isinstance(item.get("config_fields"), list) else []
+                sensitive_fields = [x for x in config_fields if isinstance(x, dict) and x.get("sensitive")]
+                credential_present = None
+                if bool(bind.get("credential_required", False)) and sensitive_fields:
+                    credential_present = all(bool(x.get("present")) for x in sensitive_fields)
                 rows.append({
                     **item,
                     "role": bind.get("role", "plugin"),
@@ -243,6 +248,7 @@ class PluginIntegrationEngine:
                     "provider_group": bind.get("provider_group"),
                     "data_egress": str(bind.get("egress") or "unknown"),
                     "credential_required": bool(bind.get("credential_required", False)),
+                    "credential_present": credential_present,
                     "hardware_specific": bool(bind.get("hardware_specific", False)),
                     "requirements_resolution": "catalog_only",
                     "display_policy": "beast_adapter" if level not in {"isolated", "config_only"} else "legacy_isolated" if level == "isolated" else "config_only",
