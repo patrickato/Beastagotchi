@@ -200,11 +200,15 @@ class Pages:
         # anchor. This is deliberately not another telemetry dashboard.
         card(d,(8,43,228,216),t,accent=t.c('primary'),width=2)
         self.face.draw(d,(20,52,216,163),t,state,ui.phase)
-        section_title(d,(18,168),expression[:20],f,t,color=t.c('accent'))
-        d.text((18,183),f'LV {lvl:02d}',font=f['medium'],fill=t.c('primary'))
-        d.text((72,186),stage[:16],font=f['tiny'],fill=t.c('text'))
-        d.text((18,201),f'GROWTH {growth:3.0f}%',font=f['micro'],fill=t.c('dim'))
-        progress_bar(d,(88,203,216,209),growth,t,color=t.c('accent'))
+        beast_name=str(self._v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
+        lineage=str(self._v(state,'progression.beast.lineage','standard')).replace('_',' ').upper()
+        generation=int(self._v(state,'progression.beast.generation',0) or 0)
+        section_title(d,(18,168),beast_name[:20],f,t,color=t.c('accent'))
+        d.text((18,181),expression[:18],font=f['micro'],fill=t.c('dim'))
+        d.text((18,192),f'LV {lvl:02d}',font=f['medium'],fill=t.c('primary'))
+        d.text((72,195),stage[:16],font=f['tiny'],fill=t.c('text'))
+        d.text((18,207),f'{lineage[:12]} · G{generation}',font=f['micro'],fill=t.c('dim'))
+        progress_bar(d,(116,207,216,213),growth,t,color=t.c('accent'))
 
         # Operational card: one strong mode/status area, then compact supporting
         # facts. This avoids the old equal-weight "box wall" treatment.
@@ -599,30 +603,61 @@ class Pages:
 
     def beast(self,d,state,ui):
         t=ui.theme;f=ui.fonts
-        # The physical 3.5-inch panel proved that v0.8 packed too much tiny
-        # text into this page. Keep the Beast large, but give progression a
-        # proper readable instrument panel with no text drawn inside bars.
-        self.face.draw(d,(8,42,210,268),t,state,ui.phase);panel(d,(218,42,472,268),t)
-        level=int(self._v(state,'progression.level',1));max_level=int(self._v(state,'progression.max_level',100));stage=str(self._v(state,'progression.stage','Hatchling')).upper();xp=int(self._v(state,'progression.xp',0));next_xp=int(self._v(state,'progression.xp_next_level',0));pct=self._pct(state,'progression.level_progress_pct');aura=str(self._v(state,'progression.aura','none')).upper()
-        d.text((230,50),'BEAST DNA',font=f['small'],fill=t.c('dim'))
-        d.text((230,65),f'LEVEL {level:02d} / {max_level}',font=f['large'],fill=t.c('primary'))
-        d.text((230,88),'STAGE',font=f['tiny'],fill=t.c('dim'));d.text((270,85),stage,font=f['medium'] if len(stage)<=11 else f['small'],fill=t.c('text'))
-        d.text((230,108),f'XP  {xp:,} / {next_xp:,}',font=f['body'],fill=t.c('text'))
-        d.rectangle((230,124,460,137),outline=t.c('edge'),fill=t.c('panel2'));fill=230+int(230*max(0,min(100,pct))/100.0);d.rectangle((230,124,fill,137),fill=t.c('accent'))
-        d.text((230,140),f'{pct:0.1f}% TO NEXT LEVEL',font=f['tiny'],fill=t.c('dim'))
+        # v0.19 roster-aware Beast page: creature identity is now first-class
+        # cockpit information rather than something visible only in Studio.
+        # Everything shown here comes from canonical progression/roster state.
+        name=str(self._v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
+        kind=str(self._v(state,'progression.beast.kind','beast')).replace('_',' ').upper()
+        lineage=str(self._v(state,'progression.beast.lineage','standard')).replace('_',' ').upper()
+        generation=int(self._v(state,'progression.beast.generation',0) or 0)
+        roster=state.get('progression.roster.summary') if isinstance(state.get('progression.roster.summary'),dict) else {}
+        roster_total=int(roster.get('total') or 1)
+        roster_monsters=int(roster.get('monsters') or 0)
+        level=int(self._v(state,'progression.level',1));max_level=int(self._v(state,'progression.max_level',100))
+        stage=str(self._v(state,'progression.stage','Hatchling')).upper()
+        xp=int(self._v(state,'progression.xp',0));next_xp=int(self._v(state,'progression.xp_next_level',0))
+        pct=self._pct(state,'progression.level_progress_pct')
+        aura=str(self._v(state,'progression.aura','none')).upper()
+        mood=str(self._v(state,'pwnagotchi.mood','awake')).upper()
+        mode=str(self._v(state,'context.mode.effective','pwn')).upper()
+        beast_aps=int(self._v(state,'progression.discovery.beast_unique_aps',0) or 0)
+        device_first=int(self._v(state,'progression.discovery.device_first_witnessed',0) or 0)
+        ach=int(self._v(state,'progression.achievements.count',0) or 0)
 
-        # Three large two-column status rows. Values use 11/13px fonts rather
-        # than 6/7px micro text so every structural theme remains legible.
-        rows=[
-            ('MOOD',str(self._v(state,'pwnagotchi.mood','awake')).upper(),'MODE',str(self._v(state,'context.mode.effective','pwn')).upper()),
-            ('AURA',aura,'VENDORS',str(self._v(state,'progression.vendors.count',0))),
-            ('ACH',str(self._v(state,'progression.achievements.count',0)),'LIFE AP',str(self._v(state,'wifi.encounters.lifetime_unique',0))),
-        ]
-        y0=160
-        for i,(la,va,lb,vb) in enumerate(rows):
-            y=y0+i*32
-            d.text((230,y),la,font=f['tiny'],fill=t.c('dim'));d.text((230,y+10),va[:14],font=f['body'],fill=t.c('accent') if i==0 else t.c('text'))
-            d.text((350,y),lb,font=f['tiny'],fill=t.c('dim'));d.text((350,y+10),vb[:14],font=f['body'],fill=t.c('info') if i==0 else t.c('text'))
+        # Left side is deliberately creature-led. The compact identity card
+        # beneath the face is what makes switching Beasts visibly meaningful.
+        self.face.draw(d,(8,43,210,206),t,state,ui.phase)
+        card(d,(8,214,210,268),t,accent=t.c('primary'))
+        section_title(d,(18,222),name[:22],f,t,color=t.c('accent'))
+        d.text((18,236),f'{kind[:8]} · G{generation} · {lineage[:14]}',font=f['tiny'],fill=t.c('text'))
+        d.text((18,251),f'ROSTER {roster_total} · MONSTERS {roster_monsters}',font=f['micro'],fill=t.c('dim'))
+
+        # Right side is one readable progression instrument, not a wall of
+        # mini-cards. Progress, personality and discovery each get one layer.
+        card(d,(218,43,472,268),t,accent=t.c('edge'))
+        section_title(d,(230,52),'PROGRESSION',f,t)
+        d.text((230,65),f'LEVEL {level:02d}',font=f['large'],fill=t.c('primary'))
+        sb=d.textbbox((0,0),stage,font=f['small']);sw=max(0,sb[2]-sb[0])
+        d.text((460-sw,70),stage,font=f['small'],fill=t.c('text'))
+        d.text((230,91),f'XP {xp:,}',font=f['small'],fill=t.c('text'))
+        need='MAX LEVEL' if level>=max_level else f'{next_xp:,} TO NEXT'
+        nb=d.textbbox((0,0),need,font=f['tiny']);nw=max(0,nb[2]-nb[0])
+        d.text((460-nw,93),need,font=f['tiny'],fill=t.c('dim'))
+        progress_bar(d,(230,108,460,117),pct,t,color=t.c('accent'))
+        d.text((230,120),f'{pct:0.1f}% LEVEL PROGRESS',font=f['micro'],fill=t.c('dim'))
+
+        divider(d,230,136,460,t)
+        section_title(d,(230,145),'PERSONALITY / CONTEXT',f,t)
+        label_value(d,(230,158),'MOOD',mood,f,t,color=t.c('accent'),value_font='small',max_chars=11)
+        label_value(d,(310,158),'AURA',aura,f,t,color=t.c('secondary'),value_font='small',max_chars=11)
+        label_value(d,(390,158),'MODE',mode,f,t,color=t.c('info'),value_font='small',max_chars=10)
+
+        divider(d,230,194,460,t)
+        section_title(d,(230,203),'THIS BEAST',f,t)
+        label_value(d,(230,216),'DISCOVERED',beast_aps,f,t,color=t.c('primary'),value_font='small',max_chars=8)
+        label_value(d,(315,216),'FIRST',device_first,f,t,color=t.c('info'),value_font='small',max_chars=8)
+        label_value(d,(390,216),'ACH',ach,f,t,color=t.c('accent'),value_font='small',max_chars=8)
+        d.text((230,253),'Creature progress persists when another Beast wakes.',font=f['micro'],fill=t.c('dim'))
 
 
     def system(self,d,state,ui):
