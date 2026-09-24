@@ -60,8 +60,11 @@ def test_v019_acceptance_report_summarizes_runtime_and_preserves_physical_bounda
         json.dumps({"kind": "swipe"}) + "\n"
     )
     (session / "state-final.json").write_text(json.dumps({
-        "health.core.state": "healthy",
-        "governor.mode": "FULL",
+        "privacy": "curated_physical_acceptance",
+        "state": {
+            "health.core.state": "healthy",
+            "governor.mode": "FULL",
+        },
     }))
     (session / "ui-runtime-final.json").write_text(json.dumps({
         "version": "0.19.0",
@@ -109,6 +112,16 @@ def test_v019_acceptance_report_warns_without_faking_missing_evidence(tmp_path):
     assert any("QR renderer" in x for x in summary["warnings"])
     assert any("Lineage Capsule" in x for x in summary["warnings"])
     assert any("older v0.18" in x for x in summary["warnings"])
+
+
+def test_v019_acceptance_harness_curates_sensitive_evidence():
+    script = (Path(__file__).resolve().parents[1] / "tools" / "v019_physical_acceptance.sh").read_text()
+    assert "curated_physical_acceptance" in script
+    assert "pwnagotchi-config-before.sha256" in script
+    assert "pwnagotchi-config-before.toml" not in script
+    assert "platform-bundle" not in script
+    assert "pwnagotchi-journal.txt" not in script
+    assert "name=0&achievements=0&appearance=0" in script
 
 
 def test_v019_acceptance_harness_keeps_owner_decision_explicit():
