@@ -7,7 +7,7 @@
 
 A long Beastagotchi development conversation reached the ChatGPT conversation limit before the project could be moved into a more durable long-term workspace. Cross-chat retrieval did not expose that entire conversation verbatim, so the missing section was reconstructed from repository history, Library artifacts and **93 readable screenshots supplied in seven ordered recovery batches**, plus two earlier preserved source images (the first end-of-chat screenshot and a compressed long-scroll image). The private recovery therefore currently contains **95 preserved image artifacts** for this conversation-recovery pass.
 
-The recovery now strongly overlaps the existing repository record. The major engineering/design gaps needed to continue the project correctly are closed. Exact word-for-word chat history remains a separate archival problem.
+The recovery now spans the supplied pinned conversation from its true beginning through its end and strongly overlaps the existing repository record. The major engineering/design and chronological gaps needed to continue the project correctly are closed. Exact word-for-word chat history remains a separate archival problem.
 
 This addendum preserves the parts of the recovered conversation that matter to future development: why several v0.19 systems were created, what rules were agreed, which alternatives were rejected or deferred, and how the implementation sequence evolved.
 
@@ -29,6 +29,31 @@ Permanent development rules recovered from the conversation:
 - **Design for real users.** The reference Pi remains important, but first-time setup, different displays, missing hardware, discoverability, defaults, accessibility and documentation are now first-class concerns.
 
 The conversation also established an informal practice of **Lightbulb Reviews**: periodically examine adjacent Raspberry Pi, Pwnagotchi, embedded-device, Flipper/Bjorn/M5Stack-style, SDR/Bluetooth/GPS, home-lab dashboard, offline-AI, mapping and hardware ecosystems for ideas worth adapting. Not every idea must survive; useful outcomes include implement now, defer, place in a Pack, reject as wrong for Beast, or redesign around it.
+
+## Recovered pre-GitHub origin / Batch 08
+
+The eighth private screenshot batch reaches the **true beginning of the supplied pinned conversation** and joins Batch 07 at the repository-creation boundary. This closes the final known chronological bridge in that conversation.
+
+Important recovered origin context:
+
+- the user supplied the v0.18.1 target/off-screen validation bundle and reported Korrie71's direct criticism that the v0.11 friend-kit UI felt clunky, not user-friendly and visually weak;
+- v0.18.1 was accepted as sufficiently validated to move forward at the target/off-screen level: 473/473 live state keys, 0 stale, 0 unavailable, complete validation gallery, native-responsive 800×480 Board evidence and no enabled known display-owner conflicts; an earlier recovered Pwnagotchi restart was retained as a reliability observation rather than hidden;
+- source at that historical point independently passed 195 tests;
+- Korrie's criticism became a direct reason to make **v0.19 a UX / Visual Cohesion product gate**, not a cosmetic afterthought;
+- Theme Manager and Beastagotchi were intentionally designed to coexist before any future merge: both may remain installed/active, but only one presentation owner controls framebuffer/touch at a time;
+- the initial Update Center design already rejected generic unattended `git pull && restart` in favor of component policies (Manual / Notify / Auto-stage / Auto-install), verified staging, compatibility/conflict checks, backup, transactional install, probation and rollback;
+- the conversation explicitly decided that GitHub had become necessary for version history, branches, issues, PRs, CI, outside review and collaboration, leading to the GitHub-ready v0.18.1 starter repository and later live repository;
+- `COLLABORATOR_AI_HANDOFF.md` originated as a way to give Korrie or another AI/developer code + architecture + history + roadmap without requiring hundreds of chat messages;
+- physical review cadence became a permanent rule: build substantial blocks autonomously, run source/off-screen validation, then use a short physical visual/interaction gate when the user-facing experience has changed enough to influence design;
+- the planned visual comparison was explicitly v0.18.1 physical baseline versus the post-redesign v0.19 physical review;
+- v0.19 was reframed as **Unified Experience Architecture**, combining UX redesign, Theme Manager interoperability, common display ownership, common theme/layout concepts, safe Update Manager foundations and public GitHub workflow;
+- the user's request for downloadable extras and heat-aware growth directly led to **small stable core + expandable Beast Packs/Depot ecosystem**, with manifest-declared compatibility, dependencies, permissions, services, resource class and thermal class;
+- the product rule **physical TFT = cockpit; local WebUI = workshop** was established so the 480×320 resistive screen stays focused on live information, navigation, mode switching, field controls and quick actions while deeper configuration belongs in the WebUI;
+- the **Beast Presentation Broker** originated here as the small service that owns the single truth “who currently owns the physical display and touchscreen?”, with persistent exclusive ownership and transactional release → acquire → health check → commit, plus rollback to the previous owner on failure;
+- thermal strategy was explicitly architectural rather than normal-operation throttling: eliminate duplicate polling/rendering/background work, suspend inactive renderers/services, cache static work, reduce unnecessary framebuffer writes, and add per-module CPU/resource attribution before degrading features;
+- GPLv3 was selected in principle to preserve the user's stated goals of free use, study, modification, redistribution, contribution and community growth while aligning with the surrounding GPL ecosystem, with the historical `GPL-3.0-only` versus `GPL-3.0-or-later` nuance left to be settled deliberately rather than silently inferred.
+
+Batch 08 therefore preserves the **reasons** behind several systems that later appear in code: Unified UX, Presentation Broker, Update Manager, Packs/Depot, resource attribution, WebUI-vs-TFT role separation, collaboration workflow and licensing.
 
 ## Recovered GitHub bootstrap / early v0.19 bridge
 
