@@ -139,7 +139,8 @@ class DependencyCapabilityResolver:
             add("capture.handshake", "native:captures")
         if self.which("systemctl"):
             add("systemd", "native:systemd")
-        if self.state.get("pwnagotchi.service.state") is not None:
+        pwn_state = str(self.state.get("pwnagotchi.service.state", "") or "").lower()
+        if pwn_state == "active":
             add("pwnagotchi.service", "native:pwnagotchi")
             add("pwnagotchi.logs", "native:pwnagotchi")
             add("pwnagotchi.webui", "native:pwnagotchi")
@@ -380,7 +381,29 @@ class DependencyCapabilityResolver:
                             detail=f"conflicts with enabled component {other['_id']}",
                         ))
 
-            all_required = mandatory + conflict_rows
+            credential_rows: list[RequirementResult] = []
+            if bool(row.get("credential_required", False)):
+                present = row.get("credential_present")
+                if present is True:
+                    credential_rows.append(self._result(
+                        f"credential:{row['_id']}", "credential", "satisfied",
+                        remediation="none", evidence={"present": True},
+                        providers=[f"credential:{row['_id']}"],
+                    ))
+                elif present is False:
+                    credential_rows.append(self._result(
+                        f"credential:{row['_id']}", "credential", "credential_missing",
+                        remediation="guided", detail="required credential field(s) are not configured",
+                        evidence={"present": False},
+                    ))
+                else:
+                    credential_rows.append(self._result(
+                        f"credential:{row['_id']}", "credential", "unknown",
+                        remediation="inspect", detail="credential is required but safe presence evidence is unavailable",
+                        evidence={"present": None},
+                    ))
+
+            all_required = mandatory + credential_rows + conflict_rows
             technical = [x.requirement for x in all_required if x.technical_blocker]
             policy = [x.requirement for x in all_required if x.policy_blocker]
             unresolved = [x.requirement for x in mandatory if x.status == "unknown"]
@@ -408,6 +431,7 @@ class DependencyCapabilityResolver:
                 "owner_override_available": bool(policy) and not technical,
                 "required_results": [x.as_dict() for x in mandatory],
                 "optional_results": [x.as_dict() for x in optional_rows],
+                "credential_results": [x.as_dict() for x in credential_rows],
                 "conflict_results": [x.as_dict() for x in conflict_rows],
                 "unresolved_requirements": unresolved,
             }
