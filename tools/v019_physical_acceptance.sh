@@ -426,6 +426,8 @@ cmd_remove_qr() {
   stamp="$(date +%Y%m%d_%H%M%S)"
   if [[ -d "$BEAST_SITE" ]]; then
     find "$BEAST_SITE" -mindepth 1 -maxdepth 1 \( -name 'qrcode' -o -name 'qrcode-*.dist-info' \) -exec rm -rf {} +
+    rm -f "$BEAST_SITE/bin/qr" 2>/dev/null || true
+    rmdir "$BEAST_SITE/bin" 2>/dev/null || true
   fi
   if [[ -f "$DEPS_DIR/qrcode-current.json" ]]; then
     mv "$DEPS_DIR/qrcode-current.json" "$DEPS_DIR/qrcode-removed-$stamp.json"
