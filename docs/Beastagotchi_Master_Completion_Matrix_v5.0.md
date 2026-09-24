@@ -3,7 +3,7 @@
 **Status date:** 2026-09-23  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** **339 automated tests passing** + Python compile + shell syntax
+**Current v0.19 source gate:** **343 automated tests passing** + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -386,6 +386,8 @@ approved scope.
 - [x] transactional broker state machine
 - [x] persistence/rollback tests using fake adapters
 - [x] existing Theme Manager/Fancygotchi conflict detection
+- [x] bounded read-only Theme Manager source capability probe (version/interoperability evidence; no import/execute)
+- [x] canonical plugin/presentation state exposes Theme Manager capability evidence without enabling physical handoff
 - [ ] real native Pwnagotchi release/acquire adapter
 - [ ] real Korrie71 Theme Manager release/acquire adapter
 - [ ] real Beast UI release/acquire adapter
