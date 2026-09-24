@@ -126,16 +126,18 @@ class PluginBroker:
         protected = name.lower().replace("-", "_") in {x.replace("-", "_") for x in PROTECTED_PLUGINS}
         if beast_ui_active is None:
             beast_ui_active = self.service_active("beast-ui.service")
-        blockers: list[str] = []
+        technical_blockers: list[str] = []
+        policy_blockers: list[str] = []
         warnings: list[str] = []
         if not exists:
-            blockers.append("plugin is not installed/configured")
+            technical_blockers.append("plugin is not installed/configured")
         if protected and not enabled:
-            blockers.append("protected Beast bridge cannot be disabled from Plugin Manager")
+            policy_blockers.append("protected Beast bridge cannot be disabled from Plugin Manager")
         if enabled and display_conflict and beast_ui_active:
-            blockers.append("legacy display plugin conflicts with active Beast UI display ownership")
+            policy_blockers.append("legacy display plugin conflicts with active Beast UI display ownership")
         if display_conflict:
             warnings.append("legacy display-owner plugin; Beast isolates its UI output")
+        blockers = [*technical_blockers, *policy_blockers]
         return {
             "plugin": name,
             "current_enabled": current,
@@ -145,6 +147,11 @@ class PluginBroker:
             "display_conflict": display_conflict,
             "beast_ui_active": bool(beast_ui_active),
             "restart_required": current is not None and current != bool(enabled),
+            "technical_blockers": technical_blockers,
+            "policy_blockers": policy_blockers,
+            "owner_override_available": bool(policy_blockers) and not technical_blockers,
+            "owner_override_executed": False,
+            "managed_allowed": not blockers,
             "blockers": blockers,
             "warnings": warnings,
             "allowed": not blockers,
