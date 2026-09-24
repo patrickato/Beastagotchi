@@ -17,6 +17,7 @@ This repository snapshot is intended to let an external developer or AI resume o
 12. `docs/Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
 13. `docs/Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
 14. `docs/Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`
+15. `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -58,3 +59,4 @@ Please distinguish architectural critique from personal preferences and cite fil
 - A Beast policy blocker is not ownership authority: technically possible unsupported operations need an explicit owner override/manual escape path; technical impossibility remains distinct.
 - The shared DependencyCapabilityResolver is read-only and already used by Plugins + Packs. Do not add package/service mutation to it; remediation execution belongs to separately planned/audited transactions.
 - Secret-bearing plugin config may expose presence only; do not surface credential values into canonical state, dependency evidence, logs or support bundles.
+- Provider arbitration is read-only: native-first defaults, owner preference modeling, recommendations and fallback chains must not be confused with an enabled handoff/failover executor.
