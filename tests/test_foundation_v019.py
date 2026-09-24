@@ -325,3 +325,26 @@ def test_v019_field_cockpit_pages_render_empty_and_live_states(tmp_path):
             with Image.open(out) as im:
                 assert im.size == (480, 320)
                 assert im.getbbox() == (0, 0, 480, 320)
+
+
+
+def test_v019_app_launcher_geometry_respects_touch_minimum():
+    from beastui.engine import BeastUI
+    from beastui.design import TOKENS
+
+    boxes = list(BeastUI.APP_CARD_BOXES) + [
+        BeastUI.APP_CAT_PREV,
+        BeastUI.APP_CAT_NEXT,
+        BeastUI.APP_NAV_PREV,
+        BeastUI.APP_NAV_CLOSE,
+        BeastUI.APP_NAV_NEXT,
+    ]
+    assert BeastUI.APP_PAGE_SIZE == 4
+    for x1, y1, x2, y2 in boxes:
+        assert (x2 - x1) >= TOKENS.touch_min
+        assert (y2 - y1) >= TOKENS.touch_min
+
+    # The 2x2 card grid must not overlap the category or bottom navigation
+    # controls on the 480x320 logical canvas.
+    assert max(box[3] for box in BeastUI.APP_CARD_BOXES) < BeastUI.APP_NAV_PREV[1]
+    assert min(box[1] for box in BeastUI.APP_CARD_BOXES) > BeastUI.APP_CAT_PREV[3]
