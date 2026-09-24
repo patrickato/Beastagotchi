@@ -153,7 +153,7 @@ def test_v019_pi_source_artifact_pins_real_pr_head_and_portable_checksum():
     assert "SOURCE_COMMIT_SHA.txt" in workflow
     assert "CI_TESTED_SHA.txt" in workflow
     assert '(cd "$OUTDIR" && sha256sum "$NAME"' in workflow
-    assert "COMMIT_SHA.txt" not in workflow
+    assert '> "$OUTDIR/COMMIT_SHA.txt"' not in workflow
 
 
 def test_v019_acceptance_harness_keeps_owner_decision_explicit():
