@@ -47,11 +47,11 @@ systemctl daemon-reload
 systemctl stop beast-ui.service 2>/dev/null || true
 systemctl disable beast-ui.service 2>/dev/null || true
 cat <<'EOF'
-Beast UI v0.18.1 Platform / Compatibility milestone installed but NOT started.
+Beast UI development build installed but NOT started.
 Physical display ownership is protected: beast-ui refuses to start while Pwnagotchi ui.display.enabled=true.
 
 Off-screen test:
-  sudo -u pi PYTHONPATH=/opt/beast-ui /opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --output /tmp/beast-ui-v017.png --duration 2
+  sudo -u pi PYTHONPATH=/opt/beast-ui /opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --output /tmp/beast-ui-v019.png --duration 2
 
 Reversible physical handoff test:
   sudo /opt/beast-ui/bin/claim_display_test.sh 15
