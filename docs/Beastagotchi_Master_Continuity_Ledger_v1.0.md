@@ -309,12 +309,22 @@ Legal posture:
   undertaken at the user's risk, but should not claim that UI wording can
   guarantee zero liability in every jurisdiction.
 
-Current code foundation:
-- PluginBroker plans now expose `technical_blockers`, `policy_blockers`,
+Current implementation:
+- PluginBroker plans expose `technical_blockers`, `policy_blockers`,
   `owner_override_available`, `owner_override_executed` and
   `managed_allowed`;
-- current execution remains conservative; actual override execution is not yet
-  enabled.
+- persistent Expert Mode is stored privately and can be changed only through an
+  active owner-authorized administrator session or by the owner manually outside
+  Beast;
+- an explicit plugin `owner_override=true` may bypass policy blockers only while
+  Expert Mode is enabled;
+- technical blockers remain non-overridable;
+- successful plugin overrides keep normal snapshot/verification/restart/health/
+  rollback behavior and mark the device customized for later diagnostics;
+- owner-mode status is exposed read-only through Core/API/structured tools;
+- Support Bundles carry sanitized managed/expert/customized state;
+- actual arbitrary plugin/package/service/script execution remains future work,
+  so this milestone does not convert Expert Mode into a generic command runner.
 
 Canonical specification:
 `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`.
