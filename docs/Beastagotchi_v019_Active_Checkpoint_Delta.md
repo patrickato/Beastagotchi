@@ -523,38 +523,53 @@ Approved product rule:
 - Beastagotchi is not a locked appliance;
 - safe defaults, compatibility checks, snapshots, rollback and curated sources
   are the preferred managed path;
-- technically possible operations blocked only by Beast policy/support rules
-  require an eventual explicit owner-override path;
+- technically possible operations blocked only by Beast policy/support rules can
+  be explicitly owner-overridden;
 - true technical impossibility remains distinct and cannot be made successful by
   a warning bypass.
 
-New specification:
+Canonical specification:
 - `docs/Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`
 
-Implemented code foundation:
-- `PluginBroker.plan_toggle()` now reports:
-  - `technical_blockers`
-  - `policy_blockers`
-  - `owner_override_available`
-  - `owner_override_executed`
-  - `managed_allowed`
-- protected Beast Bridge disablement and live display-owner conflicts are now
-  explicitly classified as policy blockers;
-- an actually missing/unconfigured plugin remains a technical blocker;
-- current executor behavior is unchanged: owner override is not yet executed.
+Implemented:
+- persistent `OwnerModeManager` state at
+  `/var/lib/beastagotchi/owner-mode.json`;
+- owner-mode file writes are atomic and private (`0600`);
+- entering/leaving persistent Expert Mode is an audited Action Broker mutation
+  and requires an active owner-authorized administrator session;
+- Core publishes canonical `owner.*` state;
+- `GET /owner-mode` exposes bounded read-only status;
+- structured Operator tools expose owner-mode read and administrator-gated set;
+- PluginBroker plans distinguish `technical_blockers` and `policy_blockers`;
+- plugin actions accept explicit `owner_override=true` only while Expert Mode
+  is enabled;
+- technical blockers cannot be bypassed;
+- policy override retains the normal plugin config snapshot, verification,
+  Pwnagotchi restart/health observation and rollback transaction;
+- successful override records permanent customized/support-state evidence,
+  override count and last override action/target;
+- Expert Mode can later be disabled without falsely erasing the fact that an
+  unsupported/custom override occurred;
+- sanitized Support Bundles include Expert/customized state;
+- Expert Mode changes and successful policy overrides create durable action/event
+  evidence;
+- the older managed PluginBroker call contract remains compatible; an old broker
+  cannot silently accept an override it does not understand.
 
 Retained next work:
-- persistent Expert Mode + visible indicator;
-- per-action "Proceed unsupported anyway";
-- unsupported/custom support-state reporting;
-- unsupported plugin/source import;
-- exact manual/root instructions for self-disabling operations;
-- later direct owner administration surface with explicit local-auth/audit/recovery
-  boundaries.
+- dedicated Beast Studio/TFT Expert Mode control + obvious indicator;
+- extend policy-vs-technical blocker semantics into the common Dependency &
+  Capability Resolver;
+- reverse `used_by` impact in override confirmations;
+- unsupported/custom plugin/source import;
+- exact manual/root maintenance instructions for self-disabling operations;
+- verified return-to-managed-baseline workflow;
+- later direct owner administration surface with explicit local-auth/audit/
+  recovery boundaries.
 
 Security boundary:
-Owner Override is intended for the authenticated local owner. It must not become a
-remote unauthenticated bypass for plugins or network clients.
+Owner Override belongs to the authenticated local owner. It does not create an
+unauthenticated network bypass and does not grant OS privilege by itself.
 
 Legal/documentation boundary:
 The repository remains GPLv3; sections 15/16 provide the existing warranty and
@@ -563,12 +578,18 @@ warn that unsupported/custom modifications are at the user's risk, but does not
 claim that UI wording can eliminate every possible liability under every
 jurisdiction.
 
-No current managed safety check was silently removed by this milestone.
-
-Source/CI evidence after the policy-vs-technical blocker code change:
-- **353 tests passed in 6.87s**
+Source/CI evidence for the code-bearing Expert Mode milestone:
+- **360 tests passed in 10.98s**
 - Python compile passed
 - shell syntax passed
 - sanitized real-state UX gallery render/upload passed
-- GitHub Actions run `35959564793`
+- GitHub Actions run `35963073560`
+
+The first CI pass exposed one backward-compatibility regression in an older
+PluginBroker test double. ActionBroker was corrected to retain the previous
+managed call contract while refusing to silently downgrade an actual override
+request. The succeeding full gate is green.
+
+No package/service was installed on the target Pi, no physical display behavior
+changed and no new physical TFT acceptance is claimed.
 
