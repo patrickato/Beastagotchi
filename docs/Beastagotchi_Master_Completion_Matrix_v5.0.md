@@ -3,7 +3,7 @@
 **Status date:** 2026-09-23  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** 332 automated tests passing + Python compile + shell syntax
+**Current v0.19 source gate:** **339 automated tests passing** + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -75,7 +75,9 @@ approved scope.
 - [~] v0.19 hierarchy/typography/navigation redesign across high-frequency pages
 - [~] consistent first-time-user interaction grammar
 - [~] consistent empty/loading/error/no-capability states
+  - operational platform browsers now have truthful no-data messaging and a calmer three-row layout
 - [~] consistent dialogs/confirmations/toasts
+  - platform browser bottom navigation is now standardized at 50px-high touch targets
 - [ ] v0.19 physical TFT visual acceptance
 - [ ] final production visual language acceptance
 
@@ -95,6 +97,7 @@ approved scope.
 - [~] make major themes structurally distinct rather than palette/effect variants
 - [x] exact/off-screen gallery tooling
 - [x] captured-state gallery path that does not invent missing telemetry
+- [x] captured-state gallery includes Control Center/Apps and major operational overlays
 - [ ] final visual regression acceptance gallery
 - [ ] physical theme-family readability/heat comparison
 
@@ -607,9 +610,10 @@ approved scope.
 ## Current next work
 
 1. Keep PR #9 unmerged.
-2. Finish the remaining high-frequency v0.19 hierarchy/interaction cleanup and
-   Control Center/overlay cleanup.
-3. Generate and review another captured-real-state v0.19 visual acceptance gallery;
+2. Finish the remaining high-frequency v0.19 hierarchy/interaction cleanup; the
+   first Control Center/operational-overlay cleanup block is now source-green.
+3. Generate and review another captured-real-state v0.19 visual acceptance gallery
+   using the expanded page + interaction + operational-surface renderer;
    fix clipping, hierarchy and theme-specific regressions off-screen first.
 4. Reconcile the PeerDex bridge/event integration and user-facing social state
    without overstating the already-implemented persistence foundation.
