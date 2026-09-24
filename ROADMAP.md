@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **406 passing tests** plus Python compile/shell validation.
+preserved source gate is **415 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -36,6 +36,8 @@ Recent progress:
 - operational empty states explicitly preserve unavailable truth instead of synthesizing demo state;
 - the captured-real-state gallery now includes Control Center, Apps, Operations, Notifications, Diagnostics, Services, Hardware, Storage, Incidents and Connectivity in addition to the primary page set.
 - a bounded physical-acceptance harness now exists with automatic rollback reuse, framebuffer captures, 1 Hz runtime/Core sampling, touch evidence and a timestamped support bundle.
+- the commit-pinned Pi artifact now carries a verified one-command staging wrapper + quickstart; staging verifies SHA/source provenance, preserves Beast Core config, backs up the existing Beast SQLite DB, installs Core/UI, starts Core only and leaves TFT ownership untouched until an explicit acceptance start.
+- physical evidence now records the staged source commit / CI-tested commit / source archive SHA so the real TFT session is traceable back to the exact GitHub artifact.
 
 Still to finish:
 - finish hierarchy/interaction cleanup across the high-frequency page carousel;
