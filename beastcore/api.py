@@ -21,6 +21,7 @@ class LocalAPI:
         self.backup_manager = None
         self.template_tokens = None
         self.integration_catalog = None
+        self.signals = None
         self.doctor = None
         self.capsules = None
 
@@ -419,6 +420,11 @@ class LocalAPI:
                 body = self.template_token_bundle(names)
                 if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
                     body["catalog"] = self.template_tokens.catalog()
+            elif parsed.path == "/signals":
+                q = urllib.parse.parse_qs(parsed.query)
+                raw = str(q.get("names", [""])[0])
+                names = [x.strip() for x in raw.split(",") if x.strip()][:128] or None
+                body = self.signals.snapshot(names) if self.signals is not None else {"schema":1,"count":0,"available_count":0,"history_capable_count":0,"items":[]}
             elif parsed.path == "/integrations":
                 body = self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]}
             elif parsed.path == "/dependencies":
