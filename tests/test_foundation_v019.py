@@ -190,10 +190,46 @@ def test_pack_registry_validates_and_reports_capability_blockers(tmp_path):
     assert row["id"] == "maps-plus"
     assert row["requirements_met"] is False
     assert row["missing_capabilities"] == ["rtl_sdr"]
+    assert row["requirements_resolution"] == "read_only"
+    assert "rtl_sdr" in row["technical_blockers"]
+    assert row["owner_override_available"] is False
+    assert patch["packs.requirements_model"] == "dependency_capability_resolver_v0.1_read_only"
+    assert patch["packs.requirements_executor_enabled"] is False
     assert "secret@" not in row["source"]["url"]
     assert patch["packs.executor_enabled"] is True
     assert patch["packs.executor_scope"] == "verified_registry_install_only"
     assert patch["packs.activation_enabled"] is False
+
+
+def test_pack_dependency_graph_uses_installed_pack_as_available_provider(tmp_path):
+    import json
+    from beastcore.packs import PackRegistryEngine
+
+    root = tmp_path / "installed"
+    base = root / "base-assets"
+    child = root / "field-board"
+    base.mkdir(parents=True)
+    child.mkdir(parents=True)
+
+    (base / "manifest.json").write_text(json.dumps({
+        "id": "base-assets",
+        "label": "Base Assets",
+        "pack_type": "data",
+    }))
+    (child / "manifest.json").write_text(json.dumps({
+        "id": "field-board",
+        "label": "Field Board",
+        "pack_type": "board",
+        "dependencies": ["base-assets"],
+    }))
+
+    patch = PackRegistryEngine(_S({"capabilities.present": []}), roots={"installed": root}).tick()
+    rows = {row["id"]: row for row in patch["packs.items"]}
+    assert rows["field-board"]["requirements_met"] is True
+    assert rows["field-board"]["technical_blockers"] == []
+    assert rows["field-board"]["policy_blockers"] == []
+    assert rows["base-assets"]["used_by"] == ["field-board"]
+    assert patch["packs.requirements_summary"]["selected_component_count"] == 0
 
 
 def test_update_policy_engine_records_intent_without_enabling_executor(tmp_path):
