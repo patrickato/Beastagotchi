@@ -38,3 +38,13 @@ Do not archive a file merely because its version number is old: if current runti
 installers, tests or active documentation still depend on its exact path, keep it
 active until those references are migrated safely. Use `docs/README.md` as the
 navigation/source-of-truth layer. See `docs/REPOSITORY_HYGIENE.md` for the living cleanup/archive policy and unresolved consolidation candidates.
+
+
+## Extension / Capsule additions
+
+- `beastcore/capsules.py` — transport-neutral Beast Capsule codec, privacy-curated
+  Lineage export and bounded QR-ready frame/reassembly primitives.
+- `docs/Beastagotchi_Plugin_Extension_Architecture_v0.1.md` — Pwnagotchi Plugin /
+  Beast Pack / Beast App / Companion Expansion boundaries.
+- `docs/Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md` — offline
+  QR/file/USB/SD/NFC/direct-transfer ecosystem and Capsule trust/import roadmap.
