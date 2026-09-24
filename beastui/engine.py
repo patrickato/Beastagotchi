@@ -1165,6 +1165,31 @@ class BeastUI:
         deck=self._deck_category_map().get(cat)
         return self.apps.by_ids(deck.get('apps') or []) if deck else self.apps.by_category(cat)
 
+    def _load_capsule_share(self):
+        """Fetch a fresh real Lineage Capsule without blocking the render loop."""
+        if self.capsule_loading:return
+        self.capsule_loading=True
+        self.capsule_share={"loading":True}
+        self.capsule_frame_idx=0
+        self.dirty.set()
+        def worker():
+            try:
+                api=getattr(getattr(self,'feed',None),'api',None)
+                if api is None:
+                    row={"ok":False,"error":"Beast Core Capsule API is unavailable"}
+                else:
+                    row=api.capsule_export(qr_chars=220)
+                    if not isinstance(row,dict) or not row:
+                        row={"ok":False,"error":"Capsule export returned no data"}
+                self.capsule_share=row
+                self.capsule_frame_idx=0
+            except Exception as exc:
+                self.capsule_share={"ok":False,"error":f"{type(exc).__name__}: {exc}"}
+            finally:
+                self.capsule_loading=False
+                self.dirty.set()
+        threading.Thread(target=worker,name='beastui-capsule-export',daemon=True).start()
+
     def _open_app(self,app_id):
         app=self.apps.get(app_id)
         if app is None:return
@@ -1186,6 +1211,8 @@ class BeastUI:
         elif app.target=='beastdex':self.beastdex_overlay=True;self.beastdex_offset=0;self.beastdex_detail=None
         elif app.target=='capture_vault':self.capture_vault_overlay=True;self.capture_vault_offset=0;self.capture_vault_detail=None
         elif app.target=='performance':self.performance_overlay=True;self.performance_offset=0
+        elif app.target=='capsule_share':
+            self.capsule_share_overlay=True;self.capsule_frame_idx=0;self._load_capsule_share()
         elif app.target in {'timeline','notifications','diagnostics','services','hardware','storage','operations','topology','tasks','field_library','missions','containers','incidents','backups','ai_operator','connectivity','command_center'}:self.platform_overlay=app.target;self.platform_offset=0
         elif app.target=='studio':self.studio_overlay=True
         elif app.target=='help':self.help_overlay=True
@@ -1350,6 +1377,74 @@ class BeastUI:
         d.text((45,242),'<< PREV',font=f['tiny'],fill=t.c('primary'))
         d.text((213,242),'CLOSE',font=f['tiny'],fill=t.c('text'))
         d.text((369,242),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+
+    def _capsule_share_view(self,d):
+        if not self.capsule_share_overlay:return
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,40,472,274),t,accent=t.c('info'),width=2)
+        row=self.capsule_share if isinstance(self.capsule_share,dict) else {}
+        d.text((232,49),'BEAST CAPSULE // OFFLINE SHARE',font=f['small'],fill=t.c('info'))
+
+        if self.capsule_loading or row.get('loading'):
+            d.text((232,82),'PREPARING LINEAGE CAPSULE',font=f['medium'],fill=t.c('text'))
+            d.text((232,108),'Reading the active Beast from Core.',font=f['tiny'],fill=t.c('dim'))
+            d.text((232,126),'Nothing has been imported or published.',font=f['tiny'],fill=t.c('dim'))
+            d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('edge'),width=2)
+            d.text((63,143),'PREPARING',font=f['medium'],fill=t.c('dim'))
+        elif not row.get('ok'):
+            d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('warn'),width=2)
+            d.text((47,132),'CAPSULE',font=f['large'],fill=t.c('warn'))
+            d.text((38,160),'UNAVAILABLE',font=f['medium'],fill=t.c('warn'))
+            d.text((232,82),'EXPORT NOT READY',font=f['medium'],fill=t.c('warn'))
+            d.text((232,108),str(row.get('error') or 'No Capsule data available.')[:36],font=f['tiny'],fill=t.c('text'))
+            d.text((232,130),'No substitute/fake QR is shown.',font=f['tiny'],fill=t.c('dim'))
+        else:
+            qr=row.get('qr') if isinstance(row.get('qr'),dict) else {}
+            frames=[str(x) for x in (qr.get('frames') or []) if str(x)]
+            payload=((row.get('envelope') or {}).get('payload') or {}) if isinstance(row.get('envelope'),dict) else {}
+            total=max(1,len(frames));self.capsule_frame_idx=max(0,min(total-1,int(self.capsule_frame_idx)))
+            frame=frames[self.capsule_frame_idx] if frames else ''
+            qrstat=qr_backend_status();render_error=None;render_meta={}
+            if frame and qrstat.get('available'):
+                try:render_meta=draw_qr(d,self.CAPSULE_QR_BOX,frame,error_correction='M')
+                except Exception as exc:render_error=str(exc)
+            else:
+                render_error='QR renderer dependency is not installed' if not qrstat.get('available') else 'Capsule contains no QR frame'
+            if render_error:
+                d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('warn'),width=2)
+                d.text((49,126),'QR FRAME',font=f['medium'],fill=t.c('warn'))
+                d.text((53,149),'UNAVAILABLE',font=f['small'],fill=t.c('warn'))
+                d.text((32,176),render_error[:28],font=f['micro'],fill=t.c('dim'))
+
+            preview=bool(payload.get('preview'))
+            name=str(payload.get('name') or 'UNNAMED BEAST')
+            lineage=str(payload.get('lineage') or '--').replace('_',' ').upper()
+            level=payload.get('level');stage=str(payload.get('stage') or '--').upper()
+            kind=str(payload.get('kind') or 'beast').upper()
+            d.text((232,72),name[:24],font=f['medium'],fill=t.c('accent'))
+            d.text((232,94),f'{kind[:8]}  ·  {lineage[:18]}',font=f['tiny'],fill=t.c('text'))
+            d.text((232,112),f'LV {level if level is not None else "--"}  ·  {stage[:18]}',font=f['small'],fill=t.c('primary'))
+            d.text((232,136),f'FRAME {self.capsule_frame_idx+1}/{total}',font=f['medium'],fill=t.c('info'))
+            if render_meta:
+                d.text((336,139),f"{render_meta.get('modules','--')} MOD / {render_meta.get('scale_px','--')}PX",font=f['micro'],fill=t.c('dim'))
+            integrity=(row.get('envelope') or {}).get('integrity') if isinstance(row.get('envelope'),dict) else {}
+            authenticated=bool((integrity or {}).get('authenticated'))
+            d.text((232,160),'SIGNED / AUTHENTICATED' if authenticated else 'UNSIGNED · INTEGRITY ONLY',font=f['tiny'],fill=t.c('accent') if authenticated else t.c('warn'))
+            d.text((232,179),'NO CAPTURES · NO GPS · NO CREDS',font=f['tiny'],fill=t.c('dim'))
+            d.text((232,197),'LOCAL QR SHARE · NO CLOUD REQUIRED',font=f['tiny'],fill=t.c('text'))
+            if preview:
+                d.rounded_rectangle((232,204,464,220),radius=4,fill=t.c('panel2'),outline=t.c('warn'))
+                d.text((273,208),'GALLERY PREVIEW · NOT IMPORTABLE',font=f['micro'],fill=t.c('warn'))
+
+        for box,label,col in (
+            (self.CAPSULE_PREV,'< FRAME',t.c('primary')),
+            (self.CAPSULE_CLOSE,'CLOSE',t.c('edge')),
+            (self.CAPSULE_NEXT,'FRAME >',t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
+            tb=d.textbbox((0,0),label,font=f['micro']);tw=tb[2]-tb[0]
+            d.text((box[0]+max(4,((box[2]-box[0])-tw)//2),box[1]+19),label,font=f['micro'],fill=t.c('text') if label=='CLOSE' else col)
 
     def _telemetry_inspector(self,d):
         if not self.telemetry_overlay:return
@@ -1943,7 +2038,7 @@ class BeastUI:
         # No Beast header/footer/event reaction/scanline is painted in Native
         # Dark/Light: the untouched Jayofelony composition is the point.
         # Chroma only recolors/glows the exact native foreground mask.
-        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
+        self._drawer(d);self._apps_overlay(d);self._capsule_share_view(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
         # Monster reveals remain available above Native; Rare Moments still win final priority.
         im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         return render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
