@@ -72,7 +72,17 @@ sudo ./validate_v018.sh
 
 Review the returned validation archive before using the reversible display handoff tools in `display_handoff/`.
 
-For the active v0.19 branch, the UI installer also installs the bounded physical-acceptance harness. After off-screen/source checks are green, the reference-TFT session starts with:
+For the active v0.19 branch, the UI installer also installs the bounded physical-acceptance harness and creates the Beast-owned optional Python package root at `/opt/beast-python/site-packages`.
+
+For a complete Capsule QR physical sub-gate, explicitly prepare the CI-tested QR renderer first:
+
+```bash
+sudo beast-v019-accept prepare-qr
+```
+
+That installs `qrcode==8.2` into the Beast-owned target path with wheel SHA-256 provenance. It does not install the package into Pwnagotchi's `/opt/.pwn` site-packages. Removal is explicit with `sudo beast-v019-accept remove-qr`.
+
+After off-screen/source checks are green, the reference-TFT session starts with:
 
 ```bash
 sudo beast-v019-accept start 15
