@@ -10,6 +10,12 @@ def test_v019_acceptance_report_summarizes_runtime_and_preserves_physical_bounda
     (session / "preflight.json").write_text(json.dumps({
         "qr_renderer": {"available": True, "backend": "python-qrcode"},
         "versions": {"beastui": "0.19.0"},
+        "deployment": {
+            "source_commit": "a" * 40,
+            "ci_tested_commit": "b" * 40,
+            "archive_sha256": "c" * 64,
+            "staged_at_utc": "2026-09-24T12:00:00Z",
+        },
     }))
     (session / "capsule-export.json").write_text(json.dumps({
         "ok": True,
@@ -76,6 +82,9 @@ def test_v019_acceptance_report_summarizes_runtime_and_preserves_physical_bounda
     assert summary["evidence_class"] == "target_physical_session"
     assert summary["physical_user_judgment"] == "required"
     assert summary["sample_count"] == 2
+    assert summary["deployment"]["source_commit"] == "a" * 40
+    assert summary["deployment"]["ci_tested_commit"] == "b" * 40
+    assert summary["deployment"]["archive_sha256"] == "c" * 64
     assert summary["metrics"]["cpu_temp_c"]["avg"] == 53.0
     assert summary["metrics"]["avg_render_ms"]["avg"] == 12.0
     assert summary["metrics"]["framebuffer_totals_delta"]["frames"] == 12
@@ -88,6 +97,8 @@ def test_v019_acceptance_report_summarizes_runtime_and_preserves_physical_bounda
 
     text = write_text_report(summary)
     assert "does not decide physical acceptance" in text
+    assert "Source commit: " + ("a" * 40) in text
+    assert "CI-tested commit: " + ("b" * 40) in text
     assert "QR_PHONE_SCAN" not in text
 
 
@@ -122,6 +133,8 @@ def test_v019_acceptance_harness_curates_sensitive_evidence():
     assert "platform-bundle" not in script
     assert "pwnagotchi-journal.txt" not in script
     assert "name=0&achievements=0&appearance=0" in script
+    assert "deployment-provenance.json" in script
+    assert "/var/lib/beastagotchi/deployments/v019/current-staged" in script
 
 
 def test_v019_qr_optional_dependency_is_beast_owned_and_provenanced():
