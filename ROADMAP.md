@@ -174,9 +174,26 @@ Implemented foundation:
 - checksum/integrity is explicitly not presented as sender authenticity;
 - no QR-rendering/camera dependency was added to the base image.
 
+Implemented visual transport step:
+- optional lightweight QR renderer adapter in Beast UI using `qrcode` when
+  available;
+- real Capsule Share Beast App overlay fetching a fresh Lineage Capsule from Core;
+- 48px+ manual frame controls and horizontal swipe navigation;
+- explicit unsigned/integrity-only + privacy messaging;
+- machine-readable QR transport is rendered above theme scanlines/effects;
+- CI gallery includes a clearly labeled non-importable preview derived only from
+  the sanitized real-device fixture;
+- representative off-screen 480×320 density gate requires >=3 px/module;
+- manual off-screen artifact inspection decoded the generated PNG back to its
+  exact BCQ1 frame;
+- `qrcode` remains development/CI + candidate optional runtime dependency; it
+  is not silently installed into the protected Pwnagotchi environment.
+
 Next:
-- optional lightweight QR renderer/animated-share UI, benchmarked on the physical
-  480×320 Pi;
+- package the QR renderer dependency through a clean Beast-owned/capability-aware
+  runtime path;
+- physically validate TFT/phone-camera scanning before choosing animation timing;
+- automatic frame cycling + receiver/missing-frame UX after physical evidence;
 - Capsule Workshop / exact-share preview in Studio;
 - scan/import preview with no roster mutation;
 - signed Capsule identity/authenticity design;
