@@ -737,3 +737,52 @@ This physical session still does not authorize promotion of Draft PR #9 to
 `main`; real Presentation Broker multi-owner switching and remaining release
 gates remain separate.
 
+## Beast-owned optional Python runtime boundary — 2026-09-24
+
+Durable dependency decision:
+optional Beast Python packages should have a Beast-owned import/install boundary,
+not be casually added to Pwnagotchi's protected `/opt/.pwn` site-packages.
+
+The first implemented path is:
+
+`/opt/beast-python/site-packages`
+
+Beast UI/Studio include it in PYTHONPATH after the project source directory.
+
+The normal installer creates the directory but does not fetch optional packages.
+For the Capsule QR physical gate, explicit owner action is available:
+
+- `beast-v019-accept prepare-qr`
+- `beast-v019-accept remove-qr`
+
+The current preparation path pins the CI-tested `qrcode==8.2`, downloads the
+wheel first, records its SHA-256, installs it with `pip --target` into the
+Beast-owned directory and writes dependency provenance. Removal targets only the
+Beast-owned qrcode files/metadata/console entry.
+
+This is a concrete first implementation, not yet a generalized automatic package
+manager. Future Dependency & Capability Resolver remediation should inherit the
+same principles:
+- explicit ownership boundary;
+- declared capability need;
+- dry-run/plan where practical;
+- provenance;
+- target isolation;
+- reversible removal;
+- no silent pollution of upstream runtimes.
+
+Durable packaging decision:
+the physical v0.19 gate should use a commit-pinned CI source artifact. GitHub
+Actions now emits `v019-pi-acceptance-source` containing the exact tested HEAD
+archive, archive SHA-256 and full commit SHA.
+
+Source validation at the first complete implementation:
+- commit `a8318ca810406290f4b4cfdb73d946345abc2350`;
+- run `35977711327` (#349);
+- 399 tests;
+- compile/shell/gallery green;
+- Pi source artifact id `10798463813`.
+
+The next work item is real target execution, not more abstract preparation of
+this same gate.
+
