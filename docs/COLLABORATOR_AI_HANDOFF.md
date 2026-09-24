@@ -14,6 +14,8 @@ This repository snapshot is intended to let an external developer or AI resume o
 9. `docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`
 10. `docs/UPDATE_MANAGER_SPEC_v0.1.md`
 11. `docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`
+12. `docs/Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
+13. `docs/Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -34,6 +36,7 @@ External reviewers are especially invited to critique:
 - update/rollback design.
 - Theme Manager coexistence/merge strategy.
 - plugin compatibility and configuration safety.
+- dependency/capability graph design, provider arbitration and how to keep a maximal known-universe BOM without a kitchen-sink runtime.
 - performance/thermal behavior on Pi 4.
 - code organization, duplicated historical code and migration path to v1.0.
 - test gaps, packaging and CI.
@@ -48,3 +51,4 @@ Please distinguish architectural critique from personal preferences and cite fil
 - Do not replace the page/tab/swipe model with an app-only interface.
 - Do not invent telemetry when live/persisted data is absent.
 - Build substantial, test-backed blocks before asking for another physical Pi test.
+- Cataloging the full software/service universe is approved; bulk-installing/enabling that universe is not. Optional dependencies remain feature/hardware driven.
