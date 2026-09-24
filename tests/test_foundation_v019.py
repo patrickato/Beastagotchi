@@ -298,27 +298,26 @@ def test_v019_field_cockpit_pages_render_empty_and_live_states(tmp_path):
     })
 
     for label, state in (("empty", empty_state), ("live", live_state)):
-        ui = BeastUI(root=root, output=str(tmp_path / "frame.png"), theme_id="classic")
-        ui.state = dict(state)
-        ui.histories = {"wifi.ap_count": [1, 2, 3], "system.cpu.total": [10, 20], "system.temp.cpu_c": [50, 52]}
-        ui.aux = {}
-        if label == "live":
-            ui.aux = {
-                "channel_history": [
-                    {"channels": [{"channel": 1, "ap_count": 1}, {"channel": 6, "ap_count": 2}]},
-                    {"channels": [{"channel": 1, "ap_count": 2}, {"channel": 6, "ap_count": 1}]},
-                ],
-                "expedition": {
-                    "points": [
-                        {"latitude": 42.0, "longitude": -83.0},
-                        {"latitude": 42.001, "longitude": -83.002},
-                        {"latitude": 42.003, "longitude": -83.001},
-                    ]
-                },
-            }
         for page in ("recon", "spectrum", "captures", "map", "expedition"):
             out = tmp_path / f"{label}-{page}.png"
-            ui.output = str(out)
+            ui = BeastUI(root=root, output=str(out), theme_id="classic")
+            ui.state = dict(state)
+            ui.histories = {"wifi.ap_count": [1, 2, 3], "system.cpu.total": [10, 20], "system.temp.cpu_c": [50, 52]}
+            ui.aux = {}
+            if label == "live":
+                ui.aux = {
+                    "channel_history": [
+                        {"channels": [{"channel": 1, "ap_count": 1}, {"channel": 6, "ap_count": 2}]},
+                        {"channels": [{"channel": 1, "ap_count": 2}, {"channel": 6, "ap_count": 1}]},
+                    ],
+                    "expedition": {
+                        "points": [
+                            {"latitude": 42.0, "longitude": -83.0},
+                            {"latitude": 42.001, "longitude": -83.002},
+                            {"latitude": 42.003, "longitude": -83.001},
+                        ]
+                    },
+                }
             ui.page = ui.pages.IDS.index(page)
             ui.render()
             assert out.is_file(), (label, page)
