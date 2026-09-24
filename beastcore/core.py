@@ -48,6 +48,7 @@ from .actions import ActionBroker
 from .owner_mode import OwnerModeManager
 from .provider_preferences import ProviderPreferenceManager
 from .doctor import BeastDoctor
+from .capsules import BeastCapsuleEngine
 from .action_server import LocalActionServer
 from .collectors import *
 
@@ -81,6 +82,7 @@ class BeastCore:
         self.dock = DockEngine(self.state)
         self.progression_store = ActiveBeastProgressionStore(self.store)
         self.roster = self.progression_store.roster
+        self.capsules = BeastCapsuleEngine(self.store, self.roster, beast_version=__version__)
         self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
         self.semantic = SemanticEngine(self.state, self.store, active_beast_id=self.progression_store.current_id)
         self.global_achievements = GlobalAchievementEngine(self.state,self.store,self.roster)
@@ -121,6 +123,7 @@ class BeastCore:
         self.api.backup_manager = self.actions.backup_manager
         self.api.operator_tools = self.operator_tools
         self.api.doctor = self.doctor
+        self.api.capsules = self.capsules
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
         self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
