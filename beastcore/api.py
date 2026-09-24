@@ -349,6 +349,27 @@ class LocalAPI:
                 body = self.template_token_bundle(names)
                 if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
                     body["catalog"] = self.template_tokens.catalog()
+            elif parsed.path == "/dependencies":
+                body = {
+                    "schema": 1,
+                    "execution_enabled": False,
+                    "provider_selection_enabled": False,
+                    "owner": {
+                        "expert_mode_enabled": bool(self.state.get("owner.expert_mode.enabled", False)),
+                        "customized": bool(self.state.get("owner.customized", False)),
+                        "support_state": self.state.get("owner.support_state", "managed"),
+                    },
+                    "plugins": {
+                        "summary": self.state.get("plugins.requirements_summary", {}) or {},
+                        "providers": self.state.get("plugins.requirements_providers", {}) or {},
+                        "used_by": self.state.get("plugins.requirements_used_by", {}) or {},
+                    },
+                    "packs": {
+                        "summary": self.state.get("packs.requirements_summary", {}) or {},
+                        "providers": self.state.get("packs.requirements_providers", {}) or {},
+                        "used_by": self.state.get("packs.requirements_used_by", {}) or {},
+                    },
+                }
             elif parsed.path == "/plugins":
                 items = list(self.state.get("plugins.catalog", []) or [])
                 body = {
@@ -421,7 +442,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/template-tokens","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
