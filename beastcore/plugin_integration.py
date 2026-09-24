@@ -183,10 +183,10 @@ class PluginIntegrationEngine:
     config broker/toggle UI with rollback.
     """
 
-    def __init__(self, state) -> None:
+    def __init__(self, state, resolver: DependencyCapabilityResolver | None = None) -> None:
         self.state = state
         self.theme_manager_probe = ThemeManagerProbe()
-        self.requirements = DependencyCapabilityResolver(state)
+        self.requirements = resolver or DependencyCapabilityResolver(state)
 
     @staticmethod
     def _binding(name: str) -> dict[str, Any]:
