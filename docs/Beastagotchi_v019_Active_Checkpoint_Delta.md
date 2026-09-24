@@ -305,3 +305,32 @@ TFT readability/touch acceptance, or sustained thermal validation is claimed.
 The next visible UX step is to use an actual captured Beast state with the expanded
 gallery, review clipping/hierarchy/theme regressions off-screen, and only then
 prepare a bounded Pi validation package when the visible delta is large enough.
+
+
+## Pinned-chat recovery batch 07 — GitHub/bootstrap bridge
+
+A new private recovery batch adds **15 screenshots**, bringing the ordered set to
+**93 screenshots across seven batches**, plus two earlier source images for
+**95 preserved image artifacts** total.
+
+This batch substantially closes the previously noted literal-history gap around:
+- initial working GitHub access and repository population from the v0.18.1 baseline;
+- creation of the durable issue/CI/documentation structure;
+- first v0.19 Draft PR #9 / Presentation Broker control-plane work;
+- early Unified UX and the user's request for periodic renders between Pi installs;
+- explicit rejection of early visual alternatives that still felt like variants
+  of one dashboard;
+- safe Pack intake/staging and content-only activation;
+- Theme/Board/Layout Pack consumers, Pack SDK and Depot Catalog v1;
+- the Experience milestone at historical head
+  `972d1b7c19450727ae969e79eaea05b8144980d9`;
+- the transition into the multi-Beast longevity question already preserved in the
+  later roster/lineage recovery.
+
+The final portion overlaps strongly with the previously recovered Experience /
+multi-Beast material. Further screenshot recovery should preferentially move
+**earlier than the first GitHub-connection point** if the goal is to uncover new
+context rather than duplicate later history.
+
+This is preservation/provenance only. It does not alter current implementation
+status or physical validation.
