@@ -1566,19 +1566,52 @@ class BeastUI:
             return
         if mode=='operations':
             d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('primary'),width=2)
-            state=str(self.state.get('overview.state') or '--').upper();col=t.c('danger') if state=='CRITICAL' else t.c('warn') if state=='ATTENTION' else t.c('accent')
-            d.text((20,47),'OPERATIONS CENTER',font=f['medium'],fill=t.c('primary'));d.text((385,50),state,font=f['tiny'],fill=col)
-            cards=[
-                ('CORE',str(self.state.get('health.core.state') or '--').upper(),f"{self.state.get('health.core.collector_count',0)} COLLECTORS"),
-                ('SERVICES',str(sum(1 for x in (self.state.get('platform.services') or []) if isinstance(x,dict) and x.get('active')=='active')),f"{len(self.state.get('platform.services') or [])} TRACKED"),
-                ('TASKS',str(len((self.aux.get('jobs') or {}).get('items') or [])),'RECENT JOBS'),
-                ('LIBRARY',str(self.state.get('library.document_count',0)),f"{self.state.get('library.text_indexed_count',0)} SEARCHABLE"),
+            overall=str(self.state.get('overview.state') or '--').upper()
+            col=t.c('danger') if overall=='CRITICAL' else t.c('warn') if overall=='ATTENTION' else t.c('accent')
+            d.text((20,47),'OPERATIONS CENTER',font=f['medium'],fill=t.c('primary'))
+            # Keep the whole-device condition visible without turning it into
+            # another equal-weight tile.
+            ob=d.textbbox((0,0),overall,font=f['tiny']);ow=max(0,ob[2]-ob[0])
+            d.text((454-ow,51),overall,font=f['tiny'],fill=col)
+
+            panel(d,(18,72,304,222),t,accent=t.c('edge'))
+            d.text((28,82),'LIVE PLATFORM',font=f['tiny'],fill=t.c('dim'))
+            active_services=sum(1 for x in (self.state.get('platform.services') or []) if isinstance(x,dict) and x.get('active')=='active')
+            service_total=len(self.state.get('platform.services') or [])
+            recent_jobs=len((self.aux.get('jobs') or {}).get('items') or [])
+            rows=[
+                ('CORE',str(self.state.get('health.core.state') or '--').upper(),f"{self.state.get('health.core.collector_count',0)} collectors"),
+                ('SERVICES',f'{active_services}/{service_total}', 'active / tracked'),
+                ('TASKS',str(recent_jobs),'recent durable jobs'),
+                ('LIBRARY',str(self.state.get('library.document_count',0)),f"{self.state.get('library.text_indexed_count',0)} searchable"),
             ]
-            boxes=[(18,76,226,137),(246,76,454,137),(18,148,226,209),(246,148,454,209)]
-            for (lab,val,sub),box in zip(cards,boxes):
-                panel(d,box,t);x1,y1,x2,y2=box;d.text((x1+9,y1+7),lab,font=f['tiny'],fill=t.c('dim'));d.text((x1+9,y1+22),val,font=f['large'],fill=t.c('text'));d.text((x1+80,y1+38),sub,font=f['micro'],fill=t.c('accent'))
-            att=int(self.state.get('overview.attention_count') or 0);d.text((18,222),f'ATTENTION {att}',font=f['small'],fill=t.c('warn') if att else t.c('accent'));d.text((128,224),'LONG-PRESS TO RETURN TO APPS',font=f['tiny'],fill=t.c('dim'))
-            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
+            for i,(lab,val,sub) in enumerate(rows):
+                y=100+i*29
+                d.text((28,y),lab,font=f['tiny'],fill=t.c('dim'))
+                d.text((100,y-2),val[:14],font=f['small'],fill=t.c('text'))
+                d.text((184,y),sub[:20],font=f['micro'],fill=t.c('info') if i else col)
+                if i<3:d.line((28,y+20,294,y+20),fill=t.c('edge'))
+
+            panel(d,(312,72,454,222),t,accent=col)
+            att=int(self.state.get('overview.attention_count') or 0)
+            d.text((322,82),'ATTENTION',font=f['tiny'],fill=t.c('dim'))
+            d.text((322,98),str(att),font=f['large'],fill=t.c('warn') if att else t.c('accent'))
+            d.text((350,104),'ITEMS',font=f['tiny'],fill=t.c('dim'))
+            d.line((322,126,444,126),fill=t.c('edge'))
+            temp=self.state.get('system.temp.cpu_c')
+            cpu=self.state.get('system.cpu.total')
+            gov=str(self.state.get('governor.mode') or 'FULL').upper()
+            d.text((322,138),'TEMP',font=f['micro'],fill=t.c('dim'))
+            d.text((375,136),f'{float(temp):.1f}C' if isinstance(temp,(int,float)) else '--',font=f['small'],fill=t.c('warn'))
+            d.text((322,158),'CPU',font=f['micro'],fill=t.c('dim'))
+            d.text((375,156),f'{float(cpu):.0f}%' if isinstance(cpu,(int,float)) else '--',font=f['small'],fill=t.c('primary'))
+            d.text((322,178),'MODE',font=f['micro'],fill=t.c('dim'))
+            d.text((375,176),gov[:10],font=f['small'],fill=t.c('secondary'))
+            d.text((322,201),'OPEN DETAIL APPS FOR DEPTH',font=f['micro'],fill=t.c('dim'))
+
+            d.text((18,231),'Long-press returns to Apps · detailed incidents/services remain one layer deeper.',font=f['micro'],fill=t.c('dim'))
+            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'))
+            d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
             return
         accent={'timeline':'info','notifications':'warn','diagnostics':'warn','services':'accent','hardware':'secondary','storage':'info','operations':'primary','topology':'info','tasks':'secondary','field_library':'accent','missions':'primary','containers':'info','incidents':'warn','backups':'accent','ai_operator':'primary','connectivity':'info','command_center':'accent'}.get(mode,'primary')
         col=t.c(accent,t.c('primary'));d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=col,width=2)
