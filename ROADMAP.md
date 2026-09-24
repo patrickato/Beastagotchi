@@ -104,12 +104,29 @@ Implemented foundation:
 - automatic failover/provider mutation remain explicitly disabled;
 - reference architecture, arbitration policy and BOM policy are documented.
 
+Implemented beyond the initial resolver:
+- persistent owner provider-preference store with atomic/private persistence;
+- audited provider preference set/clear actions gated by an owner-authorized
+  Operator session;
+- preferences change policy only and never silently enable/switch providers;
+- provider candidates now expose evidence health/confidence and canonical
+  freshness where real StateRegistry metadata exists;
+- first Beast Doctor/Explain layer answers why a provider is active, alternates,
+  downstream `USED BY` impact and preference problems;
+- read-only `/doctor`, `/explain` and `/provider-preferences` APIs plus
+  structured Operator tools;
+- Doctor/provider-policy state is included in sanitized support evidence.
+
 Next:
-- persistent owner provider preference + transactional set/clear action, without
-  enabling automatic provider mutation;
-- provider health freshness/confidence and anti-flap hysteresis;
-- Plugin & Capability Center requirement/status/USED BY/provider presentation;
-- Beast Doctor/Explain integration;
+- Plugin & Capability Center / Beast Studio presentation for provider policy,
+  Doctor explanations and `USED BY`;
+- provider-specific runtime health adapters beyond generic readiness evidence;
+- causal-chain explanations across missing requirements, not only provider choice;
+- context-aware Field/Dock/Home/Battery policy inputs;
+- known-good build fingerprint + "what changed?" comparison;
+- pre-action blast-radius simulation;
+- anti-flap hysteresis/minimum dwell/cooldown;
+- transactional TEST FAILOVER after handoff primitives exist;
 - build-specific BOM generator/export;
 - common resolver adoption by Experiences/Apps/Hardware Studio;
 - generalized version-range resolution and guided configuration;
