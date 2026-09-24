@@ -7,6 +7,12 @@ remains the anti-forgetting authority.
 For a concise current **finished vs remaining gate view**, see
 `docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`.
 
+The current post-preservation architecture decisions are recorded in
+`docs/Beastagotchi_Maturity_Architecture_Review_2026-09-24.md`. This review is
+an active design authority for contract consolidation, Scene/Visual Runtime work,
+Experience compilation and incremental monolith decomposition; it does not erase
+the continuity ledger or completion matrix.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
@@ -20,8 +26,11 @@ native-responsive Dashboard/Board renderer.
 are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
-Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **415 passing tests** plus Python compile/shell validation.
+Development lives on `v0.19-unified-experience` in Draft PR #9. The last green
+pre-reconstruction checkpoint passed **415 tests** plus Python compile/shell
+validation. Gate 1 has since been intentionally reopened for visual reconstruction
+and contract consolidation, so the active head must return to a new green source
+gate before any physical acceptance claim.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -33,6 +42,12 @@ v0.19 is deliberately doing two jobs at once:
 ## v0.19 execution order
 
 ### Gate 1 — Unified UX / visual acceptance
+
+**Current status: ACTIVE — VISUAL RECONSTRUCTION.** The previous generated gallery
+was explicitly rejected off-screen as too flat/card-like and too far from the
+intended Beastagotchi visual language. Physical acceptance is therefore deferred
+until the real generated renderer earns off-screen acceptance again.
+
 Recent progress:
 - Operations Center has moved from an equal-weight tile wall to an attention-first live-platform summary;
 - platform list overlays now use 50px bottom navigation targets and a calmer three-row 480×320 rhythm;
@@ -40,9 +55,15 @@ Recent progress:
 - the captured-real-state gallery now includes Control Center, Apps, Operations, Notifications, Diagnostics, Services, Hardware, Storage, Incidents and Connectivity in addition to the primary page set.
 - a bounded physical-acceptance harness now exists with automatic rollback reuse, framebuffer captures, 1 Hz runtime/Core sampling, touch evidence and a timestamped support bundle.
 - the commit-pinned Pi artifact now carries a verified one-command staging wrapper + quickstart; staging verifies SHA/source provenance, preserves Beast Core config, backs up the existing Beast SQLite DB, installs Core/UI, starts Core only and leaves TFT ownership untouched until an explicit acceptance start.
-- physical evidence now records the staged source commit / CI-tested commit / source archive SHA so the real TFT session is traceable back to the exact GitHub artifact.
+- physical evidence now records the staged source commit / CI-tested commit / source archive SHA so the real TFT session is traceable back to the exact GitHub artifact;
+- a layered Scene compositor proof has begun so creature/environment art, ambient motion and live HUD information can coexist without forcing every Experience into a card-grid composition;
+- the maturity architecture review preserves the direction toward versioned Signal, Action, Capability, Scene and Experience contracts rather than continuing one-off UI growth.
 
 Still to finish:
+- return the active reconstruction head to a fully green source/CI gate;
+- stabilize/cache the layered Scene compositor and regenerate real-state visual evidence;
+- obtain off-screen owner acceptance of the actual generated Home/major-scene language before staging it physically;
+- define the bounded Scene/semantic-layer contract needed for visual depth and future Studio editing without turning Gate 1 into a platform rewrite;
 - finish hierarchy/interaction cleanup across the high-frequency page carousel;
 - preserve Home/Beast + page/tab/swipe identity;
 - reduce remaining box-grid/clutter patterns and improve type/touch hierarchy;
