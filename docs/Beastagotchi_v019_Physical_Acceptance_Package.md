@@ -22,6 +22,25 @@ The physical session is intended to answer questions CI cannot:
 
 The script does **not** automatically declare these things acceptable. Objective telemetry is summarized separately from user physical judgment.
 
+## Commit-pinned Pi source artifact
+
+GitHub Actions now emits a second v0.19 artifact named:
+
+    v019-pi-acceptance-source
+
+It contains:
+- a `git archive` tar.gz of the exact tested branch head;
+- a SHA-256 file for that tarball;
+- `COMMIT_SHA.txt` with the full source commit.
+
+This is the preferred source package for the physical gate because the Pi can be
+tested against the exact commit that produced the green CI result and gallery.
+
+The artifact does not auto-install or auto-claim the TFT. After verifying the
+archive hash, extract it and follow the normal staged Core/UI installation path.
+The physical handoff remains a separate explicit `beast-v019-accept start`
+action.
+
 ## Installed command
 
 After the current v0.19 UI package is installed, prepare the optional QR renderer if the Capsule phone-scan sub-gate will be exercised:
