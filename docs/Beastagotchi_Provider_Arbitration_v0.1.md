@@ -1,6 +1,6 @@
 # Beastagotchi Capability Provider Arbitration — v0.1
 
-**Status:** read-only policy engine implemented  
+**Status:** read-only policy engine + persistent owner preference + health/confidence evidence implemented  
 **Date:** 2026-09-24
 
 ## Purpose
@@ -71,9 +71,14 @@ already feed normalized state and avoid duplicate polling.
 
 It is **not** an ownership restriction.
 
-The architecture explicitly reserves owner preference/override. A later
-transactional preference action can let an owner pin PwnDroid over USB GPS,
-PiSugar over a native UPS adapter, or another valid provider.
+The architecture explicitly reserves owner preference/override. Persistent,
+audited provider preferences are now implemented. An owner can pin PwnDroid over
+USB GPS, PiSugar over a native UPS adapter, or another provider policy without
+silently enabling/disabling the underlying component.
+
+Saving a preference does **not** itself switch hardware, start services or perform
+failover. If the preferred provider is not ready, the preference remains dormant
+and the read-only policy can explain the fallback.
 
 Owner Sovereignty remains authoritative: automatic policy is convenience, not a
 permanent prohibition.
@@ -87,6 +92,20 @@ permanent prohibition.
 - dependency Local API/platform bundle expose the decisions;
 - configured-but-disabled plugins may remain **available alternates** rather than
   disappearing from the graph;
+- persistent owner preferences live in
+  `/var/lib/beastagotchi/provider-preferences.json`, written atomically with
+  private file permissions;
+- provider preference set/clear uses the audited Action Broker and an active
+  owner-authorized Operator session;
+- preference changes are policy-only and emit durable audit/event evidence;
+- candidates now expose health state, evidence confidence and freshness where
+  canonical metadata exists;
+- native providers backed by live canonical StateRegistry metadata can be marked
+  high-confidence with measured freshness;
+- component providers are explicitly labeled `ready_unverified`,
+  `standby_ready`, `needs_attention`, `blocked` or `unavailable` based on
+  evidence instead of being called healthy without a runtime probe;
+- Beast Doctor can explain provider reason, alternates and downstream impact;
 - provider mutation is disabled;
 - automatic failover is disabled.
 
@@ -189,10 +208,15 @@ This fits Beast's existing probation/rollback philosophy.
 
 ### Provider confidence
 
-Future provider health can carry confidence:
-- high: live direct hardware telemetry;
-- medium: provider alive but stale/partial;
-- low: inferred/fallback source.
+Provider decisions now carry an initial evidence-confidence model:
+- **high**: live canonical state with freshness metadata;
+- **medium**: presence/requirements evidence is good but full runtime validation
+  is not available;
+- **low**: weak, blocked, uncertain or catalog-only evidence.
+
+This is deliberately **evidence confidence**, not a claim about the inherent
+quality of one vendor/device. Future provider-specific health adapters can make
+the signal richer.
 
 Consumers could request:
 - any location;
@@ -238,15 +262,16 @@ That gives Beast Doctor a powerful "what changed since known-good?" comparison.
 
 ## Next implementation steps
 
-1. Add a persistent owner provider-preference store and transactional set/clear
-   action. Do not silently create preferences.
-2. Surface provider decisions/reasons in Beast Studio/Capability Center.
-3. Add provider-health freshness/confidence metadata.
-4. Add context-aware policy inputs without enabling automatic switching yet.
-5. Add explain/Doctor queries:
-   - Why is this provider active?
-   - What happens if I disable it?
-   - What alternate can replace it?
-6. Add failover simulation.
-7. Only then enable per-capability automatic failover where the provider handoff
-   is proven safe.
+1. Surface provider preferences/decisions/reasons in Beast Studio and the
+   Plugin & Capability Center.
+2. Add provider-specific runtime health adapters where generic readiness is not
+   enough.
+3. Add context-aware Field/Dock/Home/Battery policy inputs without enabling
+   automatic switching yet.
+4. Extend Beast Doctor impact simulation from provider loss to planned
+   disable/remove/update actions.
+5. Add anti-flap hysteresis, minimum dwell and cooldown models.
+6. Add transactional **TEST FAILOVER** simulation.
+7. Add verified return-to-auto / preference-recovery UX.
+8. Only then enable per-capability automatic failover where handoff is proven
+   safe and reversible.
