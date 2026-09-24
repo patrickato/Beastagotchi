@@ -25,3 +25,32 @@ No cloud account or mandatory Internet service is required for normal Beast oper
 Settings should have one canonical backend/API and multiple clients rather than separate conflicting copies in TFT, WebUI and phone UI. Clients may present different subsets appropriate to screen size, touch technology and risk level.
 
 Deep configuration, theme/layout authoring, package management, backups, logs, diagnostics and update policy are WebUI-first. Critical field actions, presentation switching, health/attention, quick plugin/app toggles and recovery entry points remain reachable on-device.
+
+## Offline / sneakernet ecosystem
+
+"No cloud required" is now expanded into a stronger product goal: Beastagotchi
+should support **offline exchange**, not merely offline operation.
+
+Portable Beast data should be able to move through:
+- QR / animated multi-frame QR;
+- local file;
+- USB/SD;
+- NFC;
+- Bluetooth/local direct transfer;
+- Beast-to-Beast transport;
+- local phone/browser handoff.
+
+The logical data object is a **Beast Capsule**. Transport is separate.
+
+Initial implemented example:
+- privacy-curated Lineage Capsule;
+- BC1 encoded text;
+- bounded multi-frame QR-ready text framing;
+- no QR rendering/camera dependency added to the base image yet.
+
+This creates a path for offline Lineage exchange, Beast Cards, Challenge Capsules,
+selected settings, trophy proofs and Pack references while preserving the
+local-first architecture.
+
+See `Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`.
+
