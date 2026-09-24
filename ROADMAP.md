@@ -25,6 +25,14 @@ spoiler-safe Choreography integration, Doctor + Runbook Registry + optional AI
 Guide, contextual “Explain This” help, tiered backup/recovery, Exact Remote
 Mirror, a future local BenchLink/AI tool bridge and Cohesion Graph/Lint.
 
+Adaptive hardware/display scaling, semantic deep links, one unified Doctor with
+modular probes, Rollback/Known-Good Snapshots and independent Recovery Vaults
+are preserved in
+`docs/Beastagotchi_Adaptive_Platform_DeepLinks_Unified_Doctor_RecoveryVault_2026-09-24.md`.
+The first capability-first `PlatformProfile` is implemented in Core and exposed
+at `/platform-profile`; board names refine defaults but do not define the product
+boundary.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
@@ -437,6 +445,10 @@ Next:
 - peer-Beast encounters and other retained delight systems.
 
 ### Gate 9 — Recovery / self-maintenance
+- Recovery Vault provider model so rescue copies can leave a failing source SD for USB, BenchLink, NAS/SFTP, another trusted Beast or optional encrypted remote storage;
+- Rollback/Known-Good Snapshots for fast pre-change recovery, distinct from disaster backups;
+- unified Doctor architecture: one user-facing Doctor, modular background/on-demand probes, shared severity/evidence/runbook/recovery model;
+- semantic Beast Links/deep links so Doctor/help/runbooks can navigate users directly to exact settings, evidence, backups, capabilities and actions across TFT/WebUI/phone;
 - tiered backup model: transaction snapshot → Critical State → Rebuild Bundle → bare-metal/full-system backup → Emergency Rescue;
 - Doctor-integrated backup freshness and storage-risk response, with small critical rescue before stressing suspected failing media;
 - verified Runbook Registry + contextual assistance path for diagnosis/recovery;
