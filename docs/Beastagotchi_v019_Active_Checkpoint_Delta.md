@@ -999,3 +999,72 @@ Apps, Capsule Share with phone QR scanning, dense operational surfaces,
 framebuffer-write efficiency, touch behavior and thermal/performance evidence in
 the same run.
 
+## Beast-owned optional runtime + commit-pinned Pi package — 2026-09-24
+
+The bounded physical gate is now materially deployable without contaminating the
+protected Pwnagotchi Python environment.
+
+Implemented optional-runtime boundary:
+- Beast UI and Beast Studio include
+  `/opt/beast-python/site-packages` after their normal source path;
+- `install_ui.sh` creates that Beast-owned package root but does not silently
+  download optional packages;
+- `beast-v019-accept prepare-qr` explicitly prepares the current QR dependency:
+  - exact package: `qrcode==8.2`;
+  - downloads the wheel before installation;
+  - records wheel SHA-256 provenance;
+  - installs with `pip --target /opt/beast-python/site-packages`;
+  - records provenance under `/var/lib/beastagotchi/dependencies`;
+  - does not modify Pwnagotchi's `/opt/.pwn` site-packages;
+- `beast-v019-accept remove-qr` removes the Beast-owned package, dist-info and
+  QR console entry point without touching Pwnagotchi packages.
+
+This is intentionally explicit owner action. The normal UI install remains
+offline-safe with respect to optional QR dependency downloads.
+
+CI packaging:
+GitHub Actions now produces:
+- `v019-real-state-ux-gallery`;
+- `v019-pi-acceptance-source`.
+
+The Pi acceptance source artifact contains:
+- a `git archive` tar.gz of the exact tested branch head;
+- a SHA-256 file for that tarball;
+- `COMMIT_SHA.txt`.
+
+Code/source gate at commit `a8318ca810406290f4b4cfdb73d946345abc2350`:
+- GitHub Actions run `35977711327` (#349): success;
+- **399 tests passed in 7.10s**;
+- Python compile passed;
+- shell syntax passed;
+- sanitized real-state gallery passed;
+- gallery artifact id `10798742829`;
+- gallery artifact digest
+  `sha256:6b977b8d4b082b0ec318acf124ab14e143a3131ba01d942b62dec2ebf3a7acc3`;
+- Pi acceptance source artifact id `10798463813`;
+- Pi acceptance artifact digest
+  `sha256:c3f853502373ac091ac399c99bf64857cb25a2482ea0c2056f31f40044f36d54`.
+
+Additional cleanup in the same block:
+- physical-test banner/runtime version reporting now use actual `UI_VERSION`;
+- active Core/UI installers no longer print stale v0.18/v017 labels;
+- physical evidence collection is privacy-curated:
+  - raw Pwnagotchi config is replaced by a hash;
+  - whole Core state/platform bundle/raw Pwnagotchi journal are excluded;
+  - Capsule evidence export omits name/achievements/appearance;
+  - Beast Core journal collection is warning-or-higher only;
+  - framebuffer screenshots are explicitly treated as potentially sensitive
+    because they preserve whatever was visible on the TFT.
+
+The next major gate is no longer "build a test harness." It is now:
+1. take the current commit-pinned Pi source artifact;
+2. deploy the staged v0.19 Core/UI build on the reference Pi;
+3. run `prepare-qr` if the Capsule phone-scan sub-gate is desired;
+4. run one bounded `beast-v019-accept start` session;
+5. use the UI normally during a 60-second objective sample;
+6. exercise Capsule Share with a real phone camera;
+7. return the generated private evidence archive plus the user's physical
+   impressions.
+
+This still does not authorize merging Draft PR #9 to `main`.
+
