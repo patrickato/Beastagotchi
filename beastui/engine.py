@@ -48,6 +48,18 @@ class BeastUI:
         'captures':['bars','donut','radial','timeline'],
         'system':['line','area','waveform','histogram','waterfall'],
     }
+    # 2x2 launcher geometry keeps every visible card and navigation action at
+    # or above the validated 48px resistive-touch target.
+    APP_PAGE_SIZE=4
+    APP_CARD_BOXES=(
+        (16,94,236,152),(244,94,464,152),
+        (16,158,236,216),(244,158,464,216),
+    )
+    APP_CAT_PREV=(12,40,72,88)
+    APP_CAT_NEXT=(408,40,468,88)
+    APP_NAV_PREV=(12,224,154,274)
+    APP_NAV_CLOSE=(162,224,318,274)
+    APP_NAV_NEXT=(326,224,468,274)
 
     def __init__(self,root='/opt/beast-ui',framebuffer='/dev/fb1',output=None,theme_id='classic', *, physical_size=None, display_mode='fit', display_resample='bilinear'):
         self.root=Path(root); self.output=output
@@ -568,7 +580,7 @@ class BeastUI:
             if self.app_launcher:
                 axis=e.get('axis')
                 if axis=='y':
-                    rows=self._apps_current();step=6 if e.get('dy',0)<0 else -6;maxoff=max(0,((len(rows)-1)//6)*6)
+                    rows=self._apps_current();step=self.APP_PAGE_SIZE if e.get('dy',0)<0 else -self.APP_PAGE_SIZE;maxoff=max(0,((len(rows)-1)//self.APP_PAGE_SIZE)*self.APP_PAGE_SIZE)
                     self.app_offset=max(0,min(maxoff,self.app_offset+step));self.dirty.set()
                 elif axis=='x':
                     cats=self._app_categories();delta=1 if e.get('dx',0)<0 else -1;self.app_category_idx=(self.app_category_idx+delta)%len(cats);self.app_offset=0;self.dirty.set()
@@ -641,20 +653,20 @@ class BeastUI:
         elif kind=='tap':
             x,y=int(e.get('x',0)),int(e.get('y',0))
             if self.app_launcher:
-                if 40<=y<=61 and x<120:
+                if self.APP_CAT_PREV[0]<=x<=self.APP_CAT_PREV[2] and self.APP_CAT_PREV[1]<=y<=self.APP_CAT_PREV[3]:
                     cats=self._app_categories();self.app_category_idx=(self.app_category_idx-1)%len(cats);self.app_offset=0;self.dirty.set()
-                elif 40<=y<=61 and x>360:
+                elif self.APP_CAT_NEXT[0]<=x<=self.APP_CAT_NEXT[2] and self.APP_CAT_NEXT[1]<=y<=self.APP_CAT_NEXT[3]:
                     cats=self._app_categories();self.app_category_idx=(self.app_category_idx+1)%len(cats);self.app_offset=0;self.dirty.set()
                 else:
-                    rows=self._apps_current();cards=rows[self.app_offset:self.app_offset+6];positions=[(16,62,236,114),(244,62,464,114),(16,120,236,172),(244,120,464,172),(16,178,236,230),(244,178,464,230)]
+                    rows=self._apps_current();cards=rows[self.app_offset:self.app_offset+self.APP_PAGE_SIZE]
                     opened=False
-                    for app,box in zip(cards,positions):
+                    for app,box in zip(cards,self.APP_CARD_BOXES):
                         if box[0]<=x<=box[2] and box[1]<=y<=box[3]:
                             self._open_app(app.id);opened=True;break
-                    if not opened and 238<=y<=277:
-                        maxoff=max(0,((len(rows)-1)//6)*6)
-                        if x<155:self.app_offset=max(0,self.app_offset-6);self.dirty.set()
-                        elif x>324:self.app_offset=min(maxoff,self.app_offset+6);self.dirty.set()
+                    if not opened and 224<=y<=277:
+                        maxoff=max(0,((len(rows)-1)//self.APP_PAGE_SIZE)*self.APP_PAGE_SIZE)
+                        if x<155:self.app_offset=max(0,self.app_offset-self.APP_PAGE_SIZE);self.dirty.set()
+                        elif x>324:self.app_offset=min(maxoff,self.app_offset+self.APP_PAGE_SIZE);self.dirty.set()
                         else:self.app_launcher=False;self.dirty.set()
             elif self.telemetry_overlay:
                 if 238<=y<=277:
@@ -1218,18 +1230,45 @@ class BeastUI:
 
     def _apps_overlay(self,d):
         if not self.app_launcher:return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('accent'),width=2)
-        cats=self._app_categories();cat=cats[max(0,min(len(cats)-1,self.app_category_idx))];apps=self._apps_current();shown=apps[self.app_offset:self.app_offset+6];page=self.app_offset//6+1;pages=max(1,(len(apps)+5)//6)
-        d.text((20,47),'‹',font=f['medium'],fill=t.c('primary'));d.text((45,47),f'APPS // {cat}',font=f['medium'],fill=t.c('accent'));d.text((350,47),'›',font=f['medium'],fill=t.c('primary'));d.text((402,51),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
-        positions=[(16,62,236,114),(244,62,464,114),(16,120,236,172),(244,120,464,172),(16,178,236,230),(244,178,464,230)]
-        for app,box in zip(shown,positions):
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,38,472,276),t,accent=t.c('accent'),width=2)
+        cats=self._app_categories()
+        cat=cats[max(0,min(len(cats)-1,self.app_category_idx))]
+        apps=self._apps_current()
+        shown=apps[self.app_offset:self.app_offset+self.APP_PAGE_SIZE]
+        page=self.app_offset//self.APP_PAGE_SIZE+1
+        pages=max(1,(len(apps)+self.APP_PAGE_SIZE-1)//self.APP_PAGE_SIZE)
+
+        # Category navigation gets real finger-sized targets instead of tiny
+        # desktop-style arrow glyph hit areas.
+        for box,glyph in ((self.APP_CAT_PREV,'‹'),(self.APP_CAT_NEXT,'›')):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2)
+            gb=d.textbbox((0,0),glyph,font=f['large']);gw=gb[2]-gb[0]
+            d.text((box[0]+((box[2]-box[0])-gw)//2,box[1]+12),glyph,font=f['large'],fill=t.c('primary'))
+        d.text((86,47),'APPS',font=f['tiny'],fill=t.c('dim'))
+        d.text((86,60),str(cat).upper()[:30],font=f['medium'],fill=t.c('accent'))
+        d.text((347,60),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
+
+        for app,box in zip(shown,self.APP_CARD_BOXES):
             col=t.c(app.accent,t.c('primary'));x1,y1,x2,y2=box
             d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
             d.text((x1+10,y1+8),app.title.upper()[:22],font=f['small'],fill=col)
-            d.text((x1+10,y1+25),app.category.upper(),font=f['tiny'],fill=t.c('dim'))
-            d.text((x1+70,y1+25),app.description[:26],font=f['tiny'],fill=t.c('text'))
-        d.rounded_rectangle((12,238,154,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.rounded_rectangle((162,238,318,274),radius=5,fill=t.c('panel2'),outline=t.c('edge'));d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'))
-        d.text((45,250),'<< PREV',font=f['tiny'],fill=t.c('primary'));d.text((213,250),'CLOSE',font=f['tiny'],fill=t.c('text'));d.text((369,250),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+            d.text((x1+10,y1+27),app.description[:31],font=f['tiny'],fill=t.c('text'))
+            d.text((x2-64,y2-14),app.category.upper()[:10],font=f['micro'],fill=t.c('dim'))
+
+        if not shown:
+            d.text((155,140),'NO APPS IN THIS VIEW',font=f['medium'],fill=t.c('dim'))
+
+        for box,col in (
+            (self.APP_NAV_PREV,t.c('primary')),
+            (self.APP_NAV_CLOSE,t.c('edge')),
+            (self.APP_NAV_NEXT,t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
+        d.text((45,242),'<< PREV',font=f['tiny'],fill=t.c('primary'))
+        d.text((213,242),'CLOSE',font=f['tiny'],fill=t.c('text'))
+        d.text((369,242),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
 
     def _telemetry_inspector(self,d):
         if not self.telemetry_overlay:return
