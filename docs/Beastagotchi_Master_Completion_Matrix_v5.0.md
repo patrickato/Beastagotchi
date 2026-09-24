@@ -3,7 +3,7 @@
 **Status date:** 2026-09-24  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** **400 automated tests passing** + Python compile + shell syntax
+**Current v0.19 source gate:** **406 automated tests passing** + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -240,6 +240,9 @@ approved scope.
 - [~] Lineage Capsule exchange: export/encode/QR-frame foundation complete; receive/import remains non-mutating
 - [ ] Beast Card / PeerDex Capsule
 - [~] actual QR render/scan transport: render side implemented/off-screen decoded; physical TFT scan + receive side pending
+- [x] Studio Capsule Workshop exact-share preview: creature selection, explicit share-field controls, exact envelope JSON and QR frame preview
+- [x] Capsule Workshop export path is read-only and explicitly performs no import/publication/roster mutation
+- [ ] Capsule Workshop file export / receive-side scan-import preview
 - [ ] automatic nearby Lineage Capsule exchange after explicit user approval
 - [ ] local Beast + remote lineage synthesis path
 - [ ] later peer group/party/cooperative survey concepts
