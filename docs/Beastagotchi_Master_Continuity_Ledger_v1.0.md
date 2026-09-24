@@ -869,3 +869,33 @@ the model for future beta/release validation too. Later Doctor/"known-good"
 fingerprints can reference the same deployment identity instead of inventing a
 parallel provenance system.
 
+## Gate-status interpretation / pre-physical visual hold — 2026-09-24
+
+A concise current gate ledger is now maintained at
+`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`.
+
+Durable roadmap interpretation:
+- the project gate numbers are execution tracks, not a claim that every gate
+  through public v1.0 must close before the current v0.19 branch can ever merge;
+- closed stable/release boundaries, source/CI-ready work, physical acceptance,
+  major foundations and future scope must remain distinct;
+- Gate 1 is now **ready for physical close**, not physically closed;
+- the verified staging/artifact sub-gate is source/CI-complete;
+- later Gates 2–9 already contain substantial implementation and continue beyond
+  the immediate visual-acceptance decision.
+
+Durable visual decision:
+after review of the latest CI-generated 480×320 real-state gallery, do not perform
+another broad speculative redesign before the reference TFT session.
+
+Physical evidence should decide:
+- small-text readability;
+- resistive-touch feel and accidental taps;
+- QR scan reliability on the real ILI9486 panel;
+- perceived animation smoothness;
+- brightness/glare/viewing angle;
+- whether theme families feel structurally distinct enough in person.
+
+Only targeted pre-Pi defects with objective off-screen evidence should interrupt
+the physical gate.
+
