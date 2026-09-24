@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import time
 from typing import Iterable
 
@@ -12,12 +12,7 @@ _ALLOWED_RESOURCE_CLASSES = {"tiny", "light", "moderate", "heavy"}
 
 @dataclass(frozen=True)
 class SceneLayerSpec:
-    """Semantic metadata for one visual layer.
-
-    This is deliberately renderer-agnostic. A layer describes *what it means*
-    and what truth/cost/touch contracts it owns; PIL remains an implementation
-    detail of the current 480x320 Visual Runtime.
-    """
+    """Semantic metadata for one visual layer."""
 
     id: str
     kind: str
@@ -82,11 +77,11 @@ class SceneLayerRecord:
 
 
 class SceneRuntime:
-    """Small semantic registry/performance lens for the current rendered scene.
+    """Semantic layer registry/performance lens for the current rendered scene.
 
-    It does not own telemetry polling or draw pixels. Renderers register their
-    layers here so Studio/Doctor/Exact-Mirror/performance tooling can reason
-    about the composition without scraping a screenshot.
+    The runtime does not poll telemetry or draw pixels. Renderers publish layer
+    meaning, bounds, signal bindings and cost so Studio/Inspect/Exact-Mirror
+    tooling can reason about a scene without scraping screenshots.
     """
 
     def __init__(self) -> None:
@@ -121,10 +116,49 @@ class SceneRuntime:
             self._layers[spec.id] = rec
             self._order.append(spec.id)
         elif rec.spec != spec:
-            # A semantic id must mean one thing within a scene. Replacing it
-            # silently would make Studio/Inspect bounds and bindings untruthful.
             raise ValueError(f"scene layer id reused with different metadata: {spec.id}")
         rec.record(render_ms)
         return rec
 
     @contextmanager
+    def layer(self, layer_id: str, kind: str, bounds,
+              *, z: int = 0, signals: Iterable[str] = (),
+              update_class: str = "live", cacheable: bool = False,
+              resource_class: str = "light", privacy: str = "normal",
+              touch: str | None = None, reduced_motion: str = "static",
+              decorative: bool = False):
+        spec = SceneLayerSpec(
+            id=str(layer_id),
+            kind=str(kind),
+            bounds=tuple(int(v) for v in bounds),
+            z=int(z),
+            signals=tuple(str(x) for x in signals),
+            update_class=str(update_class),
+            cacheable=bool(cacheable),
+            resource_class=str(resource_class),
+            privacy=str(privacy),
+            touch=None if touch is None else str(touch),
+            reduced_motion=str(reduced_motion),
+            decorative=bool(decorative),
+        )
+        started = time.perf_counter()
+        try:
+            yield spec
+        finally:
+            self.register(spec, render_ms=(time.perf_counter() - started) * 1000.0)
+
+    def snapshot(self) -> dict:
+        rows = [self._layers[k].as_dict() for k in self._order]
+        total_ms = sum(float(row["render_ms"]) for row in rows)
+        elapsed_ms = None
+        if self.started_at is not None and self.completed_at is not None:
+            elapsed_ms = max(0.0, (self.completed_at - self.started_at) * 1000.0)
+        return {
+            "page": self.page_id,
+            "scene": self.scene_id,
+            "theme": self.theme_id,
+            "layer_count": len(rows),
+            "layer_render_ms": round(total_ms, 3),
+            "scene_elapsed_ms": None if elapsed_ms is None else round(elapsed_ms, 3),
+            "layers": rows,
+        }
