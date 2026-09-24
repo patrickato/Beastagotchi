@@ -301,6 +301,12 @@ During the session:
    This collects objective render/framebuffer/thermal evidence while you interact.
 
 The rollback timer created by claim_display_test.sh remains authoritative.
+
+PRIVACY:
+- automated state/config evidence is curated and avoids raw config/full Core state;
+- framebuffer PNGs preserve whatever is visibly on the TFT;
+- keep this archive private unless screenshots have been reviewed/sanitized.
+
 To end:
   sudo beast-v019-accept finish observe   # bundle only; leave current rollback timer/owner as-is
   sudo beast-v019-accept finish pass      # bundle + explicitly confirm Beast display ownership
