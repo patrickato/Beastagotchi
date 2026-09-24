@@ -4,6 +4,9 @@ This is the public orientation layer. The current detailed checklist is
 `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`. The continuity ledger
 remains the anti-forgetting authority.
 
+For a concise current **finished vs remaining gate view**, see
+`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
