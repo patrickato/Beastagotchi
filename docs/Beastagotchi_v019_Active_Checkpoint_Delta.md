@@ -334,3 +334,28 @@ context rather than duplicate later history.
 
 This is preservation/provenance only. It does not alter current implementation
 status or physical validation.
+
+
+## Pinned-chat recovery batch 08 — true beginning
+
+Fifteen additional private screenshots recover the beginning of the pinned
+conversation and bring the ordered set to **108 screenshots across eight batches**,
+plus two earlier source images for **110 preserved image artifacts** total.
+
+Recovered origin context includes:
+- v0.18.1 target/off-screen validation and historical 195-test source gate;
+- Korrie71 UI criticism leading directly to the v0.19 UX/Visual Cohesion gate;
+- first Theme Manager coexistence and Presentation Broker reasoning;
+- first Update Manager architecture;
+- GitHub migration / collaborator handoff decision;
+- physical visual-review cadence;
+- Unified Experience Architecture framing;
+- stable core + Beast Packs/Depot ecosystem;
+- TFT cockpit / WebUI workshop split;
+- per-module resource attribution and optimize-before-throttle policy;
+- GPLv3/free-open licensing intent.
+
+Batch 08 meets Batch 07 at repository creation. Batches 08→01 now cover the
+supplied pinned conversation from its beginning through its end with no known
+major chronological gap. This is preservation/provenance only and does not alter
+source, target/off-screen or physical validation status.
