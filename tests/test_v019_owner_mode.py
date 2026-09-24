@@ -1,3 +1,6 @@
+import json
+import tarfile
+
 from beastcore.actions import ActionBroker
 from beastcore.db import Store
 from beastcore.events import EventBus
@@ -167,3 +170,36 @@ def test_owner_override_without_expert_mode_remains_blocked(tmp_path):
         assert owner.snapshot()["customized"] is False
     finally:
         store.close()
+
+def test_support_bundle_reports_expert_and_customized_state_without_secrets(tmp_path):
+    from beastcore.support_bundle import SupportBundleManager
+
+    state = StateRegistry()
+    state.update_many(
+        "owner_mode",
+        {
+            "owner.expert_mode.enabled": True,
+            "owner.customized": True,
+            "owner.override_count": 3,
+            "owner.support_state": "customized",
+            "owner.last_override.action": "plugin.toggle",
+            "owner.last_override.target": "theme_manager",
+        },
+        priority=99,
+    )
+    store = Store(str(tmp_path / "support.db"))
+    try:
+        mgr = SupportBundleManager(state, store, root=str(tmp_path / "support"))
+        made = mgr.create()
+        assert made["ok"] is True
+        with tarfile.open(made["path"], "r:gz") as tf:
+            manifest = json.load(tf.extractfile("beast-support/manifest.json"))
+            safe_state = json.load(tf.extractfile("beast-support/state.json"))
+        assert manifest["support_state"] == "customized"
+        assert manifest["expert_mode_enabled"] is True
+        assert manifest["customized"] is True
+        assert safe_state["owner.override_count"] == 3
+        assert safe_state["owner.last_override.target"] == "theme_manager"
+    finally:
+        store.close()
+
