@@ -18,6 +18,37 @@ require_root() {
   [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "Run with sudo."; exit 1; }
 }
 
+capture_state_subset() {
+  local dest="$1"
+  DEST="$dest" "$PY" - <<'PY'
+import json, os, time, urllib.request
+keep=(
+    "health.core.state","health.core.ready","health.core.critical_count",
+    "system.temp.cpu_c","system.cpu.total","system.memory.used_pct",
+    "system.throttle.flags","system.clock.arm_mhz",
+    "governor.mode","governor.reason","governor.budget_pct",
+    "performance.beast.cpu_pct","performance.ui.avg_render_ms",
+    "performance.fb.write_ratio_pct","performance.fb.changed_rows",
+    "performance.fb.bytes_written","performance.fb.saved_bytes",
+    "presentation.desired_owner","presentation.active_owner","presentation.status",
+    "display.width","display.height","display.rotation",
+    "progression.level","progression.stage","context.mode.effective",
+    "power.battery.percent_estimate","power.power_w",
+)
+out={"captured_at":time.time(),"privacy":"curated_physical_acceptance"}
+try:
+    with urllib.request.urlopen("http://127.0.0.1:8090/state?meta=0",timeout=3) as r:
+        state=json.load(r)
+    if isinstance(state,dict):
+        out["state"]={k:state.get(k) for k in keep if k in state}
+except Exception as exc:
+    out["error"]=type(exc).__name__
+with open(os.environ["DEST"],"w") as fh:
+    json.dump(out,fh,indent=2,sort_keys=True)
+    fh.write("\n")
+PY
+}
+
 session_dir() {
   [[ -L "$CURRENT" ]] || { echo "No current v0.19 acceptance session. Run: sudo beast-v019-accept start"; exit 2; }
   readlink -f "$CURRENT"
@@ -34,11 +65,11 @@ write_preflight() {
   systemctl status pwnagotchi.service bettercap.service beast-core.service beast-ui.service beast-studio.service --no-pager -l > "$out/services-before.txt" 2>&1 || true
   "$BIN/display_conflicts.py" > "$out/display-conflicts-before.txt" 2>&1 || true
   cp -a /opt/beast-ui/config/touch.json "$out/touch-active.json" 2>/dev/null || true
-  cp -a /etc/pwnagotchi/config.toml "$out/pwnagotchi-config-before.toml" 2>/dev/null || true
-  curl -fsS --max-time 4 'http://127.0.0.1:8090/state?meta=0' > "$out/state-before.json" 2>/dev/null || true
+  sha256sum /etc/pwnagotchi/config.toml > "$out/pwnagotchi-config-before.sha256" 2>/dev/null || true
+  capture_state_subset "$out/state-before.json"
   curl -fsS --max-time 4 'http://127.0.0.1:8090/health' > "$out/health-before.json" 2>/dev/null || true
   curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/types' > "$out/capsule-types.json" 2>/dev/null || true
-  curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/export?type=lineage&qr_chars=220' > "$out/capsule-export.json" 2>/dev/null || true
+  curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/export?type=lineage&name=0&achievements=0&appearance=0&qr_chars=220' > "$out/capsule-export.json" 2>/dev/null || true
 
   PYTHONPATH="$CORE_ROOT:$UI_ROOT" "$PY" - <<'PY' > "$out/preflight.json"
 import hashlib, importlib.util, json, pathlib, time
@@ -88,8 +119,7 @@ capture_one() {
   stamp="$(date +%Y%m%d_%H%M%S)"
   local prefix="$out/${stamp}-${label}"
 
-  curl -fsS --max-time 4 'http://127.0.0.1:8090/state?meta=0' > "${prefix}-state.json" 2>/dev/null || true
-  curl -fsS --max-time 4 'http://127.0.0.1:8090/platform-bundle' > "${prefix}-platform.json" 2>/dev/null || true
+  capture_state_subset "${prefix}-state.json"
   cp -a /run/beastagotchi/ui-runtime.json "${prefix}-ui-runtime.json" 2>/dev/null || true
   "$STATUS" > "${prefix}-display-status.txt" 2>&1 || true
   if [[ -c /dev/fb1 && -x "$CAPTURE" ]]; then
@@ -145,7 +175,7 @@ finalize_evidence() {
   mode="${1:-observe}"
   stamp="$(basename "$out")"
 
-  curl -fsS --max-time 4 'http://127.0.0.1:8090/state?meta=0' > "$out/state-final.json" 2>/dev/null || true
+  capture_state_subset "$out/state-final.json"
   cp -a /run/beastagotchi/ui-runtime.json "$out/ui-runtime-final.json" 2>/dev/null || true
   cp -a /run/beastagotchi/touch-gestures.jsonl "$out/touch-gestures.jsonl" 2>/dev/null || true
   capture_one "final-before-owner-decision"
@@ -193,8 +223,7 @@ EOF
   "$STATUS" > "$out/display-status-after.txt" 2>&1 || true
   systemctl status pwnagotchi.service bettercap.service beast-core.service beast-ui.service beast-studio.service --no-pager -l > "$out/services-after.txt" 2>&1 || true
   journalctl -u beast-ui.service --no-pager -n 260 > "$out/beast-ui-journal.txt" 2>&1 || true
-  journalctl -u beast-core.service --no-pager -n 220 > "$out/beast-core-journal.txt" 2>&1 || true
-  journalctl -u pwnagotchi.service --no-pager -n 180 > "$out/pwnagotchi-journal.txt" 2>&1 || true
+  journalctl -u beast-core.service -p warning..alert --no-pager -n 160 > "$out/beast-core-warnings.txt" 2>&1 || true
 
   bundle="/home/pi/beast-v019-physical-acceptance-${stamp}.tar.gz"
   tar -czf "$bundle" -C "$ROOT" "$stamp"
