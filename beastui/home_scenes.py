@@ -179,9 +179,12 @@ def _hero_scene(d,state,ui, *, variant='classic'):
 
     # Scene lighting is dynamic but decorative. It never encodes telemetry.
     glow_col=t.c('secondary') if (is_cyber or is_synth) else t.c('primary')
-    ambient_glow(canvas,(156,148),150,glow_col,strength=.34 if is_cyber else .24)
-    ambient_glow(canvas,(395,92),94,t.c('accent'),strength=.17)
-    scene_particles(canvas,ui.phase,t.c('secondary'),count=18 if is_cyber else 10,alpha=62)
+    with _scene_layer(ui,'home.environment','environment',(0,34,480,278),z=10,
+                      update_class='ambient',resource_class='moderate',
+                      reduced_motion='static_glow',decorative=True):
+        ambient_glow(canvas,(156,148),150,glow_col,strength=.34 if is_cyber else .24)
+        ambient_glow(canvas,(395,92),94,t.c('accent'),strength=.17)
+        scene_particles(canvas,ui.phase,t.c('secondary'),count=18 if is_cyber else 10,alpha=62)
     d=ImageDraw.Draw(canvas)
 
     asset=None
