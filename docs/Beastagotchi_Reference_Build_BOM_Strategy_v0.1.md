@@ -133,11 +133,19 @@ These must not automatically be treated as production-runtime requirements.
 
 Current special case:
 - `qrcode >= 8.0` is used by CI to validate the real Capsule Share QR renderer.
-  It is a candidate **optional runtime dependency** for capability
-  `transport.qr.render`, not yet an unconditional install into `/opt/.pwn`.
-  Beast should either package it in a Beast-owned runtime boundary or explicitly
-  present/install it through the dependency/capability workflow once that path
-  is ready.
+- The physical-acceptance path pins the currently CI-tested runtime package to
+  `qrcode==8.2`.
+- Beast UI/Studio now include the Beast-owned optional path
+  `/opt/beast-python/site-packages` in their PYTHONPATH.
+- `beast-v019-accept prepare-qr` explicitly downloads the 8.2 wheel, records
+  its SHA-256 and installs it with `pip --target` into that Beast-owned path.
+- `beast-v019-accept remove-qr` removes only the Beast-owned qrcode package.
+- The normal installer creates the package root but does not silently download
+  optional runtime packages.
+- This does **not** modify Pwnagotchi's protected `/opt/.pwn` site-packages.
+
+This is a first concrete optional-runtime boundary, not yet the generalized
+Dependency & Capability Resolver remediation engine.
 
 The BOM should distinguish:
 - runtime-required;
