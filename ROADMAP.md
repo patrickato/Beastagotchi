@@ -35,6 +35,7 @@ Recent progress:
 - platform list overlays now use 50px bottom navigation targets and a calmer three-row 480×320 rhythm;
 - operational empty states explicitly preserve unavailable truth instead of synthesizing demo state;
 - the captured-real-state gallery now includes Control Center, Apps, Operations, Notifications, Diagnostics, Services, Hardware, Storage, Incidents and Connectivity in addition to the primary page set.
+- a bounded physical-acceptance harness now exists with automatic rollback reuse, framebuffer captures, 1 Hz runtime/Core sampling, touch evidence and a timestamped support bundle.
 
 Still to finish:
 - finish hierarchy/interaction cleanup across the high-frequency page carousel;
@@ -43,7 +44,8 @@ Still to finish:
 - finish shared dialogs/toasts/loading/error states beyond the newly normalized platform browsers;
 - deepen structural theme differences rather than palette-only variation;
 - generate and review the next real captured-state comparison gallery;
-- perform another physical Pi/TFT visual + touch + heat review;
+- execute the now-implemented bounded `beast-v019-accept` Pi/TFT session covering visual/touch/heat plus real framebuffer-write evidence;
+- include Capsule Share QR/phone scanning in that same physical session rather than creating a separate micro-test;
 - use that review before declaring the v0.19 visual language accepted.
 
 ### Gate 2 — Beast Packs / Depot
