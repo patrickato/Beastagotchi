@@ -189,3 +189,37 @@ This is a bounded cross-pollination sprint, not a project pivot.
 Doctor does not need to know everything at boot. Doctor needs to know how to recognize what it does not know, resolve the right trusted knowledge, and use it safely.
 
 Also refine Claude's phrase 'sensing is broad and unlimited' to: sensing is broad but bounded, because network-active, expensive, privacy-sensitive or intrusive probes require cadence and policy.
+## 18. Reuse Beast Pack infrastructure rather than inventing another package taxonomy
+
+Doctor knowledge should normally travel through existing Beast Pack mechanics using content roles such as:
+- doctor.condition
+- doctor.runbook
+- doctor.probe
+- doctor.compatibility
+- doctor.support_recipe
+
+This preserves one intake/trust/checksum/dependency/update model. A Doctor role does not create a fifth user-facing extension class.
+
+Standalone PwnDoctor can still consume the same neutral condition/runbook files without requiring Beast Packs.
+
+## 19. Doctor coverage/self-health
+
+Doctor should be able to explain what it can and cannot currently diagnose.
+
+Each probe/provider should expose:
+- available / unavailable / degraded
+- last successful observation
+- freshness
+- permissions/capabilities required
+- cost class
+- reason unavailable
+
+Doctor can then show a coverage view such as:
+- storage: covered
+- display: covered
+- radio: covered
+- UPS battery: specialist not installed
+- GPS: hardware unavailable
+- Jayofelony 2.9.x compatibility: pack loaded
+
+This prevents a healthy-looking Doctor page from implying it checked things it could not observe.
