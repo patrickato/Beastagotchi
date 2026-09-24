@@ -161,6 +161,20 @@ class LocalAPI:
             "thermal": thermal,
             "governor": governor,
             "presentation": presentation,
+            "dependencies": {
+                "execution_enabled": False,
+                "provider_selection_enabled": False,
+                "plugins": self.state.get("plugins.requirements_summary", {}) or {},
+                "packs": self.state.get("packs.requirements_summary", {}) or {},
+                "plugin_providers": self.state.get("plugins.requirements_providers", {}) or {},
+                "pack_providers": self.state.get("packs.requirements_providers", {}) or {},
+            },
+            "owner": {
+                "expert_mode_enabled": bool(self.state.get("owner.expert_mode.enabled", False)),
+                "customized": bool(self.state.get("owner.customized", False)),
+                "override_count": int(self.state.get("owner.override_count", 0) or 0),
+                "support_state": self.state.get("owner.support_state", "managed"),
+            },
             "packs": {
                 "count": int(self.state.get("packs.count", 0) or 0),
                 "enabled_count": int(self.state.get("packs.enabled_count", 0) or 0),
