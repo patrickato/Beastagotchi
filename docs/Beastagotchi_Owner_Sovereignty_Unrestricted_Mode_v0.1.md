@@ -1,6 +1,6 @@
 # Beastagotchi Owner Sovereignty / Unrestricted Mode — v0.1
 
-**Status:** approved architecture / execution not yet enabled  
+**Status:** approved architecture / persistent Expert Mode + bounded plugin policy override implemented  
 **Date:** 2026-09-24
 
 ## Principle
@@ -293,31 +293,55 @@ override third-party licenses, service terms or applicable law.
 ## Current implementation boundary
 
 Implemented now:
-- architecture decision documented;
-- roadmap/matrix/continuity are to track Owner Override;
-- existing PluginBroker remains conservative and transactional;
-- SSH/root/manual administration remains outside Beast policy.
+- architecture decision documented and tracked in roadmap/matrix/continuity;
+- persistent `OwnerModeManager` state at
+  `/var/lib/beastagotchi/owner-mode.json` with mode file permissions `0600`;
+- entering/leaving persistent Expert Mode is an audited Action Broker mutation
+  requiring an active owner-authorized `administrator` session;
+- read-only owner-mode status is exposed through canonical Core state,
+  `GET /owner-mode`, and structured Operator tools;
+- PluginBroker plans distinguish policy blockers from technical blockers;
+- plugin toggles may use explicit `owner_override=true` only while Expert Mode
+  is enabled;
+- technical blockers remain non-overridable;
+- successful policy overrides retain the existing PluginBroker snapshot,
+  config verification, Pwnagotchi restart/health observation and rollback path;
+- successful policy overrides persist a customized/support state with override
+  count, last action/target and policy-blocker evidence;
+- sanitized Support Bundles include Expert/customized status so a custom system
+  is not misrepresented as fully managed;
+- override use and Expert Mode changes generate durable action/event audit
+  evidence;
+- older managed PluginBroker callers/test doubles remain compatible; an older
+  broker cannot silently accept an override it does not understand;
+- SSH/root/manual administration remains outside Beast policy as the final escape
+  hatch.
 
 Not implemented yet:
-- persistent Expert Mode state;
-- per-action owner override flag;
-- policy-vs-technical blocker schema;
-- unsupported plugin/package executor;
+- dedicated Beast Studio/TFT Expert Mode control/indicator;
+- arbitrary/unknown plugin installer/source import executor;
+- generalized unsupported package/service executor;
 - raw config editor;
-- owner-authorized direct administration surface;
-- automatic support-state/taint reporting.
+- exact generated manual maintenance instructions for all self-disabling actions;
+- owner-authorized direct administration/shell surface;
+- a verified "return to managed baseline" operation that can clear customized
+  support state after proving the machine matches a known managed configuration.
 
-No current safety check has been silently weakened by this specification.
+This milestone intentionally enables owner override only for the existing,
+transactional plugin-toggle path. It does not turn Expert Mode into a generic
+unchecked command executor.
 
 ## Implementation order
 
-1. Add `policy_blockers` vs `technical_blockers` to plan schemas.
-2. Add non-mutating Expert Mode state and UI indicator.
-3. Add per-action "Proceed unsupported" planning.
-4. Add support-state/customization reporting to Doctor/Support Bundle.
-5. Add exact manual-instruction escape hatches for operations Beast cannot safely
+1. Add a dedicated Beast Studio/TFT Expert Mode control and obvious indicator.
+2. Extend policy-vs-technical blocker schemas beyond PluginBroker into the common
+   Dependency & Capability Resolver.
+3. Add reverse `used_by` impact to override confirmations.
+4. Add exact manual-instruction escape hatches for operations Beast cannot safely
    perform on itself.
-6. Add transactional arbitrary plugin/source import where technically possible.
-7. Add package/service custom operations with dry-run/audit.
+5. Add transactional arbitrary plugin/source import where technically possible.
+6. Add package/service custom operations with dry-run/audit.
+7. Add a verified return-to-managed-baseline workflow before offering to clear
+   customized support state.
 8. Consider a direct owner administration surface only after its local-auth,
    audit and recovery boundaries are explicit.
