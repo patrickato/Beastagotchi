@@ -704,3 +704,61 @@ requirement. The test fixture was corrected to make the prerequisite explicit;
 the implementation continued to reject unready candidates, which is the desired
 behavior.
 
+## Provider Preference / Health Confidence / Beast Doctor milestone — 2026-09-24
+
+Provider arbitration is now tied to persistent owner intent and a first
+user-facing explanation model.
+
+Implemented:
+- `beastcore/provider_preferences.py` / `ProviderPreferenceManager`;
+- private atomic preference persistence at
+  `/var/lib/beastagotchi/provider-preferences.json`;
+- canonical `providers.preferences` state plus count/update metadata;
+- audited `provider.preference_set` and `provider.preference_clear` actions;
+- active owner-authorized Operator session required for policy mutation;
+- preference changes do not enable/switch plugins, services or hardware;
+- unavailable preferences may remain dormant and fall back read-only;
+- provider candidates now carry evidence health/confidence/freshness;
+- live native canonical state can be high-confidence with measured freshness;
+- generic component providers remain `ready_unverified` /
+  `standby_ready` rather than being mislabeled healthy;
+- new `beastcore/doctor.py` / `BeastDoctor`;
+- Doctor explains active provider, reason, preference state, alternates,
+  fallback chain, health/confidence and reverse `USED BY` impact;
+- Doctor exposes likely downstream effect if the active provider disappears;
+- automatic failover is explicitly reported as disabled;
+- read-only APIs:
+  - `/doctor`
+  - `/explain?capability=...`
+  - `/explain?provider=...`
+  - `/provider-preferences`;
+- structured Operator tools:
+  - `doctor.explain`
+  - `provider.preferences`
+  - `provider.preference_set`
+  - `provider.preference_clear`;
+- low-frequency Doctor canonical summary loop;
+- sanitized Support Bundles include non-secret provider policy + Doctor state.
+
+Durable UX/design principle added:
+
+**Explain before act.**
+
+The intended future mutation path is:
+Explain -> Plan -> Preview blast radius -> Snapshot -> Execute -> Observe ->
+Rollback/Accept -> Record.
+
+This does not enable automatic failover, provider handoff, package installation or
+new target-Pi mutation.
+
+Lightbulb directions preserved:
+- known-good machine fingerprint + "what changed?" comparison;
+- causal-chain explanations instead of disconnected warnings;
+- pre-action blast-radius simulation;
+- recovery suggestions ranked by reversibility;
+- Field/TFT Doctor shorthand plus full browser graph exploration.
+
+Canonical specs:
+- `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
+- `docs/Beastagotchi_Doctor_Explain_v0.1.md`
+
