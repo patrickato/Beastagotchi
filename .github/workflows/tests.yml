@@ -52,6 +52,27 @@ jobs:
           retention-days: 30
 
 
+      - name: Render deterministic v0.19 Home motion proof
+        run: |
+          mkdir -p artifacts/v019-home-motion
+          PYTHONPATH=. python tools/render_v019_home_motion.py \
+            --root beastui \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-home-motion \
+            --themes classic,cyberpunk,blackice,wopr_norad \
+            --frames 8 \
+            --duration 2.0 \
+            --fps 6
+
+      - name: Upload v0.19 Home motion proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-home-motion-proof
+          path: artifacts/v019-home-motion
+          if-no-files-found: error
+          retention-days: 30
+
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
