@@ -50,3 +50,21 @@ jobs:
           path: artifacts/v019-real-state-gallery
           if-no-files-found: error
           retention-days: 30
+
+
+      - name: Build commit-pinned v0.19 Pi acceptance source bundle
+        run: |
+          mkdir -p artifacts/v019-pi-acceptance
+          SHORT_SHA="${GITHUB_SHA:0:12}"
+          ARCHIVE="artifacts/v019-pi-acceptance/beastagotchi-v019-pi-acceptance-${SHORT_SHA}.tar.gz"
+          git archive --format=tar.gz --prefix="Beastagotchi-v019-${SHORT_SHA}/" -o "$ARCHIVE" HEAD
+          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          printf '%s\n' "$GITHUB_SHA" > artifacts/v019-pi-acceptance/COMMIT_SHA.txt
+
+      - name: Upload v0.19 Pi acceptance source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-pi-acceptance-source
+          path: artifacts/v019-pi-acceptance
+          if-no-files-found: error
+          retention-days: 30
