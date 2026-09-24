@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +59,19 @@ class ThemeManagerProbe:
                     if isinstance(target, ast.Name):
                         names.add(target.id)
         return names
+
+    @staticmethod
+    def _version(tree: ast.AST) -> str | None:
+        for node in getattr(tree, "body", []):
+            if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if not any(isinstance(target, ast.Name) and target.id == "__version__" for target in targets):
+                continue
+            value = getattr(node, "value", None)
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                return value.value
+        return None
 
     @staticmethod
     def _managed_contract(source: str, methods: set[str]) -> bool:
@@ -128,14 +140,14 @@ class ThemeManagerProbe:
         cap("nodes", "node_rows" in methods and "_mesh_peers" in source)
         cap("wardrive", "wardrive_status" in methods and "start_wardrive" in methods)
 
-        match = _VERSION_RE.search(source)
+        version = self._version(tree)
         managed = self._managed_contract(source, methods)
         compatibility = "clean_unload" in caps and "live_install" in caps
 
         row = {
             "inspectable": True,
             "path": key,
-            "version": match.group(1) if match else None,
+            "version": version,
             "capabilities": sorted(caps),
             "managed_handoff_supported": managed,
             "compatibility_handoff_evidence": compatibility,
