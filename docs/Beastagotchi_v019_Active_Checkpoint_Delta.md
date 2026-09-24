@@ -847,3 +847,13 @@ Future UI/physical work:
 No target Pi software/service/configuration was changed by this milestone and no
 physical QR-rendering claim is made.
 
+Source/CI evidence for the code-bearing Capsule/extension checkpoint:
+- **389 tests passed in 8.20s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35971874308` (#275)
+
+This is source/CI evidence only. Actual QR rendering/scanning and the physical
+480×320 share workflow remain future target/physical gates.
+
