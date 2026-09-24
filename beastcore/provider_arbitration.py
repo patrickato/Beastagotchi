@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import time
 
 
 _INTEGRATION_WEIGHT = {
@@ -52,6 +53,76 @@ class CapabilityProviderArbitrator:
         return out
 
     @staticmethod
+    def _confidence_label(score: int) -> str:
+        if score >= 80:
+            return "high"
+        if score >= 50:
+            return "medium"
+        return "low"
+
+    def _native_health(self, provider: str) -> dict[str, Any]:
+        key_map = {
+            "native:gps": "gps.state",
+            "native:power": "power.telemetry.available",
+            "native:system": "system.cpu.total",
+            "native:bluetooth": "bluetooth.adapter.present",
+            "native:network": "network.internet.state",
+            "native:display": "display.physical.width",
+            "native:i2c": "capabilities.present",
+            "native:gpio": "capabilities.present",
+            "native:radio": "radio.primary.state",
+            "native:captures": "captures.total",
+            "native:pwnagotchi": "pwnagotchi.service.state",
+        }
+        key = key_map.get(provider)
+        meta = None
+        if key and hasattr(self.state, "meta"):
+            try:
+                meta = self.state.meta(key)
+            except Exception:
+                meta = None
+        if isinstance(meta, dict):
+            quality = str(meta.get("quality") or "live")
+            updated = meta.get("updated_at")
+            age = None
+            if isinstance(updated, (int, float)):
+                age = max(0.0, float(time.time()) - float(updated))
+            if quality == "live" and not meta.get("error"):
+                return {
+                    "health_state": "healthy",
+                    "confidence": "high",
+                    "confidence_score": 95,
+                    "freshness_sec": round(age, 3) if age is not None else None,
+                    "evidence_quality": "live",
+                    "health_key": key,
+                }
+            if quality == "stale":
+                return {
+                    "health_state": "stale",
+                    "confidence": "medium",
+                    "confidence_score": 55,
+                    "freshness_sec": round(age, 3) if age is not None else None,
+                    "evidence_quality": "stale",
+                    "health_key": key,
+                }
+            return {
+                "health_state": "degraded",
+                "confidence": "low",
+                "confidence_score": 25,
+                "freshness_sec": round(age, 3) if age is not None else None,
+                "evidence_quality": quality or "unknown",
+                "health_key": key,
+            }
+        return {
+            "health_state": "ready_unverified",
+            "confidence": "medium",
+            "confidence_score": 65,
+            "freshness_sec": None,
+            "evidence_quality": "presence_only",
+            "health_key": key,
+        }
+
+    @staticmethod
     def _provider_component_id(provider: str) -> str | None:
         return provider.split(":", 1)[1] if provider.startswith("component:") else None
 
@@ -65,6 +136,7 @@ class CapabilityProviderArbitrator:
         cid = self._provider_component_id(provider)
         if cid is None:
             kind = provider.split(":", 1)[0] if ":" in provider else "native"
+            health = self._native_health(provider)
             return {
                 "provider": provider,
                 "component": None,
@@ -75,6 +147,7 @@ class CapabilityProviderArbitrator:
                 "integration": "native",
                 "priority": 1000,
                 "reason": "canonical/native provider is already live",
+                **health,
             }
 
         component = component_by_id.get(cid, {})
@@ -89,6 +162,32 @@ class CapabilityProviderArbitrator:
         except (TypeError, ValueError):
             declared_priority_i = 0
         score = _INTEGRATION_WEIGHT.get(integration, 30) + declared_priority_i + (10 if selected else 0)
+        technical = list(resolved.get("technical_blockers") or [])
+        policy = list(resolved.get("policy_blockers") or [])
+        if not available:
+            health_state = "unavailable"
+            confidence_score = 10
+            evidence_quality = "catalog_only"
+        elif technical:
+            health_state = "blocked"
+            confidence_score = 15
+            evidence_quality = "requirements_failed"
+        elif policy:
+            health_state = "needs_attention"
+            confidence_score = 35
+            evidence_quality = "requirements_uncertain"
+        elif ready and selected:
+            health_state = "ready_unverified"
+            confidence_score = 70 if integration in {"native", "canonical", "adapter", "managed"} else 45
+            evidence_quality = "requirements_ready"
+        elif ready:
+            health_state = "standby_ready"
+            confidence_score = 60 if integration in {"native", "canonical", "adapter", "managed"} else 40
+            evidence_quality = "requirements_ready"
+        else:
+            health_state = "unknown"
+            confidence_score = 25
+            evidence_quality = "unknown"
         return {
             "provider": provider,
             "component": cid,
@@ -100,9 +199,15 @@ class CapabilityProviderArbitrator:
             "priority": score,
             "role": component.get("role"),
             "provider_group": component.get("provider_group"),
-            "technical_blockers": list(resolved.get("technical_blockers") or []),
-            "policy_blockers": list(resolved.get("policy_blockers") or []),
+            "technical_blockers": technical,
+            "policy_blockers": policy,
             "reason": "component provider",
+            "health_state": health_state,
+            "confidence": self._confidence_label(confidence_score),
+            "confidence_score": confidence_score,
+            "freshness_sec": component.get("freshness_sec"),
+            "evidence_quality": evidence_quality,
+            "health_key": component.get("health_key"),
         }
 
     @staticmethod
@@ -220,6 +325,9 @@ class CapabilityProviderArbitrator:
                 "ready_candidate_count": len(viable),
                 "selected_ready_count": len(selected),
                 "choice_required": decision_state == "choice_required",
+                "active_health": next((row.get("health_state") for row in candidates if row.get("provider") == active), None),
+                "active_confidence": next((row.get("confidence") for row in candidates if row.get("provider") == active), None),
+                "active_freshness_sec": next((row.get("freshness_sec") for row in candidates if row.get("provider") == active), None),
                 "automatic_failover_enabled": False,
                 "selection_mutation_enabled": False,
                 "candidates": candidates,
@@ -238,5 +346,8 @@ class CapabilityProviderArbitrator:
                 "choice_required_count": choice_required_count,
                 "preference_problem_count": preference_problem_count,
                 "unavailable_count": sum(1 for row in decisions.values() if row["state"] == "unavailable"),
+                "active_high_confidence_count": sum(1 for row in decisions.values() if row.get("active_confidence") == "high"),
+                "active_medium_confidence_count": sum(1 for row in decisions.values() if row.get("active_confidence") == "medium"),
+                "active_low_confidence_count": sum(1 for row in decisions.values() if row.get("active_confidence") == "low"),
             },
         }
