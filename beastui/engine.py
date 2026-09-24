@@ -1132,7 +1132,7 @@ class BeastUI:
 
     def _physical_test_overlay(self,d):
         if not self.test_mode_path.exists():return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,49),fill=t.c('panel2'));d.text((6,37),'PHYS TEST // Beastagotchi v0.18.0 Platform / Compatibility Gate',font=f['tiny'],fill=t.c('warn'))
+        t=self.theme;f=self.fonts;d.rectangle((0,34,480,49),fill=t.c('panel2'));d.text((6,37),f'PHYS TEST // Beastagotchi {UI_VERSION} Physical Acceptance',font=f['tiny'],fill=t.c('warn'))
         if self.last_input and time.monotonic()-self.last_input_at<4:
             kind,e=self.last_input;x=int(e.get('x',240));y=int(e.get('y',160));d.line((max(0,x-10),y,min(479,x+10),y),fill=t.c('accent'),width=2);d.line((x,max(34,y-10),x,min(277,y+10)),fill=t.c('accent'),width=2)
 
@@ -2020,7 +2020,7 @@ class BeastUI:
             avg=lambda rows: sum(rows)/len(rows) if rows else 0.0
             elapsed=max(0.001,time.monotonic()-self._runtime_started)
             obj={
-                'version':'0.18.0','theme':self.theme.id,'page':self.pages.IDS[self.page],
+                'version':UI_VERSION,'theme':self.theme.id,'page':self.pages.IDS[self.page],
                 'frames':self._frame_count,'avg_render_ms':round(avg(self._render_samples),2),'max_render_ms':round(max(self._render_samples or [0]),2),
                 'avg_compose_ms':round(avg(self._compose_samples),2),'avg_fb_write_ms':round(avg(self._write_samples),2),'max_fb_write_ms':round(max(self._write_samples or [0]),2),
                 'target_fps':round(self.adaptive_fps(),1),'lifetime_fps':round(self._frame_count/elapsed,2),
