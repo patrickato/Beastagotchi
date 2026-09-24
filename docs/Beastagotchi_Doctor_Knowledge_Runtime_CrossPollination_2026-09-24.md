@@ -308,3 +308,34 @@ Condition expressions should be internally tri-state: true / false / unknown.
 Detection fires only on proven true. Verification preserves unknown so missing post-action evidence yields `executed_verification_unknown`, never a false success or false failure.
 
 This truth rule should be preserved when Beast Doctor eventually binds the same neutral Condition Pack schema to canonical Beast Signals.
+## 25. Shared Condition Pack trust classes
+
+The standalone PwnDoctor implementation clarified a reusable distinction that Beast should preserve:
+
+### First-party bundled knowledge
+Condition/runbook/probe content shipped inside the same reviewed Beast/PwnDoctor release or Pack may retain the privileges explicitly granted to that first-party component. Moving trusted knowledge from Python into declarative data must not accidentally remove intended capability.
+
+### External/user knowledge
+Locally added or fetched community knowledge is a separate trust class. Loading or verifying a knowledge artifact does not grant treatment authority.
+
+Shared rule:
+
+**Provenance proves where knowledge came from; it does not decide what actions are permitted.**
+
+Condition artifacts should carry/derive hashes and source-class metadata for audit/reproducibility.
+
+## 26. Shared v0.6 code/data boundary lesson
+
+Do not force every condition into declarative data merely to achieve architectural purity.
+
+Pure boolean/semantic conditions are good candidates for shared Condition Packs.
+
+Conditions that depend on configurable thresholds, boot context, complex helpers or computed policy should remain code-backed until a real cross-project need justifies a small, well-defined schema extension.
+
+This protects the Condition Pack contract from turning into a second programming language.
+
+## 27. PwnDoctor standalone release staging
+
+The standalone collaboration now maintains release staging documentation under `test-plugins/release/pwndoctor/` before code freeze. The intended final package includes the Doctor runtime, first-party Medical Library, user-pack examples, complete configuration/install/upgrade/rollback/uninstall instructions, dependencies, usage, safety model, compatibility policy, troubleshooting, tests, GPLv3 license, release checklist and checksums.
+
+This staging approach should be reused for future Beast-originated standalone utilities: documentation and release discipline are developed alongside code rather than after implementation is declared complete.
