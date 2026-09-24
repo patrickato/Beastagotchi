@@ -33,7 +33,9 @@ The visual identity must retain the strongest traits of the early Beastagotchi U
 7. **The Beast is a first-class subsystem.** Personality, state, face pack, evolution stage, animations, and theme treatment are independent layers.
 8. **Visual richness must degrade gracefully.** The device should remain readable and responsive under load.
 9. **Everything is modular.** Optional hardware and heavy services appear only when installed / available.
-10. **Nothing visually valuable is discarded.** Unused concepts become themes, layouts, idle modes, widgets, animation packs, or optional apps.
+10. **Extensions live at the correct layer.** Pwnagotchi hooks stay plugins; Beast content stays Packs; deeper tools stay Apps; mixed features become Companion Expansions.
+11. **Offline exchange is first-class.** Portable social/lineage/challenge data must not require cloud connectivity when an offline Capsule transport can do the job.
+12. **Nothing visually valuable is discarded.** Unused concepts become themes, layouts, idle modes, widgets, animation packs, or optional apps.
 
 ---
 
@@ -1001,6 +1003,35 @@ The touchscreen and web UI use the same Beast Core API.
 - shutdown/reboot
 
 ---
+
+## 19A. Extension & Offline Exchange Model
+
+Beastagotchi uses four user-facing extension classes:
+
+- **Pwnagotchi Plugin** — code that genuinely needs Pwnagotchi lifecycle/callback
+  integration;
+- **Beast Pack** — modular content/data/presentation/rules/assets;
+- **Beast App** — deeper interactive Beast-native functionality;
+- **Companion Expansion** — one coherent feature whose internal pieces may span
+  plugin + Pack + App + adapter layers.
+
+Adapters translate existing plugin/service/hardware behavior into canonical Beast
+state/events instead of requiring wholesale rewrites.
+
+Plugins/extensions should normally contribute truthful signals/facts. Canonical
+Beast systems such as progression, achievements, lineage and presentation decide
+what those facts mean.
+
+Portable/offline exchange uses the transport-neutral **Beast Capsule** contract.
+The same Capsule may be moved by QR, animated QR, file, USB/SD, NFC,
+Bluetooth/local transfer, WebUI/phone or future Beast-to-Beast transport.
+
+Offline exchange is a first-class product property. Cloud/network access must not
+become mandatory merely because richer social/lineage/challenge features exist.
+
+Current v0.19 Capsule foundation includes privacy-curated Lineage export and
+bounded QR-ready text framing. Import, signed authenticity and physical
+render/scan flows remain separate gates.
 
 ## 20. Plugin / Module SDK
 
