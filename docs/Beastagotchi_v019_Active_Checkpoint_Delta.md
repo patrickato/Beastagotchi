@@ -857,3 +857,63 @@ Source/CI evidence for the code-bearing Capsule/extension checkpoint:
 This is source/CI evidence only. Actual QR rendering/scanning and the physical
 480×320 share workflow remain future target/physical gates.
 
+## Capsule Share visible-UI checkpoint — 2026-09-24
+
+The Capsule transport foundation now has its first real Beast UI surface and is
+being treated as part of the next physical 480×320 acceptance package rather
+than backend-only scope.
+
+Implemented:
+- `beastui/qr_render.py` optional real QR adapter;
+- `qrcode>=8.0` added to the development/CI requirement set only;
+- `BeastAPI.capsule_export()` local client path;
+- **Capsules** added to the Identity app category;
+- real Capsule Share overlay:
+  - asynchronous fresh Lineage export from Beast Core;
+  - real black/white QR frame when the renderer is available;
+  - frame count;
+  - 48px+ PREV / CLOSE / NEXT controls;
+  - horizontal swipe frame navigation;
+  - explicit `UNSIGNED · INTEGRITY ONLY` truth;
+  - explicit `NO CAPTURES · NO GPS · NO CREDS` privacy reminder;
+  - no fake QR if export/backend is unavailable;
+- QR transport is rendered in a protected layer above ordinary theme effects and
+  scanlines;
+- Rare Moment / Monster overlay precedence remains preserved.
+
+The scanline protection came from a real regression failure: the first new
+Capsule UI test detected that Classic's scanline could cross the QR quiet/module
+area. The compositor was corrected instead of weakening the test.
+
+Gallery:
+- `capsule_share` is now a first-class CI interaction surface;
+- the gallery uses a deterministic **GALLERY PREVIEW · NOT IMPORTABLE** Capsule
+  derived only from the sanitized real-device fixture;
+- gallery manifest explicitly records that it is not a roster export and is not
+  importable.
+
+Validation:
+- GitHub Actions run `35974384239` (#302): success;
+- **394 tests passed in 10.76s**;
+- Python compile passed;
+- shell syntax passed;
+- sanitized real-state UX gallery render/upload passed;
+- gallery artifact id `10796753380`;
+- gallery digest
+  `sha256:fa9efe68f4a5bf6f30b53675f8ce700e8da9694f4f52195a2feb7a66779d9f57`;
+- representative QR test requires >=3 px/module in the 206px-class QR box;
+- manual off-screen inspection of the generated 480×320 PNG successfully decoded
+  the visible QR back to its exact `BCQ1...` frame.
+
+Validation boundary:
+- this is **source/CI + off-screen image evidence**;
+- it is not a physical TFT/camera scan pass;
+- `qrcode` has not been silently installed into the target Pwnagotchi runtime;
+- physical brightness/contrast/module fidelity/repeated camera scanning still
+  require the real Pi/TFT gate.
+
+Product decision:
+the Capsule Share surface should travel with the next substantial physical v0.19
+acceptance package so the user gets a concrete visual/interaction payoff from
+the recent backend work.
+
