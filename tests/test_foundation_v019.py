@@ -331,12 +331,13 @@ def test_v019_app_launcher_geometry_respects_touch_minimum():
     from beastui.engine import BeastUI
     from beastui.design import TOKENS
 
-    boxes = list(BeastUI.APP_CARD_BOXES) + [
+    boxes = list(BeastUI.APP_CARD_BOXES) + list(BeastUI.CONTROL_QUICK_BOXES) + [
         BeastUI.APP_CAT_PREV,
         BeastUI.APP_CAT_NEXT,
         BeastUI.APP_NAV_PREV,
         BeastUI.APP_NAV_CLOSE,
         BeastUI.APP_NAV_NEXT,
+        BeastUI.CONTROL_APP_BOX,
     ]
     assert BeastUI.APP_PAGE_SIZE == 4
     for x1, y1, x2, y2 in boxes:
@@ -347,3 +348,5 @@ def test_v019_app_launcher_geometry_respects_touch_minimum():
     # controls on the 480x320 logical canvas.
     assert max(box[3] for box in BeastUI.APP_CARD_BOXES) < BeastUI.APP_NAV_PREV[1]
     assert min(box[1] for box in BeastUI.APP_CARD_BOXES) > BeastUI.APP_CAT_PREV[3]
+    assert len(BeastUI.CONTROL_QUICK_BOXES) == 4
+    assert max(box[3] for box in BeastUI.CONTROL_QUICK_BOXES) < TOKENS.footer_y
