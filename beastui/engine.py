@@ -60,6 +60,14 @@ class BeastUI:
     APP_NAV_PREV=(12,224,154,274)
     APP_NAV_CLOSE=(162,224,318,274)
     APP_NAV_NEXT=(326,224,468,274)
+    # Platform browsers use the same proven 50px bottom action geometry as
+    # the app launcher. The prior 36px buttons looked acceptable off-screen
+    # but were below the reference resistive-touch minimum.
+    PLATFORM_PAGE_SIZE=3
+    PLATFORM_NAV_PREV=(12,224,154,274)
+    PLATFORM_NAV_CLOSE=(162,224,318,274)
+    PLATFORM_NAV_NEXT=(326,224,468,274)
+    PLATFORM_SPECIAL_CLOSE=(326,224,468,274)
     CONTROL_APP_BOX=(352,40,468,88)
     CONTROL_QUICK_BOXES=(
         (16,96,236,174),(244,96,464,174),
@@ -622,8 +630,8 @@ class BeastUI:
                     self.performance_offset=max(0,min(maxoff,self.performance_offset+step));self.dirty.set()
                 return
             if self.platform_overlay:
-                if e.get('axis')=='y':
-                    rows=self._platform_rows(self.platform_overlay);step=4 if e.get('dy',0)<0 else -4;maxoff=max(0,((len(rows)-1)//4)*4)
+                if e.get('axis')=='y' and self.platform_overlay not in {'topology','operations'}:
+                    rows=self._platform_rows(self.platform_overlay);step=self.PLATFORM_PAGE_SIZE if e.get('dy',0)<0 else -self.PLATFORM_PAGE_SIZE;maxoff=max(0,((len(rows)-1)//self.PLATFORM_PAGE_SIZE)*self.PLATFORM_PAGE_SIZE)
                     self.platform_offset=max(0,min(maxoff,self.platform_offset+step));self.dirty.set()
                 return
             if self.studio_overlay:
@@ -720,14 +728,14 @@ class BeastUI:
                     elif x>324:self.performance_offset=min(maxoff,self.performance_offset+3);self.dirty.set()
                     else:self.performance_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.platform_overlay:
-                if 238<=y<=277:
-                    if self.platform_overlay in {'topology','operations'}:
+                if self.platform_overlay in {'topology','operations'}:
+                    if hit('platform-special-close',self.PLATFORM_SPECIAL_CLOSE,x,y,minimum=48):
                         self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
-                    else:
-                        rows=self._platform_rows(self.platform_overlay);maxoff=max(0,((len(rows)-1)//4)*4)
-                        if x<155:self.platform_offset=max(0,self.platform_offset-4);self.dirty.set()
-                        elif x>324:self.platform_offset=min(maxoff,self.platform_offset+4);self.dirty.set()
-                        else:self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
+                elif 224<=y<=277:
+                    rows=self._platform_rows(self.platform_overlay);maxoff=max(0,((len(rows)-1)//self.PLATFORM_PAGE_SIZE)*self.PLATFORM_PAGE_SIZE)
+                    if x<155:self.platform_offset=max(0,self.platform_offset-self.PLATFORM_PAGE_SIZE);self.dirty.set()
+                    elif x>324:self.platform_offset=min(maxoff,self.platform_offset+self.PLATFORM_PAGE_SIZE);self.dirty.set()
+                    else:self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
             elif self.studio_overlay:
                 if 232<=y<=277:self.studio_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.theme_detail:
@@ -1544,7 +1552,7 @@ class BeastUI:
 
     def _platform_browser(self,d):
         if not self.platform_overlay:return
-        mode=str(self.platform_overlay);t=self.theme;f=self.fonts;rows=self._platform_rows(mode);page=self.platform_offset//4+1;pages=max(1,(len(rows)+3)//4)
+        mode=str(self.platform_overlay);t=self.theme;f=self.fonts;rows=self._platform_rows(mode);page=self.platform_offset//self.PLATFORM_PAGE_SIZE+1;pages=max(1,(len(rows)+self.PLATFORM_PAGE_SIZE-1)//self.PLATFORM_PAGE_SIZE)
         if mode=='topology':
             d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('info'),width=2)
             d.text((20,47),'SERVICE TOPOLOGY // LIVE DEPENDENCIES',font=f['medium'],fill=t.c('info'))
@@ -1562,7 +1570,7 @@ class BeastUI:
             d.text((18,216),'RADIO → BETTERCAP → PWNAGOTCHI → BRIDGE → CORE',font=f['tiny'],fill=t.c('dim'))
             d.text((18,231),'GPS → CORE     CORE → UI / STUDIO',font=f['tiny'],fill=t.c('dim'))
             fail=int(self.state.get('topology.failure_count') or 0);d.text((18,248),f'{fail} DEPENDENCY FAILURE(S)',font=f['small'],fill=t.c('warn') if fail else t.c('accent'))
-            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
+            d.rounded_rectangle(self.PLATFORM_SPECIAL_CLOSE,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2);d.text((371,242),'CLOSE',font=f['tiny'],fill=t.c('primary'))
             return
         if mode=='operations':
             d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('primary'),width=2)
@@ -1609,18 +1617,50 @@ class BeastUI:
             d.text((375,176),gov[:10],font=f['small'],fill=t.c('secondary'))
             d.text((322,201),'OPEN DETAIL APPS FOR DEPTH',font=f['micro'],fill=t.c('dim'))
 
-            d.text((18,231),'Long-press returns to Apps · detailed incidents/services remain one layer deeper.',font=f['micro'],fill=t.c('dim'))
-            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'))
-            d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
+            d.text((18,214),'Detail apps keep incidents, services and history one layer deeper.',font=f['micro'],fill=t.c('dim'))
+            d.rounded_rectangle(self.PLATFORM_SPECIAL_CLOSE,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2)
+            d.text((371,242),'CLOSE',font=f['tiny'],fill=t.c('primary'))
             return
         accent={'timeline':'info','notifications':'warn','diagnostics':'warn','services':'accent','hardware':'secondary','storage':'info','operations':'primary','topology':'info','tasks':'secondary','field_library':'accent','missions':'primary','containers':'info','incidents':'warn','backups':'accent','ai_operator':'primary','connectivity':'info','command_center':'accent'}.get(mode,'primary')
         col=t.c(accent,t.c('primary'));d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=col,width=2)
-        d.text((20,47),mode.upper()+' // LIVE',font=f['medium'],fill=col);d.text((395,51),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
-        for i,row in enumerate(rows[self.platform_offset:self.platform_offset+4]):
-            y=67+i*40;sev=str(row.get('severity') or 'info').lower();vcol=t.c('danger') if sev in {'error','critical'} else t.c('warn') if sev=='warning' else t.c('accent')
-            d.text((20,y),str(row.get('title') or '--')[:32],font=f['small'],fill=t.c('text'));d.text((370,y),str(row.get('value') or '')[:14],font=f['tiny'],fill=vcol);d.text((20,y+17),str(row.get('subtitle') or '')[:64],font=f['tiny'],fill=t.c('dim'));d.line((18,y+32,462,y+32),fill=t.c('edge'))
-        if not rows:d.text((95,140),'NO CURRENT ITEMS',font=f['small'],fill=t.c('dim'))
-        d.rounded_rectangle((12,238,154,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.rounded_rectangle((162,238,318,274),radius=5,fill=t.c('panel2'),outline=t.c('edge'));d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((45,250),'<< PREV',font=f['tiny'],fill=t.c('primary'));d.text((216,250),'APPS',font=f['tiny'],fill=t.c('text'));d.text((369,250),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+        labels={
+            'notifications':'NOTIFICATIONS','diagnostics':'COLLECTOR HEALTH','services':'SERVICES',
+            'hardware':'HARDWARE','storage':'STORAGE','timeline':'TIMELINE','tasks':'TASK CENTER',
+            'field_library':'FIELD LIBRARY','missions':'MISSIONS','containers':'CONTAINERS',
+            'incidents':'INCIDENTS','backups':'BACKUPS','ai_operator':'AI OPERATOR',
+            'connectivity':'CONNECTIVITY','command_center':'COMMAND CENTER',
+        }
+        title=labels.get(mode,mode.replace('_',' ').upper())
+        d.text((20,47),title+' // LIVE',font=f['medium'],fill=col)
+        d.text((405,50),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
+        visible=rows[self.platform_offset:self.platform_offset+self.PLATFORM_PAGE_SIZE]
+        for i,row in enumerate(visible):
+            y=72+i*49;sev=str(row.get('severity') or 'info').lower();vcol=t.c('danger') if sev in {'error','critical'} else t.c('warn') if sev=='warning' else t.c('accent')
+            d.text((20,y),str(row.get('title') or '--')[:31],font=f['small'],fill=t.c('text'))
+            value=str(row.get('value') or '')[:14];vb=d.textbbox((0,0),value,font=f['tiny']);vw=max(0,vb[2]-vb[0])
+            d.text((458-vw,y+1),value,font=f['tiny'],fill=vcol)
+            d.text((20,y+18),str(row.get('subtitle') or '')[:67],font=f['tiny'],fill=t.c('dim'))
+            if i<self.PLATFORM_PAGE_SIZE-1:d.line((18,y+39,462,y+39),fill=t.c('edge'))
+        if not rows:
+            empty={
+                'notifications':('NO ACTIVE NOTICES','Important events and warnings will appear here.'),
+                'incidents':('NO OPEN INCIDENTS','Black Box has no incident rows to surface.'),
+                'tasks':('NO RECENT TASKS','Durable background operations will appear here.'),
+                'hardware':('NO HARDWARE ROWS','Detected capabilities will appear when available.'),
+                'backups':('NO BACKUP ROWS','Create and verify backups from Beast Studio.'),
+            }.get(mode,('NO CURRENT ITEMS','This live surface has no rows to display.'))
+            d.text((20,100),empty[0],font=f['medium'],fill=t.c('dim'))
+            d.text((20,126),empty[1][:68],font=f['tiny'],fill=t.c('dim'))
+            d.text((20,151),'Unavailable stays unavailable; Beast does not invent demo state.',font=f['micro'],fill=t.c('warn'))
+        for box,bcol in (
+            (self.PLATFORM_NAV_PREV,t.c('primary')),
+            (self.PLATFORM_NAV_CLOSE,t.c('edge')),
+            (self.PLATFORM_NAV_NEXT,t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=bcol,width=2)
+        d.text((45,242),'<< PREV',font=f['tiny'],fill=t.c('primary'))
+        d.text((216,242),'APPS',font=f['tiny'],fill=t.c('text'))
+        d.text((369,242),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
 
     def _studio_status(self,d):
         if not self.studio_overlay:return
