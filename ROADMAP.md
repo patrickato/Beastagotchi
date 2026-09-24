@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **400 passing tests** plus Python compile/shell validation.
+preserved source gate is **406 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -198,8 +198,11 @@ Next:
   removes it without modifying Pwnagotchi site-packages;
 - physically validate TFT/phone-camera scanning before choosing animation timing;
 - automatic frame cycling + receiver/missing-frame UX after physical evidence;
-- Capsule Workshop / exact-share preview in Studio;
-- scan/import preview with no roster mutation;
+- Studio Capsule Workshop exact-share preview is implemented with explicit
+  name/appearance/achievement-ID controls, exact envelope JSON and local QR frame
+  rendering; no import/publication/roster mutation occurs;
+- extend that Workshop with file export and later scan/import preview while
+  keeping receive non-mutating;
 - signed Capsule identity/authenticity design;
 - Beast Card/PeerDex Capsule;
 - Challenge Capsule;
