@@ -60,6 +60,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `Beastagotchi_Plugin_Operations_v0.2.md`
 - `Beastagotchi_Dependency_Capability_Resolver_v0.1.md` — shared requirements/provider/remediation architecture for Plugins/Packs/Hardware/Experiences/Apps.
 - `Beastagotchi_Provider_Arbitration_v0.1.md` — read-only active/alternate/provider-choice policy, fallback ordering, failover direction and owner-preference model.
+- `Beastagotchi_Doctor_Explain_v0.1.md` — provider/dependency explanation, downstream-impact and future known-good/blast-radius diagnostic architecture.
 - `Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md` — versioned superset-vs-installed software/service BOM policy for the Pi 4 reference build.
 - `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md` — owner override / Expert Mode architecture; managed safety without appliance-style lock-in.
 - `Beastagotchi_Hardware_Power_Dock_Spec_v0.1.md`
