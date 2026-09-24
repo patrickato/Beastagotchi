@@ -647,3 +647,47 @@ Source/CI evidence:
 - sanitized real-state UX gallery render/upload passed
 - GitHub Actions run `35964795554` (#230)
 
+## Read-only Provider Arbitration milestone — 2026-09-24
+
+The shared resolver now also explains provider choice without mutating the target.
+
+Implemented:
+- `beastcore/provider_arbitration.py` /
+  `CapabilityProviderArbitrator`;
+- provider decisions are attached to every dependency graph;
+- provider states:
+  - `active_preference`
+  - `active_native`
+  - `active_selected`
+  - `active_fallback`
+  - `choice_required`
+  - `available_unselected`
+  - `unavailable`;
+- native/canonical Beast state is the default automatic preference when live;
+- a future explicit owner preference can override that policy when its provider
+  is ready;
+- multiple selected non-native providers remain explicit `choice_required`
+  rather than being silently collapsed;
+- configured-but-disabled plugins can remain available alternates;
+- deterministic recommendation + ordered fallback chain are emitted for future
+  UI/Doctor explanation;
+- provider candidates carry requirement readiness and blocker evidence;
+- dependency API/platform bundle expose provider summary/decisions;
+- automatic failover and provider-selection mutation remain disabled.
+
+New canonical specification:
+- `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
+
+Lightbulb directions preserved with this milestone:
+- context-aware Field/Dock/Home/Battery provider profiles;
+- graceful per-capability degradation rather than whole-feature collapse;
+- hot-plug provider arrival prompts;
+- TEST FAILOVER rehearsal before automatic failover;
+- provider confidence/quality classes;
+- capability leasing for exclusive resources;
+- dependency/update impact simulation;
+- known-good build fingerprint comparisons in Beast Doctor.
+
+No target-Pi package/service/config mutation and no physical display behavior
+changed in this milestone.
+
