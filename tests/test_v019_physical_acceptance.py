@@ -145,6 +145,17 @@ def test_v019_qr_optional_dependency_is_beast_owned_and_provenanced():
     assert "/opt/.pwn/lib/" not in script
 
 
+def test_v019_pi_source_artifact_pins_real_pr_head_and_portable_checksum():
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml").read_text()
+    assert "github.event.pull_request.head.sha || github.sha" in workflow
+    assert 'git archive --format=tar.gz' in workflow
+    assert '"$SOURCE_SHA"' in workflow
+    assert "SOURCE_COMMIT_SHA.txt" in workflow
+    assert "CI_TESTED_SHA.txt" in workflow
+    assert '(cd "$OUTDIR" && sha256sum "$NAME"' in workflow
+    assert "COMMIT_SHA.txt" not in workflow
+
+
 def test_v019_acceptance_harness_keeps_owner_decision_explicit():
     script = (Path(__file__).resolve().parents[1] / "tools" / "v019_physical_acceptance.sh").read_text()
     assert "finish [observe|pass|rollback]" in script
