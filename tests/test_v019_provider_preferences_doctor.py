@@ -4,6 +4,7 @@ from beastcore.actions import ActionBroker
 from beastcore.db import Store
 from beastcore.doctor import BeastDoctor
 from beastcore.events import EventBus
+from beastcore.operator_tools import OperatorToolRegistry
 from beastcore.provider_arbitration import CapabilityProviderArbitrator
 from beastcore.provider_preferences import ProviderPreferenceManager
 from beastcore.state import StateRegistry
@@ -240,3 +241,71 @@ def test_beast_doctor_surfaces_choice_required_without_making_choice():
     assert snap["items"][0]["capability"] == "power.battery.telemetry"
     assert explain["active_provider"] is None
     assert any("Choose a preferred provider" in x for x in explain["recommendations"])
+
+class _Search:
+    def search(self, query, limit):
+        return {"query": query, "count": 0, "groups": {}}
+
+
+def test_structured_operator_tools_expose_doctor_and_provider_preferences(tmp_path):
+    state = StateRegistry()
+    state.update_many(
+        "plugin_integration",
+        {
+            "plugins.provider_decisions": {
+                "location.position": {
+                    "capability": "location.position",
+                    "state": "active_native",
+                    "active_provider": "native:gps",
+                    "recommended_provider": "native:gps",
+                    "reason": "canonical/native provider is already live and is preferred for canonical truth",
+                    "alternates": [],
+                    "fallback_chain": ["native:gps"],
+                    "choice_required": False,
+                    "active_health": "healthy",
+                    "active_confidence": "high",
+                    "active_freshness_sec": 0.5,
+                    "automatic_failover_enabled": False,
+                    "candidates": [
+                        {"provider": "native:gps", "ready": True, "selected": True, "health_state": "healthy", "confidence": "high"}
+                    ],
+                }
+            },
+            "plugins.requirements_used_by": {},
+            "plugins.provider_summary": {"active_count": 1},
+            "plugins.requirements_summary": {"active_technical_blocker_count": 0},
+        },
+    )
+    state.update_many("packs", {"packs.requirements_used_by": {}, "packs.requirements_summary": {"active_technical_blocker_count": 0}})
+
+    store = Store(str(tmp_path / "beast.db"))
+    events = EventBus()
+    pref = ProviderPreferenceManager(str(tmp_path / "providers.json"))
+    broker = ActionBroker(state, store, events, provider_preferences=pref)
+    broker.operator_sessions.path = tmp_path / "operator-session.json"
+    broker.doctor = BeastDoctor(state)
+    tools = OperatorToolRegistry(state, store, _Search(), broker)
+    try:
+        explain = tools.invoke("doctor.explain", {"capability": "location.position"}, level="observer")
+        assert explain["ok"] is True
+        assert explain["data"]["active_provider"] == "native:gps"
+
+        denied = tools.invoke(
+            "provider.preference_set",
+            {"capability": "location.position", "provider": "native:gps"},
+            level="observer",
+        )
+        assert denied["ok"] is False
+
+        broker.operator_sessions.authorize("operator", 300, actor="owner")
+        set_row = tools.invoke(
+            "provider.preference_set",
+            {"capability": "location.position", "provider": "native:gps"},
+            actor="owner",
+        )
+        assert set_row["ok"] is True
+        prefs = tools.invoke("provider.preferences", {}, level="observer")
+        assert prefs["data"]["values"]["location.position"] == "native:gps"
+    finally:
+        store.close()
+
