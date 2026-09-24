@@ -917,3 +917,85 @@ the Capsule Share surface should travel with the next substantial physical v0.19
 acceptance package so the user gets a concrete visual/interaction payoff from
 the recent backend work.
 
+## Bounded physical-acceptance package checkpoint — 2026-09-24
+
+The v0.19 branch now contains a single substantial reference-Pi/TFT acceptance
+workflow instead of requiring a sequence of unrelated manual micro-tests.
+
+Implemented source:
+- `tools/v019_physical_acceptance.sh`
+- `tools/v019_acceptance_report.py`
+- `docs/Beastagotchi_v019_Physical_Acceptance_Package.md`
+- installer exposure as `/usr/local/bin/beast-v019-accept`
+
+Session model:
+- `start [rollback-minutes]` creates a timestamped session, records preflight
+  evidence and delegates physical ownership to the existing
+  `claim_display_test.sh` auto-rollback path;
+- `sample [seconds]` collects 1 Hz Core/UI evidence while the user actually
+  navigates the TFT;
+- `capture [label]` preserves a matching framebuffer + runtime/state checkpoint;
+- `finish observe|pass|rollback` always bundles evidence and keeps the final
+  ownership decision explicit.
+
+Objective evidence includes:
+- render/compose/framebuffer-write time;
+- target/lifetime FPS;
+- changed framebuffer rows, bytes written, full-write behavior and cumulative
+  savings;
+- CPU temperature/load and governor state;
+- touch/gesture records;
+- display/service state;
+- QR renderer availability and privacy-curated Capsule export evidence.
+
+The generated report explicitly marks physical user judgment as required. It
+does not convert source tests or favorable performance numbers into a claim that
+readability, touch feel, camera scanning, glare, animation smoothness or overall
+polish passed.
+
+Safety:
+- the harness reuses the existing proven claim/confirm/release display tools;
+- the established systemd rollback timer remains authoritative;
+- no second implementation of display-config ownership mutation was created;
+- `finish pass` is the only path that explicitly confirms Beast ownership;
+- `finish rollback` captures evidence before restoring Pwnagotchi display.
+
+Privacy refinement:
+the first harness draft was intentionally tightened before target use. The
+acceptance archive now:
+- hashes Pwnagotchi config instead of copying raw config;
+- stores a curated physical/runtime state subset instead of whole Core state;
+- does not collect the full platform bundle;
+- does not collect raw Pwnagotchi journal;
+- requests a minimized Capsule evidence export with name/achievements/appearance
+  disabled;
+- captures only warning-or-higher Beast Core journal rows.
+
+Framebuffer PNGs can still contain whatever was physically visible on the TFT,
+so acceptance archives are private diagnostic evidence until reviewed/sanitized.
+
+Instrumentation cleanup:
+- the physical-test banner now reports the actual `UI_VERSION`;
+- `ui-runtime.json` reports the actual UI version rather than stale v0.18.0;
+- the active UI installer no longer prints the stale v0.18.1 milestone label or
+  writes a v017-named smoke-test image.
+
+Source/CI evidence for the code-bearing package:
+- GitHub Actions run `35976656508` (#328): success;
+- **398 tests passed in 7.67s**;
+- Python compile passed;
+- shell syntax passed, including `tools/v019_physical_acceptance.sh`;
+- sanitized real-state UX gallery render/upload passed;
+- gallery artifact id `10797614258`.
+
+Validation boundary:
+this proves the package and report logic at source/CI level. It does not prove
+the real ILI9486/touch/camera/thermal result. The next major human-visible gate
+is to deploy the current v0.19 package to the reference Pi and execute one
+bounded physical session.
+
+The physical session should cover current page/navigation UX, Control Center,
+Apps, Capsule Share with phone QR scanning, dense operational surfaces,
+framebuffer-write efficiency, touch behavior and thermal/performance evidence in
+the same run.
+
