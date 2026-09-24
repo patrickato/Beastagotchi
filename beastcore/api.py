@@ -168,6 +168,10 @@ class LocalAPI:
                 "packs": self.state.get("packs.requirements_summary", {}) or {},
                 "plugin_providers": self.state.get("plugins.requirements_providers", {}) or {},
                 "pack_providers": self.state.get("packs.requirements_providers", {}) or {},
+                "provider_summary": self.state.get("plugins.provider_summary", {}) or {},
+                "provider_decisions": self.state.get("plugins.provider_decisions", {}) or {},
+                "provider_selection_enabled": bool(self.state.get("plugins.provider_selection_enabled", False)),
+                "automatic_failover_enabled": bool(self.state.get("plugins.automatic_failover_enabled", False)),
             },
             "owner": {
                 "expert_mode_enabled": bool(self.state.get("owner.expert_mode.enabled", False)),
@@ -363,6 +367,10 @@ class LocalAPI:
                         "summary": self.state.get("plugins.requirements_summary", {}) or {},
                         "providers": self.state.get("plugins.requirements_providers", {}) or {},
                         "used_by": self.state.get("plugins.requirements_used_by", {}) or {},
+                        "provider_summary": self.state.get("plugins.provider_summary", {}) or {},
+                        "provider_decisions": self.state.get("plugins.provider_decisions", {}) or {},
+                        "provider_selection_enabled": bool(self.state.get("plugins.provider_selection_enabled", False)),
+                        "automatic_failover_enabled": bool(self.state.get("plugins.automatic_failover_enabled", False)),
                     },
                     "packs": {
                         "summary": self.state.get("packs.requirements_summary", {}) or {},
