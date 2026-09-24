@@ -361,9 +361,83 @@ cmd_preflight() {
   echo "Preflight evidence: $out"
 }
 
+cmd_prepare_qr() {
+  require_root
+  install -d -m 0755 /opt/beast-python "$BEAST_SITE" "$DEPS_DIR"
+  local tmp stamp log wheel wheel_sha provenance
+  tmp="$(mktemp -d)"
+  stamp="$(date +%Y%m%d_%H%M%S)"
+  log="$DEPS_DIR/qrcode-install-$stamp.log"
+  provenance="$DEPS_DIR/qrcode-current.json"
+
+  echo "Preparing Beast-owned QR renderer dependency qrcode==$QR_VERSION"
+  echo "Target: $BEAST_SITE"
+  echo "Pwnagotchi /opt/.pwn site-packages will not be modified."
+
+  if ! "$PY" -m pip download --disable-pip-version-check --no-deps --dest "$tmp" "qrcode==$QR_VERSION" 2>&1 | tee "$log"; then
+    rm -rf "$tmp"
+    echo "QR dependency download failed; no package was installed."
+    exit 5
+  fi
+  wheel="$(find "$tmp" -maxdepth 1 -type f -name "qrcode-$QR_VERSION-*.whl" | head -n1)"
+  [[ -n "$wheel" && -f "$wheel" ]] || {
+    rm -rf "$tmp"
+    echo "Expected qrcode wheel was not downloaded."
+    exit 6
+  }
+  wheel_sha="$(sha256sum "$wheel" | awk '{print $1}')"
+
+  if ! "$PY" -m pip install --disable-pip-version-check --no-deps --upgrade --target "$BEAST_SITE" "$wheel" 2>&1 | tee -a "$log"; then
+    rm -rf "$tmp"
+    echo "QR dependency installation failed."
+    exit 7
+  fi
+
+  WHEEL_SHA="$wheel_sha" QR_VERSION_EXPECTED="$QR_VERSION" BEAST_SITE="$BEAST_SITE" PYTHONPATH="$BEAST_SITE" "$PY" - <<'PY' > "$provenance"
+import importlib.metadata, json, os, pathlib, time
+import qrcode
+version=importlib.metadata.version("qrcode")
+expected=os.environ["QR_VERSION_EXPECTED"]
+if version != expected:
+    raise SystemExit(f"qrcode version mismatch: {version} != {expected}")
+root=pathlib.Path(os.environ["BEAST_SITE"])
+print(json.dumps({
+    "schema":1,
+    "package":"qrcode",
+    "version":version,
+    "installed_at":time.time(),
+    "target":str(root),
+    "wheel_sha256":os.environ["WHEEL_SHA"],
+    "source":"pip-download-pypi-wheel",
+    "dependency_scope":"beast_owned_optional",
+    "pwnagotchi_site_packages_modified":False,
+},indent=2,sort_keys=True))
+PY
+  chmod 0644 "$provenance"
+  rm -rf "$tmp"
+  echo
+  echo "QR renderer dependency ready."
+  cat "$provenance"
+}
+
+cmd_remove_qr() {
+  require_root
+  local stamp
+  stamp="$(date +%Y%m%d_%H%M%S)"
+  if [[ -d "$BEAST_SITE" ]]; then
+    find "$BEAST_SITE" -mindepth 1 -maxdepth 1 \( -name 'qrcode' -o -name 'qrcode-*.dist-info' \) -exec rm -rf {} +
+  fi
+  if [[ -f "$DEPS_DIR/qrcode-current.json" ]]; then
+    mv "$DEPS_DIR/qrcode-current.json" "$DEPS_DIR/qrcode-removed-$stamp.json"
+  fi
+  echo "Removed Beast-owned qrcode package from $BEAST_SITE"
+  echo "Pwnagotchi /opt/.pwn site-packages were not modified."
+}
 usage() {
   cat <<'EOF'
 Usage:
+  sudo beast-v019-accept prepare-qr
+  sudo beast-v019-accept remove-qr
   sudo beast-v019-accept preflight
   sudo beast-v019-accept start [rollback-minutes]
   sudo beast-v019-accept status
@@ -374,6 +448,8 @@ EOF
 }
 
 case "${1:-}" in
+  prepare-qr) shift; cmd_prepare_qr "$@" ;;
+  remove-qr) shift; cmd_remove_qr "$@" ;;
   preflight) shift; cmd_preflight "$@" ;;
   start) shift; cmd_start "$@" ;;
   status) shift; cmd_status "$@" ;;
