@@ -458,3 +458,130 @@ This audit adds **candidate improvements and integration directions**. It does n
 them implemented. The current source tree/tests remain authoritative for implementation
 status, and physical Presentation Broker ownership remains gated until the documented
 TFT validation step.
+
+
+## Current 3.0 source-level follow-up
+
+A second source pass reviewed current Theme Manager 3.0 behavior rather than relying
+only on its older theme/editor shape. Several additions materially strengthen the
+interop case.
+
+### Gallery/store UX is now a useful Beast Depot reference
+
+Theme Manager now separates discovery from installation, preserves the active screen
+across updates, supports install/uninstall from a Gallery/touch store, filters content,
+shows structural live previews, offers a phone QR handoff, supports a GitHub-oriented
+share flow, and can acquire a dependent face pack in the background.
+
+Beast should **not** weaken its stronger trust/staging/transaction model to match this,
+but Beast Depot should borrow the human workflow:
+
+- discover -> inspect -> install -> activate remain distinct;
+- catalog refresh never changes active presentation;
+- dependency acquisition is explicit and visible;
+- phone handoff should be first-class;
+- preview/search/filter should be pleasant enough that Packs feel like a real
+  ecosystem rather than a manifest browser.
+
+### Beast Doctor / Explain is now a high-value convergence target
+
+Theme Manager's Doctor turns recent evidence into a compact answer to:
+"What appears wrong, why, and what should I do?"
+
+Beast already owns richer structured ingredients through canonical health, Operations,
+Black Box incidents, service topology and Support Bundles. The correct reintegration
+is therefore a Beast-native **Doctor/Explain layer**, not another raw log parser.
+
+It should produce bounded findings containing:
+- severity;
+- affected subsystem;
+- concise explanation;
+- evidence references;
+- safe suggested next step;
+- whether Beast has an audited action that could perform the remediation;
+- explicit uncertainty when evidence is incomplete.
+
+No automatic remediation should occur merely because a diagnostic rule matched.
+
+### Existing pwngrid is a stronger candidate for Beast nearby transport
+
+Current Theme Manager + `node_pwn.py` demonstrate lightweight peer metadata piggybacked
+on the existing Pwnagotchi peer advertisement, with no shared IP network required and
+IP discovery as a fallback.
+
+That maps closely onto Beast's existing PeerDex / Nearby / future Party plan. Before
+inventing another presence protocol, Beast should investigate a versioned,
+privacy-safe, size-bounded Beast capability descriptor carried through the existing
+peer substrate. Ordinary Pwnagotchi peers must still remain useful locally.
+
+Initial Beast use should be read-only/social/Expedition-oriented. Theme Manager's
+optional teammate targeting/whitelist behavior is **not** inherited as a default Beast
+policy.
+
+### Wardrive presentation can enrich Expeditions without duplicate persistence
+
+Theme Manager's trip route, distance, unique-network and capture summary is useful UX.
+Beast already has the more general Expedition persistence model, so the right move is
+to reuse the presentation idea: a cheap route silhouette / journey card generated from
+Beast Expedition history, rather than creating a second Wardrive database.
+
+### PWA installability is a low-cost Studio/companion improvement
+
+Theme Manager exposes manifest/icon/service-worker endpoints so its live WebUI can be
+installed to a phone home screen without pretending to be an offline standalone app.
+Beast Studio should consider the same lightweight PWA shell while keeping its paired,
+local-first security model.
+
+### Do not tunnel long-lived streams through Pwnagotchi's own web server
+
+Theme Manager's recent design discussion rejected SSE/WebSocket use through the
+upstream single-threaded Pwnagotchi web server because a held request could block the
+rest of that UI. Beast Studio owns its own server and may use richer streaming there,
+but Pwnagotchi/Theme Manager integration should keep upstream requests bounded.
+
+## First implementation taken from this audit
+
+The first low-risk source change is now implemented on the active v0.19 branch:
+
+- `beastcore/theme_manager_interop.py` adds a bounded, cached, read-only
+  `ThemeManagerProbe`;
+- the probe reads installed Theme Manager source **without importing or executing it**;
+- it reports version and interoperability evidence such as `STAT_SOURCE`,
+  clean unload/live install, structural themes, Doctor, Gallery, changed-row writer,
+  touch, PWA, Nodes and Wardrive support;
+- it deliberately distinguishes compatibility evidence from a real explicit managed
+  presentation release/acquire contract;
+- PluginIntegrationEngine exposes the probe through canonical plugin state;
+- PresentationBroker exposes the resulting version/capabilities but keeps the physical
+  executor locked.
+
+Current code-bearing checkpoint:
+`574c7e48144cb2cc088a2260ed57d80015b617d4`
+
+Validation:
+- **343 tests passed**
+- Python compile passed
+- shell syntax passed
+- GitHub Actions run `35952293274`
+
+This is source/CI evidence only. No target/off-screen or physical TFT handoff claim is
+made.
+
+## Execution priority after the audit
+
+The audit does **not** justify abandoning the current visible v0.19 UX gate for another
+long backend detour. The best course is:
+
+1. keep the read-only interop probe as the safe foundation now completed;
+2. return to the substantial visible Unified UX / captured-state gallery work and get
+   the next physical 480x320 acceptance checkpoint;
+3. in parallel-sized bounded blocks, add the canonical token registry and semantic
+   render-layer metadata because both help Beast UI and Theme Manager interop without
+   taking display ownership;
+4. add Beast Doctor/Explain and the improved Depot human workflow;
+5. prototype measured dirty-region writes behind a feature flag;
+6. define Visual Asset Interop v1 and a Theme Manager import/preview path;
+7. only after current v0.19 physical UX acceptance, activate real Presentation Broker
+   adapters and repeatedly validate Native <-> Theme Manager <-> Beast rollback;
+8. once that adapter is concrete, approach Korrie with the smallest useful managed-mode
+   API rather than asking either project to adopt the other's architecture wholesale.
