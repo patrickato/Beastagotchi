@@ -72,3 +72,20 @@ def test_quickstart_keeps_staging_and_display_claim_as_separate_decisions():
     assert "sudo beast-v019-accept sample 60" in text
     assert "sudo beast-v019-accept finish observe" in text
     assert "sudo beast-v019-accept finish rollback" in text
+
+def test_pi_stage_wrapper_preserves_local_beast_database_before_starting_new_core():
+    text = _read("tools/v019_stage_from_artifact.sh")
+    backup = text.index('src=sqlite3.connect("/var/lib/beastagotchi/beast.db"')
+    install_core = text.index('"$SOURCE_ROOT/install.sh"')
+    start_core = text.index("systemctl start beast-core.service")
+    assert backup < install_core < start_core
+    assert 'BACKUP_DB="$SESSION/beast.db.before"' in text
+    assert 'chmod 0600 "$SESSION/beast.db.before"' in text
+
+
+def test_pi_stage_archive_root_probe_avoids_head_pipefail_trap():
+    text = _read("tools/v019_stage_from_artifact.sh")
+    assert "tar -tzf" in text
+    assert "| head -n1" not in text
+    assert "awk -F/ 'NR==1{first=$1} END{print first}'" in text
+
