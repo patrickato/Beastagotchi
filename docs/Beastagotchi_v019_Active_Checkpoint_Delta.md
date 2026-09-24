@@ -398,3 +398,49 @@ Development priority remains user-visible v0.19 UX/gallery -> bounded physical T
 acceptance before real Presentation Broker ownership switching. Safe interop work such
 as token registry/semantic-layer metadata may proceed in bounded blocks without
 displacing that visible milestone.
+
+## Canonical Template Token milestone
+
+The first neutral Korrie-derived interoperability contract is now implemented
+without changing physical presentation behavior.
+
+Implemented:
+- new `beastcore/template_tokens.py` allow-listed Template Token Registry;
+- tokens resolve only from canonical Beast Core `StateRegistry` state;
+- no duplicate hardware/network polling and no background token loop;
+- source/quality/timestamp/error truth preserved with each resolved value;
+- unknown or unavailable data renders explicitly as `--` rather than invented
+  telemetry;
+- formatting, aliases, privacy class, publication-policy metadata and update
+  class are declarative;
+- bounded template rendering (1024 input characters / 64 substitutions by
+  default);
+- bounded read-only `GET /template-tokens` Local API exposure;
+- regression coverage for canonical resolution, truthful unavailability,
+  aliases, metadata, rendering bounds and API exposure;
+- specification added at
+  `docs/Beastagotchi_Template_Token_Registry_v0.19.md`.
+
+Initial tokens cover system/thermal/resource truth, Wi-Fi counts, radio channel,
+captures, GPS fix/satellites, UPS battery estimate, dock/context, active Beast
+identity/progression, Expedition summary and PeerDex count.
+
+This creates the shared substrate for Beast UI/Studio/Boards/Packs and a future
+allow-listed Theme Manager `STAT_SOURCE` adapter. The Theme Manager bridge itself
+is **not enabled** here and physical Presentation Broker execution remains locked.
+
+Source/CI gate:
+- **348 tests passed in 6.34s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35953678888`
+
+This is source/CI evidence only. It does not change target/off-screen or physical
+TFT acceptance status.
+
+The user-visible v0.19 physical acceptance gate remains the priority before real
+Native <-> Theme Manager <-> Beast ownership switching. This token work was chosen
+because it improves the long-term shared architecture without perturbing the
+screen that still needs human physical acceptance.
+
