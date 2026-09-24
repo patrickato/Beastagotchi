@@ -5,7 +5,7 @@
 
 ## Why this exists
 
-A long Beastagotchi development conversation reached the ChatGPT conversation limit before the project could be moved into a more durable long-term workspace. Cross-chat retrieval did not expose that entire conversation verbatim, so the missing section was reconstructed from repository history, Library artifacts and 78 readable screenshots supplied in six ordered recovery batches.
+A long Beastagotchi development conversation reached the ChatGPT conversation limit before the project could be moved into a more durable long-term workspace. Cross-chat retrieval did not expose that entire conversation verbatim, so the missing section was reconstructed from repository history, Library artifacts and **78 readable screenshots supplied in six ordered recovery batches**, plus two earlier preserved source images (the first end-of-chat screenshot and a compressed long-scroll image). The private recovery therefore currently contains **80 preserved image artifacts** for this conversation-recovery pass.
 
 The recovery now strongly overlaps the existing repository record. The major engineering/design gaps needed to continue the project correctly are closed. Exact word-for-word chat history remains a separate archival problem.
 
@@ -421,13 +421,26 @@ Historical source checkpoints visible in the recovered conversation include:
 
 These are historical chronology anchors, not substitutes for current branch state.
 
-## Recovery completeness
+## Recovery evidence map and completeness
+
+Private Library preservation now contains:
+
+- Batch 01: 14 readable screenshots;
+- Batch 02: 10 readable screenshots;
+- Batch 03: 15 readable screenshots;
+- Batch 04: 15 readable screenshots;
+- Batch 05: 15 readable screenshots;
+- Batch 06: 9 readable screenshots;
+- two earlier preserved source images outside the ordered batches.
+
+Total image evidence for this pass: **80 preserved images**, of which **78** are the ordered normal-resolution reconstruction set. Each ordered batch has a text index and the private Library has a master coverage map. The long-scroll source is retained for provenance but is superseded by readable normal-resolution screenshots wherever they overlap.
 
 As of this reconciliation:
 
 - major Beastagotchi engineering/design gaps from the inaccessible tail of the pinned conversation are closed;
-- remaining earlier screenshots may improve literal historical wording and provenance, especially around the first Unified UX, Presentation Broker, Packs/Depot and GitHub-access/setup discussions;
-- those earlier screenshots are no longer required to reconstruct the current engineering state because their durable substance is already represented in the repository/Library;
+- no known major subsystem, architectural decision, validation boundary, or protected-scope decision from the recovered tail is currently missing from durable project state;
+- remaining older screenshots may still improve literal historical wording, reveal smaller idea sparks/rejected alternatives, or provide provenance around the earliest Unified UX, Presentation Broker, Packs/Depot and GitHub-access/setup discussions;
+- those older screenshots should be treated as **archival enrichment and contradiction checking**, not as permission to regress newer code/tests or later physical decisions;
 - word-for-word transcript completeness still requires a successful ChatGPT account export if one becomes available later.
 
 ## Source-of-truth rule
