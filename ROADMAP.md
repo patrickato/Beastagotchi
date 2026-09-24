@@ -132,6 +132,63 @@ Next:
 - generalized version-range resolution and guided configuration;
 - transactional dependency remediation only after dry-run/provenance/rollback are proven.
 
+### Cross-cutting — Extension Ecosystem / Beast Capsules
+
+Approved direction:
+- distinguish four user-facing extension classes:
+  - Pwnagotchi Plugin;
+  - Beast Pack;
+  - Beast App;
+  - Companion Expansion;
+- use adapters as the translation pattern between existing plugin/service/hardware
+  sources and canonical Beast state/events;
+- keep Pwnagotchi plugins thin when their real job is callbacks/lifecycle access;
+  progression, trophies, lineage and Beast UI remain canonical Beast concerns;
+- let Pack manifests declare content roles/signals/transports instead of creating
+  a new technical pack type for every idea;
+- treat Companion Expansion as one user-facing install whose internal pieces may
+  include Pwnagotchi plugin + Beast Pack/App/adapter;
+- plugins/extensions contribute truthful normalized signals; the canonical
+  Achievement Engine decides unlocks;
+- build a transport-neutral Beast Capsule layer so the same portable object can
+  move by QR, file, USB/SD, NFC, Bluetooth/local direct transfer, phone/WebUI or
+  Beast-to-Beast transport;
+- make offline exchange a first-class ecosystem goal, not merely "works without
+  Internet."
+
+Implemented foundation:
+- Pack manifests now support `extension_class`, `content_roles`,
+  `signals_provides`, `signals_consumes`, `offline_transports`,
+  `capsule_types` and Companion component declarations;
+- `beastcore/capsules.py` provides bounded BC1 canonical JSON + SHA-256
+  integrity + zlib/base64url encoding;
+- bounded QR-ready BCQ1 multi-frame text framing/reassembly with per-frame CRC,
+  mixed-session detection and complete Capsule verification;
+- Lineage Capsule export from the persistent Beast roster using a separate
+  offline Capsule namespace and pseudonymous creature IDs;
+- Lineage export omits local IDs, raw identity/preferences/counters, captures,
+  network history, credentials, exact location and logs;
+- achievement IDs are opt-in; achievement count may be shared without the IDs;
+- read-only `/capsule/export` and `/capsule/types` endpoints;
+- import remains preview-only/non-mutating;
+- checksum/integrity is explicitly not presented as sender authenticity;
+- no QR-rendering/camera dependency was added to the base image.
+
+Next:
+- optional lightweight QR renderer/animated-share UI, benchmarked on the physical
+  480×320 Pi;
+- Capsule Workshop / exact-share preview in Studio;
+- scan/import preview with no roster mutation;
+- signed Capsule identity/authenticity design;
+- Beast Card/PeerDex Capsule;
+- Challenge Capsule;
+- remote-lineage storage distinct from locally owned Beasts;
+- only later confirmed lineage import/synthesis semantics;
+- Plugin Profiler for callback/runtime/error attribution;
+- generic plugin-card generation from capability/config/action declarations;
+- Companion Expansion install orchestration only after each internal component's
+  transaction boundary is explicit.
+
 ### Cross-cutting — Owner Sovereignty / Unrestricted Mode
 
 Approved direction:
@@ -258,7 +315,9 @@ Next:
 - curated lineage-pair mutation rules;
 - lineage-specific/authored Monster reveal variants;
 - dedicated visual ancestry renderer;
-- later evaluate additional generations and privacy-safe cross-device Lineage Capsules.
+- later evaluate additional generations;
+- Lineage Capsule **export/transport foundation is implemented**; remote-lineage
+  storage/import/synthesis remains future work.
 
 ### Gate 7A — Peer encounters / Beast social layer
 
@@ -267,8 +326,8 @@ Direction:
 - ordinary Pwnagotchi peers can count locally even when they do not run Beastagotchi;
 - Beast-to-Beast features add a separate privacy-safe capability layer;
 - first-meeting/reunion/friend/bond events feed progression with anti-farming limits;
-- future Lineage Capsules allow cross-device ancestry without sharing captures,
-  secrets, logs or location history;
+- Lineage Capsules now have a privacy-curated offline export/transport foundation
+  without captures, secrets, logs, location history or local roster IDs;
 - no cloud service is required.
 
 Current foundation:
@@ -280,8 +339,10 @@ Next:
 - canonical peer events through Beast Bridge;
 - Beast UI peer presentation and achievements;
 - public Beast peer descriptor/privacy schema;
-- explicit opt-in Lineage Capsule exchange;
-- remote-lineage synthesis only after local roster/synthesis is mature.
+- actual QR rendering/scanning + explicit opt-in Lineage Capsule receive flow;
+- Beast Card / PeerDex Capsule enrichment;
+- remote-lineage storage and synthesis only after import/authenticity semantics
+  are mature.
 
 ### Gate 7B — Global Interaction
 
