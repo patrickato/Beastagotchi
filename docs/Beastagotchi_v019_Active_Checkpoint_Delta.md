@@ -1027,23 +1027,42 @@ GitHub Actions now produces:
 - `v019-real-state-ux-gallery`;
 - `v019-pi-acceptance-source`.
 
-The Pi acceptance source artifact contains:
-- a `git archive` tar.gz of the exact tested branch head;
-- a SHA-256 file for that tarball;
-- `COMMIT_SHA.txt`.
+The Pi acceptance source artifact now contains:
+- a `git archive` tar.gz generated from the real PR/source branch head;
+- a portable basename-only SHA-256 file for that tarball;
+- `SOURCE_COMMIT_SHA.txt` naming the archived source commit;
+- `CI_TESTED_SHA.txt` naming the GitHub Actions commit tested by the workflow.
 
-Code/source gate at commit `a8318ca810406290f4b4cfdb73d946345abc2350`:
-- GitHub Actions run `35977711327` (#349): success;
-- **399 tests passed in 7.10s**;
+Important provenance correction:
+GitHub pull-request workflows may test a synthetic merge commit. The first
+artifact implementation used `GITHUB_SHA` for both purposes, which was
+internally consistent but could archive that synthetic merge instead of the real
+branch head. This was caught before target deployment. The workflow now derives
+`SOURCE_SHA` from `github.event.pull_request.head.sha || github.sha`, archives
+that source SHA, and records the CI-tested SHA separately.
+
+Corrected source/package validation at commit
+`71762ac192be2e5582aa11ed91d1eb6ac78e3528`:
+- GitHub Actions run `35978272711` (#359): success;
+- **400 tests passed in 7.42s**;
 - Python compile passed;
 - shell syntax passed;
 - sanitized real-state gallery passed;
-- gallery artifact id `10798742829`;
+- gallery artifact id `10798743945`;
 - gallery artifact digest
-  `sha256:6b977b8d4b082b0ec318acf124ab14e143a3131ba01d942b62dec2ebf3a7acc3`;
-- Pi acceptance source artifact id `10798463813`;
-- Pi acceptance artifact digest
-  `sha256:c3f853502373ac091ac399c99bf64857cb25a2482ea0c2056f31f40044f36d54`.
+  `sha256:c54b900129ba71f9aa13c1850c09ae4d4f8abf0948371edb276c3ad0da678a99`;
+- corrected Pi acceptance source artifact id `10799092421`;
+- corrected Pi acceptance artifact digest
+  `sha256:818935b798ca07324f3680afe19878e635c51d2720d3ccbd9db8017b53bd05cc`.
+
+The corrected Pi artifact was downloaded and independently checked:
+- `SOURCE_COMMIT_SHA.txt` = `71762ac192be2e5582aa11ed91d1eb6ac78e3528`;
+- `CI_TESTED_SHA.txt` = `97d0c5981b8c347897e10ce439ebe401c30db91a`;
+- `sha256sum -c` reports **OK**;
+- tar root = `Beastagotchi-v019-71762ac192be/`.
+
+The older #349 Pi artifact is therefore superseded and should not be used for the
+physical gate.
 
 Additional cleanup in the same block:
 - physical-test banner/runtime version reporting now use actual `UI_VERSION`;
