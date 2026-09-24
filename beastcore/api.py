@@ -20,6 +20,7 @@ class LocalAPI:
         self.operator_tools = None
         self.backup_manager = None
         self.template_tokens = None
+        self.integration_catalog = None
         self.doctor = None
         self.capsules = None
 
@@ -163,6 +164,7 @@ class LocalAPI:
             "thermal": thermal,
             "governor": governor,
             "presentation": presentation,
+            "integrations": self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]},
             "dependencies": {
                 "execution_enabled": False,
                 "provider_selection_enabled": False,
@@ -417,6 +419,8 @@ class LocalAPI:
                 body = self.template_token_bundle(names)
                 if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
                     body["catalog"] = self.template_tokens.catalog()
+            elif parsed.path == "/integrations":
+                body = self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]}
             elif parsed.path == "/dependencies":
                 body = {
                     "schema": 1,
