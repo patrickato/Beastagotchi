@@ -35,7 +35,7 @@ jobs:
         run: python -m compileall -q beastcore beastui beaststudio
 
       - name: Shell syntax
-        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh
+        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
 
 
       - name: Render sanitized real-state UX gallery
