@@ -21,6 +21,7 @@ class LocalAPI:
         self.backup_manager = None
         self.template_tokens = None
         self.doctor = None
+        self.capsules = None
 
     async def start(self) -> None:
         self.server = await asyncio.start_server(self._handle, self.host, self.port)
@@ -378,6 +379,37 @@ class LocalAPI:
                     body = self.doctor.explain_provider(provider)
                 else:
                     return await self._reply(writer, 400, {"error":"missing capability or provider"})
+            elif parsed.path == "/capsule/export":
+                if self.capsules is None:
+                    body = {"ok":False,"error":"capsule engine unavailable"}
+                else:
+                    q = urllib.parse.parse_qs(parsed.query)
+                    ctype = str(q.get("type", ["lineage"])[0]).strip().lower()
+                    if ctype != "lineage":
+                        return await self._reply(writer, 400, {"error":"only lineage export is implemented"})
+                    beast_id = str(q.get("beast_id", [""])[0]).strip() or None
+                    include_name = q.get("name", ["1"])[0] != "0"
+                    include_achievements = q.get("achievements", ["0"])[0] == "1"
+                    include_appearance = q.get("appearance", ["1"])[0] != "0"
+                    try: qr_max = int(q.get("qr_chars", ["700"])[0])
+                    except Exception: qr_max = 700
+                    body = self.capsules.export_lineage(
+                        beast_id,
+                        include_name=include_name,
+                        include_achievements=include_achievements,
+                        include_appearance=include_appearance,
+                        qr_max_chars=qr_max,
+                    )
+            elif parsed.path == "/capsule/types":
+                body = {
+                    "schema":1,
+                    "implemented":["lineage"],
+                    "transports":["encoded_text","animated_qr_text_frames"],
+                    "qr_renderer_bundled":False,
+                    "import_supported":False,
+                    "integrity":"sha256",
+                    "authentication":"not_yet_signed",
+                }
             elif parsed.path == "/template-tokens":
                 q = urllib.parse.parse_qs(parsed.query)
                 raw_names = str(q.get("names", [""])[0])
@@ -487,7 +519,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/capsule/export","/capsule/types","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
