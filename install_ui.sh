@@ -39,6 +39,8 @@ install -m 0755 "$SRC/tools/beast_touchlab.sh" /usr/local/bin/beast-touchlab
 install -m 0755 "$SRC/tools/touch_calibration.py" /usr/local/bin/beast-touchcal
 install -m 0755 "$SRC/tools/pwn_native_status.py" /usr/local/bin/beast-pwn-native
 install -m 0755 "$SRC/tools/beast_studio_token.py" /usr/local/bin/beast-studio-token
+install -m 0755 "$SRC/tools/v019_acceptance_report.py" /opt/beast-ui/bin/v019_acceptance_report.py
+install -m 0755 "$SRC/tools/v019_physical_acceptance.sh" /usr/local/bin/beast-v019-accept
 install -m 0644 "$SRC/ui_systemd/beast-ui.service" /etc/systemd/system/beast-ui.service
 install -m 0644 "$SRC/ui_systemd/beast-studio.service" /etc/systemd/system/beast-studio.service
 systemctl daemon-reload
