@@ -211,3 +211,60 @@ to preserve here because they affect every future milestone:
 The sanitized recovered chronology and design provenance are retained in
 `Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`.
 
+## Plugin / Dependency / Capability direction — approved 2026-09-24
+
+The user explicitly approved the Plugin & Capability Center direction developed
+from the Jayofelony stock-plugin review and approved extending it into a shared
+Dependency & Capability Resolver.
+
+Durable decisions:
+
+- stock/Jayofelony plugins remain upstream plugins where practical; Beast should
+  integrate useful state/actions rather than clone every plugin;
+- plugins become first-class capability providers with explicit `PROVIDES`,
+  `REQUIRES`, optional requirements, conflicts, provider groups and reverse
+  `USED BY` relationships;
+- the same dependency vocabulary should extend across Plugins, Beast Packs,
+  Hardware, Experiences, Apps and Services;
+- abstract capability requirements are preferred over named implementations
+  (for example `location.position` rather than forcing one GPS provider);
+- multiple enabled providers must not create duplicate canonical truth; Beast
+  should select/record an active provider and retain alternates;
+- missing requirements must be classified into safe automatic remediation,
+  confirmed transactional remediation, guided human action, provider choice or
+  unsupported/incompatible state;
+- required secrets are represented only as presence/missing state; secret values
+  must never be exposed by the dependency graph;
+- data-egress class is part of plugin/component metadata;
+- disabling a provider should be able to explain downstream impact through a
+  reverse dependency graph;
+- Beast Doctor/Explain should use the graph to answer both "why is this not
+  working?" and "what will this change affect?";
+- Plugin Manager should mature into a Plugin & Capability Center rather than a
+  binary toggle list.
+
+For the user's Pi 4 reference build, a second explicit decision was made:
+
+- maintain a complete, versioned **superset software/service BOM** for the known
+  approved feature universe;
+- do **not** interpret that catalog as a request to preinstall/enable everything;
+- the actual runtime/install set should be the dependency closure of selected
+  capabilities/hardware;
+- optional services should remain stopped/disabled when their capability is not
+  active;
+- future "Prepare Capability" workflows should show the full dry-run plan before
+  any package/service/config mutation.
+
+This preserves the information advantage of a maximal build without creating a
+kitchen-sink runtime.
+
+Current implementation boundary:
+- PluginIntegrationEngine now carries initial stock plugin
+  role/provides/requires/provider/egress/credential/hardware metadata;
+- requirement resolution is explicitly marked catalog-only;
+- no dependency installer or provider selector was enabled by this decision.
+
+Current specifications:
+- `Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
+- `Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
+
