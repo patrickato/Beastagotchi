@@ -772,3 +772,78 @@ Source/CI evidence for this milestone:
 No target-Pi package/service/provider/hardware mutation occurred. Provider
 preference is persistent policy only; automatic failover remains disabled.
 
+## Extension Ecosystem / Beast Capsule milestone — 2026-09-24
+
+The recent plugin-design discussion has been promoted into durable architecture
+and an initial transport implementation.
+
+Extension taxonomy:
+- Pwnagotchi Plugin;
+- Beast Pack;
+- Beast App;
+- Companion Expansion.
+
+Adapters remain the normal translation pattern between an existing
+plugin/service/hardware source and canonical Beast state/events.
+
+Implemented manifest evolution:
+- `extension_class` (`pack` / `companion`);
+- `content_roles`;
+- `signals_provides`;
+- `signals_consumes`;
+- `offline_transports`;
+- `capsule_types`;
+- Companion component declarations for Pwnagotchi plugins / Beast Apps / Beast
+  Packs.
+
+Achievement integration rule:
+extensions should emit truthful canonical facts/signals; the Achievement Engine
+owns unlock decisions. An extension should not bypass progression by directly
+granting an arbitrary trophy.
+
+Implemented Beast Capsule foundation:
+- new `beastcore/capsules.py`;
+- bounded transport-neutral BC1 encoding:
+  canonical JSON + SHA-256 integrity + zlib + URL-safe Base64;
+- bounded BCQ1 multi-frame QR-ready text framing/reassembly;
+- per-frame CRC, mixed-session detection, missing-frame detection and final
+  Capsule integrity verification;
+- Lineage Capsule export from the persistent Beast roster;
+- separate local Capsule namespace distinct from Global/public identity;
+- pseudonymous stable portable creature IDs and pseudonymous known-parent IDs;
+- curated lineage payload excludes local roster IDs, raw identity/preferences,
+  counters, captures, network history, credentials, exact location and logs;
+- optional achievement IDs are disabled by default;
+- read-only Local API:
+  - `/capsule/export?type=lineage`
+  - `/capsule/types`;
+- import remains preview-only/non-mutating;
+- SHA-256 is explicitly integrity, **not sender authentication**;
+- no QR renderer/camera package was added to the base image.
+
+New durable direction:
+Beastagotchi should support a real offline/sneakernet ecosystem. QR, file,
+USB/SD, NFC, Bluetooth/local direct transfer, phone/WebUI and Beast-to-Beast
+transport should carry the same Capsule contract rather than defining separate
+data formats.
+
+Future Capsule families retained:
+- Beast Card / PeerDex;
+- Challenge;
+- signed Achievement/Trophy proof;
+- selected Configuration;
+- Pack Reference;
+- signed Lineage Capsule v2.
+
+Future UI/physical work:
+- optional lightweight QR renderer;
+- animated TFT QR share view with frame progress/pause/speed;
+- scan/import preview;
+- Capsule Workshop + Inbox/Outbox;
+- remote-lineage store distinct from local owned Beasts;
+- signed identity/authenticity;
+- only later confirmed cross-device lineage import/synthesis.
+
+No target Pi software/service/configuration was changed by this milestone and no
+physical QR-rendering claim is made.
+
