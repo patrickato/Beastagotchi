@@ -349,6 +349,7 @@ class DependencyCapabilityResolver:
         used_by: dict[str, set[str]] = {}
         results: dict[str, dict[str, Any]] = {}
         technical_total = policy_total = unresolved_total = 0
+        active_technical_total = active_policy_total = active_unresolved_total = 0
 
         for row in normalized:
             mandatory: list[RequirementResult] = []
@@ -386,6 +387,10 @@ class DependencyCapabilityResolver:
             technical_total += len(technical)
             policy_total += len(policy)
             unresolved_total += len(unresolved)
+            if row["_enabled"]:
+                active_technical_total += len(technical)
+                active_policy_total += len(policy)
+                active_unresolved_total += len(unresolved)
             if technical:
                 readiness = "blocked"
             elif policy:
@@ -395,6 +400,7 @@ class DependencyCapabilityResolver:
 
             results[row["_id"]] = {
                 "requirements_resolution": "read_only",
+                "selected": bool(row["_enabled"]),
                 "requirements_ready": not technical and not policy,
                 "requirements_status": readiness,
                 "technical_blockers": technical,
@@ -415,8 +421,12 @@ class DependencyCapabilityResolver:
             "used_by": {k: sorted(v) for k, v in sorted(used_by.items())},
             "summary": {
                 "component_count": len(results),
-                "technical_blocker_count": technical_total,
-                "policy_blocker_count": policy_total,
-                "unresolved_count": unresolved_total,
+                "selected_component_count": sum(1 for row in normalized if row["_enabled"]),
+                "active_technical_blocker_count": active_technical_total,
+                "active_policy_blocker_count": active_policy_total,
+                "active_unresolved_count": active_unresolved_total,
+                "catalog_technical_blocker_count": technical_total,
+                "catalog_policy_blocker_count": policy_total,
+                "catalog_unresolved_count": unresolved_total,
             },
         }
