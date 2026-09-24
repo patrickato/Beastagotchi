@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **394 passing tests** plus Python compile/shell validation.
+preserved source gate is **397 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
