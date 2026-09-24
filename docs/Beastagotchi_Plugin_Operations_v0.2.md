@@ -57,3 +57,27 @@ For the user's reference Pi 4, maintain a complete versioned superset BOM while
 keeping the actual installed/runtime set feature-driven. See
 `Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`.
 
+## Extension placement rule
+
+Plugin Operations governs only the **Pwnagotchi Plugin** portion of the broader
+extension ecosystem.
+
+New features should be placed according to:
+- Pwnagotchi Plugin — needs Pwnagotchi lifecycle/callback hooks;
+- Beast Pack — content/data/presentation/rules/assets;
+- Beast App — deeper interactive Beast-native tool;
+- Companion Expansion — one user-facing feature spanning multiple layers.
+
+A Companion Expansion may reference a Pwnagotchi plugin, but installing the Pack
+metadata alone must not silently copy/enable that plugin.
+
+Plugins should expose facts/signals/capabilities and actions. Canonical Beast
+systems remain authoritative for progression, achievements, lineage and UI.
+
+Offline sharing/import/export belongs to the Beast Capsule layer rather than
+being reimplemented independently inside each plugin.
+
+See:
+- `Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
+- `Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`
+
