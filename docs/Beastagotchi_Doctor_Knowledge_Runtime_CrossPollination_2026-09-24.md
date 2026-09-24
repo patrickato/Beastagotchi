@@ -248,3 +248,22 @@ This gives Doctor continuity after reboot/offline use while letting generic medi
 Design sentence:
 
 **Doctor permanently remembers the patient; Doctor does not permanently carry every medical textbook.**
+## 21. Permanent local Doctor memory is split by responsibility
+
+Doctor should keep three durable local records plus a modular knowledge library:
+
+### Patient Chart — what is true about this patient
+Hardware/build identity, known-good baselines, incident history, recurring conditions, verified remedy outcomes, device-specific quirks, backup/recovery state and diagnostic coverage.
+
+### Standing Orders — what the owner permits
+Autonomy ceiling, pre-authorized safe actions, confirm-required actions, emergency-rescue authorization, maintenance windows, privacy/network policy and remote-support policy.
+
+### Local Formulary / Toolbox — what is available and proven
+Installed diagnostic providers, executables/services, cached packs, remediation adapters, Recovery Vaults and locally validated component versions.
+
+### Medical Library — generic knowledge
+Condition packs, runbooks, compatibility notes and specialist knowledge resolved from built-in, cached or trusted external sources.
+
+Contract sentence:
+
+**Patient Chart says what is true. Standing Orders say what is permitted. Toolbox says what is available. Medical Library says what is known.**
