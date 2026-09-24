@@ -268,3 +268,54 @@ Current specifications:
 - `Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
 - `Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
 
+## Owner sovereignty / unrestricted administration — approved 2026-09-24
+
+The user explicitly approved a permanent owner-control principle:
+
+Beastagotchi must not become a locked appliance that permanently prevents the
+authenticated owner from modifying their own Pi.
+
+Durable rules:
+
+- managed/supported behavior is the default, not the only possible behavior;
+- Beast should warn, explain, snapshot, offer rollback and identify unsupported
+  combinations, but a Beast policy preference is not equivalent to ownership
+  authority over the machine;
+- technically possible policy-blocked actions should have an eventual owner
+  override path;
+- plans distinguish `policy_blockers` from `technical_blockers`;
+- per-action "Proceed unsupported anyway" and a persistent Expert Mode are
+  retained UX requirements;
+- arbitrary/custom plugins, repositories, packages, services, hardware,
+  configuration and scripts remain legitimate owner modifications;
+- unsupported/custom operation may be marked accurately for diagnostics/support,
+  but must not trigger artificial punishment or unrelated feature locks;
+- SSH/root/console remains the ultimate escape hatch;
+- when Beast cannot safely disable/remove part of its own active control plane,
+  it should explain why and provide an exact maintenance/manual path rather than
+  pretending the owner is forbidden from doing so;
+- Owner Override is a locally authorized administrative capability. It must not
+  become an unauthenticated remote policy bypass;
+- warnings about data egress, dependencies, conflicts, resource/thermal impact
+  and loss of rollback/support remain visible after override;
+- owner freedom does not purport to override third-party licenses, service terms
+  or applicable law.
+
+Legal posture:
+- the repository remains GPLv3;
+- GPLv3 sections 15/16 already provide the project's baseline "as-is" warranty
+  disclaimer and limitation of liability to the extent permitted by law;
+- project documentation may state that unsupported/custom modifications are
+  undertaken at the user's risk, but should not claim that UI wording can
+  guarantee zero liability in every jurisdiction.
+
+Current code foundation:
+- PluginBroker plans now expose `technical_blockers`, `policy_blockers`,
+  `owner_override_available`, `owner_override_executed` and
+  `managed_allowed`;
+- current execution remains conservative; actual override execution is not yet
+  enabled.
+
+Canonical specification:
+`Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`.
+
