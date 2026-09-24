@@ -378,8 +378,15 @@ approved scope.
 - [x] shared Dependency & Capability Resolver architecture approved across Plugins/Packs/Hardware/Experiences/Apps/Services
 - [x] reference-build superset BOM policy: catalog broadly, install only selected-feature dependency closure
 - [~] plugin compatibility/dependency metadata coverage
-- [ ] side-effect-free declared-requirement probes (package/module/executable/service/hardware/config/credential/version)
-- [ ] reverse dependency / `used_by` graph
+- [x] shared read-only DependencyCapabilityResolver used by Plugins + Beast Packs
+- [x] side-effect-free declared-requirement probes for capability/service/package/module/executable/path/config/credential presence
+- [~] version-range requirement resolution (generalized resolver still pending)
+- [x] provider inventory + reverse dependency / `used_by` graph
+- [x] provider availability separated from active selection
+- [x] active dependency health separated from whole-catalog readiness
+- [x] sensitive plugin config exposes credential presence only, never values
+- [x] technical/policy blocker semantics shared with Owner Sovereignty
+- [x] read-only dependency summary in Local API + platform bundle
 - [ ] provider arbitration for overlapping location/power/network/presentation providers
 - [ ] Plugin & Capability Center requirement/remediation UX
 - [ ] Beast Doctor/Explain integration with dependency graph
