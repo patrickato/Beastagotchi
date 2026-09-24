@@ -1138,3 +1138,81 @@ Next Capsule work after the physical evidence:
 - Challenge Capsule;
 - only later confirmed remote-lineage import/synthesis semantics.
 
+## Verified Pi staging / provenance-chain checkpoint — 2026-09-24
+
+The physical gate is now packaged as a low-friction, provenance-preserving flow
+rather than a manual sequence of archive verification/extraction/install steps.
+
+Implemented:
+- new `tools/v019_stage_from_artifact.sh`;
+- CI artifact now includes:
+  - `STAGE_ON_PI.sh`;
+  - `PHYSICAL_TEST_QUICKSTART.txt`;
+  - commit-pinned source tarball;
+  - portable SHA-256;
+  - `SOURCE_COMMIT_SHA.txt`;
+  - `CI_TESTED_SHA.txt`;
+- staging verifies:
+  - archive SHA-256;
+  - source SHA shape;
+  - archive filename/source prefix;
+  - archive root/source prefix;
+- staging records a local non-secret provenance JSON;
+- existing Beast Core config is preserved during staged upgrades;
+- an existing Beast SQLite database is copied with SQLite's backup API before
+  the new Core is started;
+- staging reuses the normal Core/UI installers rather than duplicating install
+  logic;
+- staging starts Beast Core only;
+- staging never starts/claims Beast UI or confirms display ownership;
+- optional `--prepare-qr` invokes the existing Beast-owned QR dependency path;
+- target preflight runs automatically after staging.
+
+Physical-session provenance:
+- `beast-v019-accept` now imports the staged deployment provenance into the
+  acceptance session;
+- acceptance reports expose:
+  - staged source commit;
+  - CI-tested commit;
+  - source archive SHA-256;
+  - stage timestamp;
+- this closes the chain:
+  GitHub branch -> CI artifact -> staged Pi build -> physical evidence archive.
+
+Hardening discovered during implementation:
+- the archive-root probe was changed to avoid a `tar | head` / `pipefail`
+  SIGPIPE edge case;
+- the staging wrapper keeps display consent separate from software installation;
+- rollback of display ownership remains the existing proven handoff path rather
+  than a new implementation.
+
+Code-bearing validation:
+- source head `89e88277c351c1b60f1af3e01a3002d84d46ed63`;
+- GitHub Actions run `35981407684` (#384): success;
+- **415 tests passed in 11.09s**;
+- Python compile passed;
+- shell syntax passed including both v0.19 shell tools;
+- sanitized real-state UX gallery passed;
+- commit-pinned Pi source artifact passed;
+- gallery artifact `10799684949`;
+- gallery digest
+  `sha256:6a19d9a59140855eadbf1864e8ae0588e5e681321eaa6265a4af508fb2c6d570`;
+- Pi source artifact `10800377275`;
+- Pi artifact digest
+  `sha256:9bbc88686bcbef58cf930d8d6cd0f82e56ef6240ea3b86363d6cdd0fac4ccc97`.
+
+The final Pi artifact was downloaded and independently inspected:
+- files present: source archive, checksum, source SHA, CI-tested SHA,
+  `STAGE_ON_PI.sh`, and the one-page quickstart;
+- `SOURCE_COMMIT_SHA.txt` =
+  `89e88277c351c1b60f1af3e01a3002d84d46ed63`;
+- `CI_TESTED_SHA.txt` =
+  `e98dd680517ad594062f346c71b9086cd7f8b08e`;
+- `sha256sum -c` reports **OK**;
+- tar root = `Beastagotchi-v019-89e88277c351`;
+- `bash -n STAGE_ON_PI.sh` reports **OK**.
+
+Physical validation is still pending. This work makes the next user/Pi session
+simpler and more reproducible; it does not claim that the TFT, touch, camera QR
+scan, thermal behavior or subjective polish have passed.
+
