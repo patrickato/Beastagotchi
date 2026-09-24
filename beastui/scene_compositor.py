@@ -26,18 +26,22 @@ def alpha_panel(image: Image.Image, box, *, fill, outline=None, alpha=150, radiu
 
 
 def ambient_glow(image: Image.Image, center, radius: int, color, *, strength=0.24):
-    """Cheap radial light bloom suitable for 480x320 software rendering."""
+    """Cheap radial light bloom with a cached immutable RGBA layer."""
     radius = max(4, int(radius))
     cx, cy = int(center[0]), int(center[1])
-    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
-    steps = 9
-    for i in range(steps, 0, -1):
-        frac = i / steps
-        r = max(1, int(radius * frac))
-        alpha = int(255 * float(strength) * (1.0 - frac) ** 1.45)
-        d.ellipse((cx-r, cy-r, cx+r, cy+r), fill=tuple(color[:3]) + (alpha,))
-    layer = layer.filter(ImageFilter.GaussianBlur(max(2, radius // 16)))
+    key = (tuple(image.size), cx, cy, radius, tuple(color[:3]), round(float(strength), 4))
+    layer = _cache_get(_GLOW_CACHE, key, "glow_hits", "glow_misses")
+    if layer is None:
+        layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        steps = 9
+        for i in range(steps, 0, -1):
+            frac = i / steps
+            r = max(1, int(radius * frac))
+            alpha = int(255 * float(strength) * (1.0 - frac) ** 1.45)
+            d.ellipse((cx-r, cy-r, cx+r, cy+r), fill=tuple(color[:3]) + (alpha,))
+        layer = layer.filter(ImageFilter.GaussianBlur(max(2, radius // 16)))
+        _cache_put(_GLOW_CACHE, key, layer)
     image.paste(Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB"))
 
 
