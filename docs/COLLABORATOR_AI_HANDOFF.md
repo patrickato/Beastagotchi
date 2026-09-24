@@ -21,6 +21,8 @@ This repository snapshot is intended to let an external developer or AI resume o
 16. `docs/Beastagotchi_Doctor_Explain_v0.1.md`
 17. `docs/Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
 18. `docs/Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`
+19. `docs/Beastagotchi_Doctor_Knowledge_Runtime_CrossPollination_2026-09-24.md`
+20. `docs/Beastagotchi_Adaptive_Platform_DeepLinks_Unified_Doctor_RecoveryVault_2026-09-24.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -46,6 +48,7 @@ External reviewers are especially invited to critique:
 - dependency/capability graph design, provider arbitration and how to keep a maximal known-universe BOM without a kitchen-sink runtime.
 - provider arbitration, common resolver adoption by Experiences/Apps/Hardware Studio, and generated BOM/Doctor UX now that the shared read-only graph exists.
 - Beast Doctor causal-chain explanation, known-good fingerprints, blast-radius previews and how to keep explanations truthful instead of inventing confidence.
+- Doctor Knowledge Resolver/Skill Cache design: condition/runbook/probe packs may be resolved on demand, but downloaded knowledge must not inherit mutation authority; evaluate shared condition-pack interop with the standalone PwnDoctor research branch.
 - owner sovereignty / Expert Mode design: preserve owner freedom without turning local policy override into unauthenticated remote privilege.
 - performance/thermal behavior on Pi 4.
 - code organization, duplicated historical code and migration path to v1.0.
