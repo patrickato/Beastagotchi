@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -22,6 +23,16 @@ THEMES = (
 )
 
 PAGES = ("home", "overview", "recon", "networks", "spectrum", "captures", "map", "expedition", "beast", "system")
+
+
+def _sha256(path: str | Path | None) -> str | None:
+    if not path:
+        return None
+    h = hashlib.sha256()
+    with Path(path).open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def render(root: Path, out: Path, theme: str, page: str, state: dict, *, histories=None, aux=None, events=None, physical=(480, 320)) -> None:
@@ -75,10 +86,14 @@ def main() -> int:
     themes = THEMES if args.all_themes else ("classic", "blackice", "synthwave", "lcars")
     manifest = {
         "source_state": str(Path(args.state)),
+        "source_state_sha256": _sha256(args.state),
         "state_provenance": state.get("_beast_capture"),
         "histories_source": str(Path(args.histories)) if args.histories else None,
+        "histories_sha256": _sha256(args.histories),
         "aux_source": str(Path(args.aux)) if args.aux else None,
+        "aux_sha256": _sha256(args.aux),
         "events_source": str(Path(args.events)) if args.events else None,
+        "events_sha256": _sha256(args.events),
         "themes": list(themes),
         "pages": list(PAGES),
         "frames": [],
