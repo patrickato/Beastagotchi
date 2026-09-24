@@ -26,6 +26,7 @@ from .telemetry import TelemetryCatalog
 from .plugin_integration import PluginIntegrationEngine
 from .dependency_resolver import DependencyCapabilityResolver
 from .template_tokens import TemplateTokenRegistry
+from .signals import SignalCatalog
 from .integration_catalog import IntegrationCatalog
 from .records import RecordsEngine
 from .overview import OverviewEngine
@@ -67,10 +68,12 @@ class BeastCore:
         self.dependencies = DependencyCapabilityResolver(self.state)
         self.plugin_integration = PluginIntegrationEngine(self.state, resolver=self.dependencies)
         self.template_tokens = TemplateTokenRegistry(self.state)
+        self.signals = SignalCatalog(self.state, telemetry=self.telemetry)
         self.integration_catalog = IntegrationCatalog(self.state, resolver=self.dependencies)
         self.api = LocalAPI(self.state, self.events, self.store, host, port,
                             channel_history=self.channel_history, telemetry=self.telemetry)
         self.api.template_tokens = self.template_tokens
+        self.api.signals = self.signals
         self.api.integration_catalog = self.integration_catalog
         self.collectors = [
             SystemCollector(), RadioCollector(), GPSCollector(), BettercapCollector(),
