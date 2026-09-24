@@ -21,6 +21,9 @@ Responsive local WebUI, action client and local library-file access surface.
 - `ui_systemd/` — Beast UI and Beast Studio services.
 - `display_handoff/` — physical display ownership claim/release/rollback validation.
 - `tools/` — diagnostics, render galleries, touch/calibration, display-conflict and support utilities.
+  - `v019_stage_from_artifact.sh` — verifies/stages the commit-pinned Pi artifact without claiming the TFT.
+  - `v019_physical_acceptance.sh` — bounded physical session, sampling, evidence and explicit pass/rollback decision.
+  - `v019_acceptance_report.py` — objective physical-session evidence summary; never substitutes for user physical judgment.
 
 ## Validation
 
