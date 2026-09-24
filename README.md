@@ -4,7 +4,7 @@
 
 The project is not intended to be a single theme or a fixed dashboard. Its long-term goal is a modular operating environment that can act as a living digital creature, real-time system/RF monitor, field terminal, app platform, configurable instrument panel, and persistent progression/exploration system while keeping the underlying Pwnagotchi service isolated and recoverable.
 
-> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **394 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **397 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -110,10 +110,10 @@ On a development machine:
 python3 -m pip install -r requirements-dev.txt
 PYTHONPATH=. pytest -q
 python3 -m compileall -q beastcore beastui beaststudio
-bash -n install.sh install_ui.sh install_bridge.sh uninstall.sh validate_v018.sh
+bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
 ```
 
-Current preserved v0.19 source gate: **394 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
+Current preserved v0.19 source gate: **397 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
 
 See [`docs/TESTING.md`](docs/TESTING.md) for the difference between source validation, off-screen Pi validation and physical hardware gates.
 
