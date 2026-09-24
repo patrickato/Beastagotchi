@@ -4,7 +4,7 @@
 
 The project is not intended to be a single theme or a fixed dashboard. Its long-term goal is a modular operating environment that can act as a living digital creature, real-time system/RF monitor, field terminal, app platform, configurable instrument panel, and persistent progression/exploration system while keeping the underlying Pwnagotchi service isolated and recoverable.
 
-> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **400 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **406 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -22,6 +22,7 @@ The project is not intended to be a single theme or a fixed dashboard. Its long-
 - **Owner-controlled, not appliance-locked.** Managed paths favor compatibility, snapshots and rollback, but authenticated owners retain an explicit unsupported/manual escape path for technically possible customizations.
 - **Extensions live where they belong.** Pwnagotchi Plugins handle real Pwnagotchi lifecycle/hooks; Beast Packs carry modular content; Beast Apps provide deeper interaction; Companion Expansions can bundle those layers into one coherent feature.
 - **Offline exchange is first-class.** Beast Capsules provide a transport-neutral path for Lineage, Beast Cards, challenges and other privacy-curated data over QR, file, USB/SD, NFC or future direct Beast-to-Beast transfer without requiring cloud connectivity.
+- **Share before you send.** Beast Studio now includes a Capsule Workshop that shows the exact privacy-curated Lineage Capsule envelope and QR frames before sharing; the current path is export-only and performs no import or publication.
 
 ## Current baseline: v0.18.1
 
