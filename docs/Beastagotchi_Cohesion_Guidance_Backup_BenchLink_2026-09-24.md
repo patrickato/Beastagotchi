@@ -419,6 +419,38 @@ The value is that DevLink can make the device dramatically easier to inspect,
 manipulate and export evidence from during development/support, including bundles
 that can then be supplied to an assistant.
 
+## AI/tool bridge extension
+
+BenchLink should eventually be able to expose a **narrow structured local tool
+interface** suitable for AI-capable clients as well as human tools.
+
+Candidate read-only tools:
+- get_health;
+- get_signals;
+- get_events;
+- get_doctor_findings;
+- get_capabilities;
+- get_dependency_graph;
+- capture_exact_mirror;
+- collect_support_bundle;
+- search_runbooks;
+- explain_current_incident;
+- compare_known_good_fingerprint.
+
+Candidate mutating tools remain separate and owner-authorized:
+- plan_backup;
+- execute_previously_reviewed_transaction;
+- stage_verified_artifact;
+- apply_explicit_configuration_plan;
+- rollback_transaction.
+
+Do **not** expose unrestricted shell/root or Pwnagotchi attack controls as the
+default AI interface.
+
+The structured bridge may later use an MCP-like/local-tool protocol or another
+appropriate transport. The stable requirement is the permissioned tool model,
+not one specific AI vendor/protocol.
+
 ---
 
 # Pwnagotchi-first usefulness
@@ -454,3 +486,37 @@ Before adding a major feature, ask:
 
 If those answers are coherent, the feature belongs to the platform instead of
 becoming an isolated bolt-on.
+
+
+---
+
+# Cohesion Graph / Cohesion Lint
+
+Once Signals, Events, Actions, Capabilities, Scenes, Runbooks and backup scopes
+are registries, Beast can inspect its own integration completeness.
+
+A future Cohesion Graph can answer:
+- which feature produces/consumes this Signal?
+- which Event triggers this choreography?
+- which Action changes this capability?
+- which Doctor probe watches it?
+- which runbook explains failure?
+- which backup tier preserves its state?
+- which Experience/Scene uses it?
+- what rollback path exists?
+
+A Cohesion Lint pass can warn during development/Pack intake when a feature has
+important missing integration edges.
+
+Examples:
+- mutable setting has no rollback/snapshot;
+- provider has no health probe;
+- important state is absent from backup policy;
+- Action has no contextual help;
+- capability requirement has no remediation/runbook;
+- hidden/secret event leaks spoiler metadata;
+- Scene binds a privacy-sensitive Signal to a public surface;
+- App has a permission but no declared reason/consumer.
+
+This turns **cohesive** from a subjective design aspiration into something Beast
+can partially verify.
