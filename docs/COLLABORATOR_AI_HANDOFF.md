@@ -13,6 +13,7 @@ This repository snapshot is intended to let an external developer or AI resume o
 8. `docs/UX_POLISH_MILESTONE_v0.19.md`
 9. `docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`
 10. `docs/UPDATE_MANAGER_SPEC_v0.1.md`
+11. `docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
