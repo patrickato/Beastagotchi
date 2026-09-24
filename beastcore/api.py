@@ -313,6 +313,21 @@ class LocalAPI:
             elif parsed.path == "/operator-policy":
                 level = str(self.state.get("operator.policy.level") or "observer")
                 body = self.operator_policy.snapshot(level) if self.operator_policy is not None else {}
+            elif parsed.path == "/owner-mode":
+                keys = [
+                    "owner.expert_mode.enabled",
+                    "owner.expert_mode.set_at",
+                    "owner.expert_mode.set_by",
+                    "owner.customized",
+                    "owner.customized_at",
+                    "owner.override_count",
+                    "owner.last_override.at",
+                    "owner.last_override.action",
+                    "owner.last_override.target",
+                    "owner.support_state",
+                    "owner.managed_defaults_active",
+                ]
+                body = self.state.snapshot_keys(keys, include_meta=False)
             elif parsed.path == "/template-tokens":
                 q = urllib.parse.parse_qs(parsed.query)
                 raw_names = str(q.get("names", [""])[0])
@@ -392,7 +407,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/template-tokens","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/template-tokens","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
