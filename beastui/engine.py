@@ -1109,7 +1109,16 @@ class BeastUI:
         panel(d,(8,38,472,274),t,accent=t.c('secondary'),width=2)
 
         d.text((18,48),'BEAST CONTROL CENTER',font=f['medium'],fill=t.c('secondary'))
-        d.text((18,68),f'{self.theme.label[:28]}',font=f['tiny'],fill=t.c('dim'))
+        beast_name=str(self.state.get('progression.beast.name') or 'BEAST').strip() or 'BEAST'
+        beast_level=self.state.get('progression.level')
+        beast_stage=str(self.state.get('progression.stage') or '').upper()
+        identity=f'{beast_name[:16]}'
+        if isinstance(beast_level,(int,float)):
+            identity+=f' · LV {int(beast_level):02d}'
+        if beast_stage:
+            identity+=f' {beast_stage[:10]}'
+        d.text((18,67),identity,font=f['tiny'],fill=t.c('accent'))
+        d.text((18,78),f'{self.theme.label[:22]} · {str(self.state.get("context.mode.effective") or "pwn").upper()[:10]}',font=f['micro'],fill=t.c('dim'))
 
         box=self.CONTROL_APP_BOX
         d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=t.c('accent'),width=2)
