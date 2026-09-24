@@ -385,6 +385,15 @@ approved scope.
 - [ ] Beast Doctor/Explain integration with dependency graph
 - [ ] build-specific BOM generator/export: full / installed / missing / unused / conflicts
 - [ ] transactional dependency remediation with dry-run/provenance/rollback
+- [x] Owner Sovereignty / Unrestricted Mode architecture approved and specified
+- [x] PluginBroker planning distinguishes policy blockers from technical blockers
+- [x] owner-override availability is exposed without weakening current managed execution
+- [ ] persistent Expert Mode state + visible indicator
+- [ ] per-action "Proceed unsupported anyway" path for policy blockers
+- [ ] unsupported/custom support-state reporting in Doctor/Support Bundle
+- [ ] arbitrary/custom plugin/source import path with owner acknowledgement
+- [ ] exact manual/root escape-hatch instructions for self-disabling/protected operations
+- [ ] owner-authorized direct administration surface with local-auth/audit/recovery boundary
 - [ ] generalized plugin install/update path
 - [ ] schema-driven config editor for plugin options
 - [ ] broader Beast adapter library for useful plugin data
