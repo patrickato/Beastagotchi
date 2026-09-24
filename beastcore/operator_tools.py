@@ -43,11 +43,13 @@ class OperatorToolRegistry:
         ToolSpec("jobs.list","Read recent Beast jobs/tasks.","observer",False,{"limit":"int"}),
         ToolSpec("action.plan","Plan an allow-listed Beast mutation without executing it.","observer",False,{"action":"str","payload":"object"}),
         ToolSpec("operator.session","Read the current owner-authorized Operator privilege session.","observer",False,{}),
+        ToolSpec("owner.mode","Read persistent Expert/Owner Override state.","observer",False,{}),
+        ToolSpec("owner.expert_mode_set","Enable/disable persistent Expert Mode; requires an active administrator session.","administrator",True,{"enabled":"bool"}),
         ToolSpec("service.restart","Restart an allow-listed Beast/Pwnagotchi service through Action Broker.","operator",True,{"unit":"str"}),
         ToolSpec("backup.create","Create a verified Beast recovery backup.","operator",True,{}),
         ToolSpec("backup.stage","Stage a verified recovery backup without touching the live system.","maintainer",True,{"name":"str"}),
         ToolSpec("support.bundle","Create a sanitized troubleshooting support bundle.","operator",True,{}),
-        ToolSpec("plugin.toggle","Enable/disable a Pwnagotchi plugin transactionally.","operator",True,{"name":"str","enabled":"bool"}),
+        ToolSpec("plugin.toggle","Enable/disable a Pwnagotchi plugin transactionally; Expert Mode may explicitly override policy blockers.","operator",True,{"name":"str","enabled":"bool","owner_override":"bool"}),
         ToolSpec("container.control","Start/stop/restart only a container explicitly enrolled as Beast-managed.","operator",True,{"target":"str","operation":"start|stop|restart"}),
     )
 
@@ -100,15 +102,18 @@ class OperatorToolRegistry:
                 return {"ok":True,"tool":spec.name,"data":{"count":len(rows),"items":rows}}
             if spec.name=="operator.session":
                 return {"ok":True,"tool":spec.name,"data":self.sessions.current() if self.sessions is not None else {"active":False,"level":"observer"}}
+            if spec.name=="owner.mode":
+                return {"ok":True,"tool":spec.name,"data":self.action_broker.owner_mode.snapshot()}
             if spec.name=="action.plan":
                 plan=self.action_broker.plan(str(a.get('action') or ''),a.get('payload') if isinstance(a.get('payload'),dict) else {})
                 return {"ok":True,"tool":spec.name,"data":plan}
-            action={"service.restart":"service.restart","backup.create":"backup.create","backup.stage":"backup.stage","support.bundle":"support.bundle","plugin.toggle":"plugin.toggle","container.control":"container.control"}[spec.name]
+            action={"service.restart":"service.restart","backup.create":"backup.create","backup.stage":"backup.stage","support.bundle":"support.bundle","plugin.toggle":"plugin.toggle","container.control":"container.control","owner.expert_mode_set":"owner.expert_mode_set"}[spec.name]
             payload={}
             if spec.name=="service.restart":payload={"unit":str(a.get('unit') or '')}
-            elif spec.name=="plugin.toggle":payload={"name":str(a.get('name') or ''),"enabled":bool(a.get('enabled'))}
+            elif spec.name=="plugin.toggle":payload={"name":str(a.get('name') or ''),"enabled":bool(a.get('enabled')),"owner_override":bool(a.get("owner_override",False))}
             elif spec.name=="backup.stage":payload={"name":str(a.get("name") or "")}
             elif spec.name=="container.control":payload={"target":str(a.get('target') or ''),"operation":str(a.get('operation') or '')}
+            elif spec.name=="owner.expert_mode_set":payload={"enabled":bool(a.get("enabled",False))}
             row=self.action_broker.perform(action,payload,actor=str(actor))
             return {"ok":row.get('status')=='success',"tool":spec.name,"data":row}
         except Exception as exc:
