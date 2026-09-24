@@ -531,3 +531,109 @@ Automatic failover remains deliberately disabled. Provider switching/handoff has
 not been physically or transactionally validated merely because policy and
 explanation now exist.
 
+## Extension ecosystem / Beast Capsules / offline exchange — 2026-09-24
+
+The plugin discussion was expanded into a durable extension model rather than
+treating every new feature as another Pwnagotchi plugin.
+
+Approved extension classes:
+
+1. **Pwnagotchi Plugin** — code that genuinely needs Pwnagotchi lifecycle,
+   callbacks or Bettercap/Pwnagotchi hooks.
+2. **Beast Pack** — modular content/data/presentation/rules/assets.
+3. **Beast App** — deeper interactive Beast-native functionality.
+4. **Companion Expansion** — one user-facing feature whose internal pieces may
+   legitimately span Pwnagotchi plugin + Beast Pack/App/adapter layers.
+
+Adapters remain the preferred bridge for useful existing plugins/services/hardware
+that only need normalization into canonical Beast state/events.
+
+Durable rules:
+- Pwnagotchi plugins should normally act as sensors/actuators rather than recreate
+  Beast progression/UI/lineage systems;
+- plugins/extensions contribute truthful normalized signals/events;
+- the canonical Achievement/Trophy Engine decides unlocks instead of accepting
+  arbitrary "grant trophy X" commands from a plugin;
+- Pack manifests use broad technical types plus `content_roles` rather than
+  creating a new pack type for every concept;
+- manifests may declare signals provided/consumed, offline transports, Capsule
+  types and Companion component membership;
+- generic Beast-native plugin cards should eventually be synthesizable from
+  capabilities/config/actions/health metadata;
+- a future Plugin Profiler should measure callback/error/staleness/resource cost
+  rather than enforcing arbitrary plugin-count limits.
+
+### Beast Capsule decision
+
+Beastagotchi now explicitly targets an **offline/sneakernet ecosystem**, not just
+offline operation.
+
+A Beast Capsule is a transport-neutral portable object. The same logical Capsule
+may later move through:
+- QR;
+- animated/multi-frame QR;
+- local file;
+- USB/SD;
+- NFC;
+- Bluetooth/local direct transfer;
+- Beast-to-Beast transport;
+- local phone/WebUI.
+
+Implemented foundation:
+- `beastcore/capsules.py`;
+- BC1 canonical JSON + bounded SHA-256 integrity + zlib/base64url encoding;
+- BCQ1 bounded multi-frame QR-ready text framing/reassembly;
+- per-frame CRC, missing-frame/mixed-session/conflicting-duplicate checks;
+- complete Capsule integrity verification after reassembly;
+- Lineage Capsule export from the persistent Beast roster;
+- separate local Capsule namespace, intentionally distinct from Global/public
+  profile identity;
+- stable pseudonymous portable creature and local-parent IDs;
+- privacy-curated payload that excludes raw roster IDs, raw identity/preferences,
+  counters, captures, Wi-Fi/network history, credentials, exact location and logs;
+- achievement IDs are opt-in while achievement count may be shared;
+- Local API read-only `/capsule/export` and `/capsule/types` endpoints;
+- Capsule import remains non-mutating/preview-only;
+- current digest is integrity only and must never be described as authenticated
+  sender identity;
+- actual QR image rendering/camera scanning is not bundled yet, avoiding a new
+  base-image dependency before physical benchmarking.
+
+Pack manifests now understand:
+- `extension_class = pack | companion`;
+- `content_roles`;
+- `signals_provides`;
+- `signals_consumes`;
+- `offline_transports`;
+- `capsule_types`;
+- Companion Pwnagotchi plugin / Beast App / Beast Pack membership metadata.
+
+Protected future Capsule families:
+- Beast Card / PeerDex Capsule;
+- Challenge Capsule;
+- signed Achievement/Trophy proof Capsule;
+- selected Configuration Capsule;
+- Pack Reference Capsule;
+- signed Lineage Capsule v2.
+
+Protected Lightbulb directions:
+- physical QR/NFC relics/cards/tokens;
+- witnessed/social achievements through offline exchange;
+- Capsule Inbox/Outbox and Capsule Workshop;
+- animated QR progress/missing-frame UI;
+- air-gapped challenge/response exchange;
+- signed device/creature identity only after backup/rotation/recovery semantics are
+  designed;
+- large Pack payloads should use QR only for identity/digest/reference while
+  USB/SD/file carries bulk bytes.
+
+Cross-device Lineage import is **not** considered complete merely because export
+exists. Remote-lineage storage, authenticity, duplicate/replay handling, owner
+confirmation and synthesis semantics remain separate gates.
+
+Canonical documents:
+- `docs/Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
+- `docs/Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`
+- `docs/Beastagotchi_Beast_Packs_Depot_Spec_v0.1.md`
+- `docs/Beastagotchi_Secrets_Achievements_Seasonal_Spec_v0.9.md`
+
