@@ -20,6 +20,7 @@ class LocalAPI:
         self.operator_tools = None
         self.backup_manager = None
         self.template_tokens = None
+        self.doctor = None
 
     async def start(self) -> None:
         self.server = await asyncio.start_server(self._handle, self.host, self.port)
@@ -178,6 +179,11 @@ class LocalAPI:
                 "customized": bool(self.state.get("owner.customized", False)),
                 "override_count": int(self.state.get("owner.override_count", 0) or 0),
                 "support_state": self.state.get("owner.support_state", "managed"),
+            },
+            "doctor": self.doctor.snapshot() if self.doctor is not None else {},
+            "provider_preferences": {
+                "count": int(self.state.get("providers.preference_count", 0) or 0),
+                "values": self.state.get("providers.preferences", {}) or {},
             },
             "packs": {
                 "count": int(self.state.get("packs.count", 0) or 0),
@@ -346,6 +352,32 @@ class LocalAPI:
                     "owner.managed_defaults_active",
                 ]
                 body = self.state.snapshot_keys(keys, include_meta=False)
+            elif parsed.path == "/provider-preferences":
+                keys = [
+                    "providers.preferences",
+                    "providers.preference_count",
+                    "providers.preferences.updated_at",
+                    "providers.preferences.updated_by",
+                    "providers.preferences.entries",
+                ]
+                body = self.state.snapshot_keys(keys, include_meta=False)
+            elif parsed.path == "/doctor":
+                body = self.doctor.snapshot() if self.doctor is not None else {
+                    "schema": 1, "state": "unavailable", "attention_count": 0,
+                    "explainable_capability_count": 0, "items": [],
+                }
+            elif parsed.path == "/explain":
+                q = urllib.parse.parse_qs(parsed.query)
+                capability = str(q.get("capability", [""])[0]).strip()
+                provider = str(q.get("provider", [""])[0]).strip()
+                if self.doctor is None:
+                    body = {"schema":1,"found":False,"error":"doctor unavailable"}
+                elif capability:
+                    body = self.doctor.explain_capability(capability)
+                elif provider:
+                    body = self.doctor.explain_provider(provider)
+                else:
+                    return await self._reply(writer, 400, {"error":"missing capability or provider"})
             elif parsed.path == "/template-tokens":
                 q = urllib.parse.parse_qs(parsed.query)
                 raw_names = str(q.get("names", [""])[0])
@@ -363,6 +395,11 @@ class LocalAPI:
                         "customized": bool(self.state.get("owner.customized", False)),
                         "support_state": self.state.get("owner.support_state", "managed"),
                     },
+                    "provider_preferences": {
+                        "count": int(self.state.get("providers.preference_count", 0) or 0),
+                        "values": self.state.get("providers.preferences", {}) or {},
+                    },
+                    "doctor": self.doctor.snapshot() if self.doctor is not None else {},
                     "plugins": {
                         "summary": self.state.get("plugins.requirements_summary", {}) or {},
                         "providers": self.state.get("plugins.requirements_providers", {}) or {},
@@ -450,7 +487,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
