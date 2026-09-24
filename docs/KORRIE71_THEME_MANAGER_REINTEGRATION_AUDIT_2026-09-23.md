@@ -190,6 +190,26 @@ toggle remains only a compatibility fallback.
 
 This contract can also serve Native Pwnagotchi, Beast UI and future full-screen apps.
 
+### 6A. Existing `STAT_SOURCE` hook may be the lowest-friction telemetry bridge
+
+Current Theme Manager source already contains a module-level `STAT_SOURCE` callback
+used by its lazy live-token formatter for values that need Pwnagotchi live state.
+That is a particularly useful interop seam.
+
+Rather than teach Theme Manager to poll Beast databases/files directly, propose a
+small upstream-compatible adapter whereby, when Beast Core is present,
+`STAT_SOURCE(key)` can query a **read-only, bounded Beast state provider** for approved
+tokens such as creature name/level/stage, Expedition state, PeerDex count or Beast
+health. Theme Manager would remain the renderer; Beast Core would remain the source of
+truth.
+
+This could produce a useful early interoperability win **before** physical
+Presentation Broker switching is finished: a Korrie-rendered screen could optionally
+show Beast-derived state without importing Beast's renderer or duplicating collectors.
+
+The mapping should be allow-listed and read-only, and absence of Beast Core must leave
+Theme Manager fully standalone.
+
 ### 7. Theme Manager asset bridge / translator
 
 Add a read-only integration adapter that can discover Theme Manager assets and expose
