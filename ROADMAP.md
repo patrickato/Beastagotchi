@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is 332 passing tests plus Python compile/shell validation.
+preserved source gate is **339 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -30,12 +30,19 @@ v0.19 is deliberately doing two jobs at once:
 ## v0.19 execution order
 
 ### Gate 1 — Unified UX / visual acceptance
+Recent progress:
+- Operations Center has moved from an equal-weight tile wall to an attention-first live-platform summary;
+- platform list overlays now use 50px bottom navigation targets and a calmer three-row 480×320 rhythm;
+- operational empty states explicitly preserve unavailable truth instead of synthesizing demo state;
+- the captured-real-state gallery now includes Control Center, Apps, Operations, Notifications, Diagnostics, Services, Hardware, Storage, Incidents and Connectivity in addition to the primary page set.
+
+Still to finish:
 - finish hierarchy/interaction cleanup across the high-frequency page carousel;
 - preserve Home/Beast + page/tab/swipe identity;
-- reduce box-grid/clutter patterns and improve type/touch hierarchy;
-- finish shared dialogs/lists/toasts/loading/error/empty states;
+- reduce remaining box-grid/clutter patterns and improve type/touch hierarchy;
+- finish shared dialogs/toasts/loading/error states beyond the newly normalized platform browsers;
 - deepen structural theme differences rather than palette-only variation;
-- create real-state comparison galleries;
+- generate and review the next real captured-state comparison gallery;
 - perform another physical Pi/TFT visual + touch + heat review;
 - use that review before declaring the v0.19 visual language accepted.
 
