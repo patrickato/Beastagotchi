@@ -48,6 +48,9 @@ approved scope.
 - [x] reversible framebuffer ownership
 - [x] native RGB565 framebuffer writer
 - [x] framebuffer diff/write optimization
+- [x] bounded v0.19 physical-acceptance harness reusing proven auto-rollback handoff
+- [x] physical-session objective sampler for render/compose/fb-write/temp/CPU/governor/touch evidence
+- [x] timestamped physical evidence bundle + machine/human summary generator
 - [x] native Pwnagotchi RAW/Dark/Light/Chroma bridge
 - [x] logical 480×320 canvas separated from physical output
 - [x] aspect-preserving transform + reverse touch mapping
@@ -78,7 +81,7 @@ approved scope.
   - operational platform browsers now have truthful no-data messaging and a calmer three-row layout
 - [~] consistent dialogs/confirmations/toasts
   - platform browser bottom navigation is now standardized at 50px-high touch targets
-- [ ] v0.19 physical TFT visual acceptance
+- [~] v0.19 physical TFT visual acceptance: bounded harness/package implemented; actual reference-Pi session pending
 - [ ] final production visual language acceptance
 
 ## 4. Beast UI visual system / themes
