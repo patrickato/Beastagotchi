@@ -26,6 +26,7 @@ class Theme:
     scanlines: bool = True
     glow: str = 'low'
     motion: str = 'normal'
+    home_scene: str | None = None
     background_options: dict | None = None
     scanline_speed: float = 31.0
     scanline_width: int = 1
@@ -44,6 +45,7 @@ def load_theme(path: str|Path)->Theme:
         face_style=obj.get('face_style','classic'), footer_style=obj.get('footer_style','classic'),
         reaction_style=obj.get('reaction_style','pulse'), scanlines=bool(obj.get('scanlines',True)),
         glow=obj.get('glow','low'), motion=obj.get('motion','normal'),
+        home_scene=str(obj.get('home_scene') or '').strip() or None,
         background_options=dict(obj.get('background_options') or {}),
         scanline_speed=float(obj.get('scanline_speed',31.0) or 31.0),
         scanline_width=max(1,int(obj.get('scanline_width',1) or 1)),

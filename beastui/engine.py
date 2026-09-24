@@ -978,26 +978,35 @@ class BeastUI:
     def _header(self,d,title):
         t=self.theme; f=self.fonts
         d.rectangle((0,0,self.W,self.HEADER_H),fill=t.c('ink'))
-        d.line((0,self.HEADER_H-1,self.W,self.HEADER_H-1),fill=t.c('edge'))
+        style=str(getattr(t,'geometry','classic'))
+        if style in {'terminal'}:
+            d.rectangle((2,2,self.W-3,self.HEADER_H-3),outline=t.c('edge'))
+        else:
+            d.line((0,self.HEADER_H-1,self.W,self.HEADER_H-1),fill=t.c('edge'))
+
         if t.id in {'pwn_dark','pwn_light','pwn_chroma'}:
             brand='PWNAGOTCHI'
-        else:
-            brand='BEAST'
-        if t.geometry=='lcars':
-            d.rounded_rectangle((4,4,88,29),radius=TOKENS.radius_l,fill=t.c('secondary'))
-            d.text((13,8),brand[:5],font=f['medium'],fill=t.c('ink'))
-            title_x=96
-        else:
             d.text((TOKENS.space_s,7),brand,font=f['title'],fill=t.c('primary'))
-            title_x=142 if brand=='PWNAGOTCHI' else 92
+            title_x=142
+        elif style=='lcars':
+            d.rounded_rectangle((4,4,94,29),radius=TOKENS.radius_l,fill=t.c('secondary'))
+            d.text((13,8),'BEAST',font=f['medium'],fill=t.c('ink'))
+            d.rounded_rectangle((99,4,122,29),radius=TOKENS.radius_s,fill=t.c('accent'))
+            title_x=132
+        else:
+            # Full product identity matters on a 480x320 appliance.  The old
+            # short "BEAST" label made every theme look like the same debug UI.
+            d.text((8,7),'BEAST',font=f['title'],fill=t.c('primary'))
+            bw=d.textbbox((0,0),'BEAST',font=f['title'])[2]
+            d.text((10+bw,7),'AGOTCHI',font=f['title'],fill=t.c('secondary'))
+            title_x=min(182,18+bw+d.textbbox((0,0),'AGOTCHI',font=f['title'])[2])
 
-        # Page title is deliberately stronger in v0.19: the user should know
-        # where they are without decoding a crowded status strip.
-        d.text((title_x,10),str(title).upper()[:18],font=f['small'],fill=t.c('text'))
+        page_label='HOME' if str(title).upper()=='BEAST CORE' else str(title).upper()[:16]
+        d.text((title_x,11),page_label,font=f['tiny'],fill=t.c('dim'))
         level=self.state.get('progression.level')
         if isinstance(level,(int,float)):
-            d.text((278,10),f'LV {int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
-        d.text((326,10),f"CH {self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
+            d.text((302,10),f'LV {int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
+        d.text((352,10),f"CH {self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
 
         if self.state.get('dock.docked'):
             right='DOCK'; col=t.c('accent')
@@ -1019,41 +1028,55 @@ class BeastUI:
             name=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),name)
         prev_name=self.pages.TITLES[self.pages.IDS[max(0,idx-1)]] if idx>0 else ''
         next_name=self.pages.TITLES[self.pages.IDS[min(count-1,idx+1)]] if idx<count-1 else ''
+        flash=self.button_flash if time.monotonic()-self.button_flash_at<TOKENS.motion_notice_s else None
+        style=str(getattr(t,'footer_style','classic'))
 
         d.rectangle((0,self.FOOTER_Y,self.W,self.H),fill=t.c('ink'))
         d.line((0,self.FOOTER_Y,self.W,self.FOOTER_Y),fill=t.c('edge'))
-        flash=self.button_flash if time.monotonic()-self.button_flash_at<TOKENS.motion_notice_s else None
+        left_col=t.c('accent') if flash=='prev' else t.c('primary')
+        right_col=t.c('accent') if flash=='next' else t.c('primary')
 
-        # Large Touch Lab hit zones are retained. Visible controls now explain
-        # where left/right will go instead of showing unlabeled tiny arrows.
-        left_fill=t.c('panel2') if flash!='prev' else t.c('accent')
-        right_fill=t.c('panel2') if flash!='next' else t.c('accent')
-        left_text=t.c('primary') if flash!='prev' else t.c('ink')
-        right_text=t.c('primary') if flash!='next' else t.c('ink')
-        d.rounded_rectangle((6,283,112,314),radius=TOKENS.radius_m,fill=left_fill,outline=t.c('edge'))
-        d.rounded_rectangle((368,283,474,314),radius=TOKENS.radius_m,fill=right_fill,outline=t.c('edge'))
-
-        d.text((14,288),'‹',font=f['medium'],fill=left_text)
-        if prev_name:
-            d.text((31,290),prev_name[:11],font=f['tiny'],fill=t.c('dim') if flash!='prev' else t.c('ink'))
-        if next_name:
-            tw=d.textbbox((0,0),next_name[:11],font=f['tiny'])[2]
-            d.text((449-tw,290),next_name[:11],font=f['tiny'],fill=t.c('dim') if flash!='next' else t.c('ink'))
-        d.text((453,288),'›',font=f['medium'],fill=right_text)
+        if style=='terminal':
+            d.rectangle((6,284,112,314),outline=left_col)
+            d.rectangle((368,284,474,314),outline=right_col)
+            d.text((15,290),'<<',font=f['small'],fill=left_col)
+            d.text((392,290),'>>',font=f['small'],fill=right_col)
+            if prev_name:d.text((38,292),prev_name[:9],font=f['micro'],fill=t.c('dim'))
+            if next_name:d.text((432,292),next_name[:9],font=f['micro'],fill=t.c('dim'),anchor='ra')
+        elif style in {'angular','cut'}:
+            lf=t.c('panel2') if flash!='prev' else t.c('accent');rf=t.c('panel2') if flash!='next' else t.c('accent')
+            d.polygon([(6,284),(101,284),(112,294),(112,314),(6,314)],fill=lf,outline=left_col)
+            d.polygon([(368,294),(379,284),(474,284),(474,314),(368,314)],fill=rf,outline=right_col)
+            d.text((15,290),'‹',font=f['medium'],fill=left_col if flash!='prev' else t.c('ink'))
+            d.text((452,290),'›',font=f['medium'],fill=right_col if flash!='next' else t.c('ink'))
+            if prev_name:d.text((34,292),prev_name[:9],font=f['micro'],fill=t.c('dim'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:9],font=f['micro'])[2];d.text((448-tw,292),next_name[:9],font=f['micro'],fill=t.c('dim'))
+        elif style=='segments':
+            d.rounded_rectangle((5,283,116,315),radius=10,fill=t.c('secondary'))
+            d.rounded_rectangle((364,283,475,315),radius=10,fill=t.c('primary'))
+            d.text((16,290),'‹',font=f['medium'],fill=t.c('ink'));d.text((451,290),'›',font=f['medium'],fill=t.c('ink'))
+            if prev_name:d.text((34,292),prev_name[:9],font=f['micro'],fill=t.c('ink'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:9],font=f['micro'])[2];d.text((448-tw,292),next_name[:9],font=f['micro'],fill=t.c('ink'))
+        else:
+            # Flatter cockpit rail: same proven hit boxes, much less dashboard-card bulk.
+            d.line((6,314,112,314),fill=left_col,width=2);d.line((368,314,474,314),fill=right_col,width=2)
+            d.text((13,288),'‹',font=f['medium'],fill=left_col);d.text((454,288),'›',font=f['medium'],fill=right_col)
+            if prev_name:d.text((30,292),prev_name[:10],font=f['micro'],fill=t.c('dim'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:10],font=f['micro'])[2];d.text((450-tw,292),next_name[:10],font=f['micro'],fill=t.c('dim'))
 
         center_col=t.c('accent') if flash=='home' else t.c('text')
-        tw=d.textbbox((0,0),name,font=f['small'])[2]
-        d.text((240-tw//2,285),name,font=f['small'],fill=center_col)
-        index=f'{idx+1} / {count}'
-        iw=d.textbbox((0,0),index,font=f['micro'])[2]
+        center_name='HOME' if cur_id=='home' else name
+        tw=d.textbbox((0,0),center_name,font=f['small'])[2]
+        d.text((240-tw//2,285),center_name,font=f['small'],fill=center_col)
+        index=f'{idx+1} / {count}';iw=d.textbbox((0,0),index,font=f['micro'])[2]
         d.text((240-iw//2,299),index,font=f['micro'],fill=t.c('dim'))
-
-        # Tab rail reinforces that pages remain a persistent spatial model.
-        total=(count-1)*7+13; x=240-total//2
+        total=(count-1)*7+13;x=240-total//2
         for i in range(count):
             w=13 if i==idx else 5
-            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=t.c('accent') if i==idx else t.c('edge'))
-            x+=w+2
+            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=t.c('accent') if i==idx else t.c('edge'));x+=w+2
 
         if flash and str(flash).startswith('renderer:'):
             label=str(flash).split(':')[-1].upper()[:18]

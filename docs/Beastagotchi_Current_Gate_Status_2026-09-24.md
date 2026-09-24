@@ -17,6 +17,7 @@ Status vocabulary:
 
 - **CLOSED** — acceptance condition for that gate/release boundary is satisfied.
 - **READY FOR PHYSICAL CLOSE** — source/CI/package work is ready; real hardware/user evidence is still required.
+- **ACTIVE — VISUAL RECONSTRUCTION** — source/package preparation is retained, but off-screen visual acceptance was explicitly rejected and the renderer is being rebuilt before physical close.
 - **MAJOR FOUNDATION COMPLETE** — the core architecture/runtime exists, but important planned depth remains.
 - **PARTIAL / ACTIVE** — useful implementation exists, but the gate is not closeable yet.
 - **FUTURE** — protected scope, intentionally not the current closure target.
@@ -58,10 +59,9 @@ This closes preparation for the physical session. It does **not** close Gate 1.
 
 | Gate | Status | What is already done | What closes it |
 |---|---|---|---|
-| **Gate 1 — Unified UX / visual acceptance** | **READY FOR PHYSICAL CLOSE** | Current 480×320 UX, current real-state gallery, touch-size normalization, Apps/Control Center/platform overlays, Capsule Share, dirty-row telemetry, verified staging/evidence package | Run the real Pi/TFT session; judge readability/touch/navigation/QR/glare/smoothness; collect thermal/framebuffer evidence; fix any physical findings; then explicitly accept the v0.19 visual language |
+| **Gate 1 — Unified UX / visual acceptance** | **ACTIVE — VISUAL RECONSTRUCTION** | Touch-size normalization, page/swipe model, Apps/Control Center/platform overlays, Capsule Share, dirty-row telemetry and the verified staging/evidence package remain valid. The prior generated gallery was explicitly rejected as too flat/card-like and too far from the approved concept language. | Rebuild structural scene composition and visual-asset integration; obtain off-screen owner acceptance of the new generated UI; then run the real Pi/TFT readability/touch/QR/glare/smoothness/thermal/framebuffer session. |
 
-**Immediate blocker to the next major v0.19 decision:** the real reference-Pi
-physical session.
+**Immediate blocker to the next major v0.19 decision:** off-screen visual reconstruction and owner acceptance of the real generated renderer. The physical session follows that acceptance rather than being used to excuse a known visual mismatch.
 
 ---
 
@@ -95,20 +95,19 @@ physical session.
 
 ## What happens next
 
-### Next session — Gate 1 physical acceptance
+### Next session — Gate 1 visual reconstruction first
 
-Use the final commit-pinned Pi package and run one substantial session:
+The previous real generated gallery was rejected before deployment because it did
+not match the intended Beastagotchi product language closely enough. Therefore:
 
-1. stage the exact CI artifact;
-2. keep Pwnagotchi display ownership during staging/preflight;
-3. explicitly start the bounded Beast display session;
-4. use the UI rather than running isolated micro-tests;
-5. scan a real Capsule QR with a phone;
-6. collect one-minute objective runtime/framebuffer/thermal evidence;
-7. judge the actual screen/touch/glare/smoothness;
-8. return the evidence archive + physical observations;
-9. fix anything the physical screen exposes;
-10. either close Gate 1 or repeat only the affected acceptance subset.
+1. keep the verified physical package as a preserved engineering checkpoint;
+2. rebuild Home around structural scene composition instead of palette-only card layouts;
+3. integrate optional project visual assets while keeping all operational values live/canonical;
+4. regenerate the sanitized-real-state gallery;
+5. obtain off-screen owner acceptance of the generated renderer;
+6. only then stage the updated exact CI artifact on the reference Pi;
+7. run the bounded TFT/touch/QR/glare/smoothness/thermal/framebuffer acceptance session;
+8. fix physical-only findings and explicitly close Gate 1.
 
 ### After Gate 1
 
@@ -134,8 +133,8 @@ At the current verified staging checkpoint:
 - shell syntax: pass
 - real-state gallery: pass
 - commit-pinned Pi artifact: pass
-- physical Gate 1: **pending**
+- physical Gate 1: **pending; intentionally deferred until off-screen visual reconstruction is accepted**
 - Draft PR #9: **unmerged**
 - stable `main`: **v0.18.1**
 
-The next meaningful truth comes from the actual Pi/TFT.
+The next meaningful truth is first the actual generated renderer after the visual-scene rebuild; the Pi/TFT remains the following physical truth gate.

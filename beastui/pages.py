@@ -4,6 +4,7 @@ import math
 from .design import PRIMARY_PAGES
 from .customization import dashboard_widget_box
 from .components import card, label_value, progress_bar, divider, status_badge, section_title, empty_state, summary_strip
+from .home_scenes import render_home_scene
 from .widgets import (
     panel, metric, channel_bars, line_area, multiline, bars, stacked_bars, histogram,
     waveform, waterfall, radial, donut, radar, polar, signal_meter, heatmap, timeline, microtrend,
@@ -155,6 +156,11 @@ class Pages:
             d.text((18,218),f'{gps}   CORE {health}',font=f['small'],fill=text)
             d.text((18,239),f'LVL {level:02d} {stage[:14]}',font=f['small'],fill=text)
             d.text((282,239),f"LIFE AP {self._v(state,'wifi.encounters.lifetime_unique',0)}",font=f['small'],fill=dim)
+            return
+        # v0.19 structural scene layer: themes may now change composition, not
+        # merely recolor the same card dashboard.  Legacy/special fallbacks stay
+        # below for themes that do not yet opt into a scene.
+        if render_home_scene(d,state,ui):
             return
         if tid=='minimal':
             self.face.draw(d,(18,52,228,248),t,state,ui.phase)

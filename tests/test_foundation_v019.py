@@ -565,3 +565,64 @@ def test_v019_operational_surfaces_render_empty_and_live_truth(tmp_path):
         with Image.open(out) as im:
             assert im.size == (480, 320)
             assert im.getbbox() == (0, 0, 480, 320)
+
+def test_v019_theme_home_scene_contract_and_builtin_assets():
+    from PIL import Image
+    from beastui.theme import load_theme
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    expected = {
+        "classic": "hero",
+        "cyberpunk": "hero_cyber",
+        "blackice": "hero_ice",
+        "synthwave": "hero_synth",
+        "wopr_norad": "wopr",
+        "lcars": "lcars",
+        "retro_crt": "terminal",
+    }
+    for tid, scene in expected.items():
+        theme = load_theme(root / "themes" / f"{tid}.json")
+        assert theme.home_scene == scene
+
+    for name in ("classic_portrait.png", "cyberpunk_portrait.png", "blackice_portrait.png"):
+        path = root / "assets" / "home" / name
+        assert path.is_file()
+        with Image.open(path) as im:
+            assert im.width >= 60
+            assert im.height >= 60
+            im.verify()
+
+
+def test_v019_structural_home_scenes_render_distinct_families(tmp_path):
+    import hashlib
+    from PIL import Image
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    state = {
+        "progression.beast.name": "Hex",
+        "progression.level": 43,
+        "progression.stage": "Hunter",
+        "pwnagotchi.mood": "awake",
+        "beast.expression": "focused",
+        "context.mode.effective": "pwn",
+        "wifi.ap_count": 27,
+        "wifi.client_count": 14,
+        "pwnagotchi.handshakes": 2,
+        "radio.primary.channel": 6,
+        "system.cpu.total": 32.0,
+        "system.temp.cpu_c": 48.0,
+        "health.core.state": "healthy",
+    }
+    digests = {}
+    for tid in ("classic", "cyberpunk", "wopr_norad", "lcars", "retro_crt"):
+        out = tmp_path / f"{tid}.png"
+        ui = BeastUI(root=root, output=str(out), theme_id=tid)
+        ui.state = dict(state)
+        ui.page = ui.pages.IDS.index("home")
+        ui.render()
+        with Image.open(out) as im:
+            assert im.size == (480, 320)
+            raw = im.tobytes()
+        digests[tid] = hashlib.sha256(raw).hexdigest()
+    assert len(set(digests.values())) == len(digests)
