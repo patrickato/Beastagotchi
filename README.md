@@ -20,6 +20,8 @@ The project is not intended to be a single theme or a fixed dashboard. Its long-
 - **Modular growth.** Themes, face packs, apps, visualizers, integrations and optional capabilities are moving toward downloadable **Beast Packs** instead of permanently bloating the base image.
 - **Capability-driven dependencies.** Plugins/Packs/Hardware/Experiences increasingly declare what they provide and require; Beast catalogs the full known universe while keeping the installed/runtime footprint feature-driven rather than preinstalling everything.
 - **Owner-controlled, not appliance-locked.** Managed paths favor compatibility, snapshots and rollback, but authenticated owners retain an explicit unsupported/manual escape path for technically possible customizations.
+- **Extensions live where they belong.** Pwnagotchi Plugins handle real Pwnagotchi lifecycle/hooks; Beast Packs carry modular content; Beast Apps provide deeper interaction; Companion Expansions can bundle those layers into one coherent feature.
+- **Offline exchange is first-class.** Beast Capsules provide a transport-neutral path for Lineage, Beast Cards, challenges and other privacy-curated data over QR, file, USB/SD, NFC or future direct Beast-to-Beast transfer without requiring cloud connectivity.
 
 ## Current baseline: v0.18.1
 
