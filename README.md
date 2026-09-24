@@ -4,7 +4,7 @@
 
 The project is not intended to be a single theme or a fixed dashboard. Its long-term goal is a modular operating environment that can act as a living digital creature, real-time system/RF monitor, field terminal, app platform, configurable instrument panel, and persistent progression/exploration system while keeping the underlying Pwnagotchi service isolated and recoverable.
 
-> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The preserved v0.19 checkpoint is source/CI green at **332 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **339 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -108,7 +108,7 @@ python3 -m compileall -q beastcore beastui beaststudio
 bash -n install.sh install_ui.sh install_bridge.sh uninstall.sh validate_v018.sh
 ```
 
-Current preserved v0.19 source gate: **332 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
+Current preserved v0.19 source gate: **339 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
 
 See [`docs/TESTING.md`](docs/TESTING.md) for the difference between source validation, off-screen Pi validation and physical hardware gates.
 
@@ -126,7 +126,7 @@ Beastagotchi is planning explicit interoperability with [`Korrie71/pwnagotchi-th
 - Pwnagotchi + Theme Manager
 - Beastagotchi
 
-See [`docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`](docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md).
+See [`docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`](docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md) and the fresh [`docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`](docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md).
 
 ## Privacy and responsible testing
 
