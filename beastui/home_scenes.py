@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 import math
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
 
+
+def _scene_layer(ui, layer_id, kind, bounds, **kwargs):
+    runtime=getattr(ui,'scene_runtime',None)
+    if runtime is None:return nullcontext()
+    return runtime.layer(layer_id,kind,bounds,**kwargs)
 
 def _mix(a, b, t: float):
     t=max(0.0,min(1.0,float(t)))
