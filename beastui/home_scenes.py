@@ -564,9 +564,9 @@ def render_home_scene(d, state, ui) -> bool:
     scene=str(getattr(ui.theme,'home_scene',None) or '').strip().lower()
     if not scene:return False
     renderers={
-        'hero':lambda:_hero_scene(d,state,ui,variant='classic'),
-        'hero_cyber':lambda:_hero_scene(d,state,ui,variant='cyber'),
-        'hero_ice':lambda:_hero_scene(d,state,ui,variant='ice'),
+        'hero':lambda:_concept_hero_scene(d,state,ui,style='classic'),
+        'hero_cyber':lambda:_concept_hero_scene(d,state,ui,style='cyberpunk'),
+        'hero_ice':lambda:_concept_hero_scene(d,state,ui,style='blackice'),
         'hero_synth':lambda:_hero_scene(d,state,ui,variant='synth'),
         'hero_tactical':lambda:_hero_scene(d,state,ui,variant='tactical'),
         'wopr':lambda:_wopr_scene(d,state,ui),
