@@ -578,6 +578,36 @@ class StudioState:
     def roster_clear_presentation(self,obj: dict)->dict:
         return self.actions.perform('roster.presentation_clear',{'id':str(obj.get('id') or '')})
 
+    def capsule_preview(self,obj: dict)->dict:
+        row=self.api.capsule_export(
+            capsule_type="lineage",
+            beast_id=str(obj.get("beast_id") or "") or None,
+            include_name=bool(obj.get("include_name",True)),
+            include_achievements=bool(obj.get("include_achievements",False)),
+            include_appearance=bool(obj.get("include_appearance",True)),
+            qr_chars=max(128,min(900,int(obj.get("qr_chars") or 220))),
+        )
+        if not isinstance(row,dict):
+            row={"ok":False,"error":"Capsule export returned no data"}
+        row=dict(row)
+        row["studio_qr"]=qr_backend_status()
+        row["import_performed"]=False
+        row["publish_performed"]=False
+        return row
+
+    def capsule_qr_png(self,obj: dict)->bytes:
+        frame=str(obj.get("frame") or "")
+        if not frame.startswith("BCQ1|"):
+            raise ValueError("QR frame must be a BCQ1 Capsule transport frame")
+        if len(frame)>3000:
+            raise ValueError("QR frame is oversized")
+        if not qr_backend_status().get("available"):
+            raise ValueError("QR renderer dependency is not installed")
+        im=Image.new("RGB",(512,512),(255,255,255))
+        draw_qr(ImageDraw.Draw(im),(0,0,511,511),frame,error_correction="M")
+        out=io.BytesIO();im.save(out,format="PNG",optimize=True)
+        return out.getvalue()
+
     def global_profile(self)->dict:
         row=self.actions.plan('global.preview',{})
         return row.get('plan',row) if isinstance(row,dict) else {}
@@ -776,8 +806,10 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
+            if path=='/api/capsule-preview':return self._send(200,self.st.capsule_preview(obj))
+            if path=='/api/capsule-qr':return self._send(200,self.st.capsule_qr_png(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
             if path=='/api/service-restart':return self._send(200,self.st.service_restart(obj))
