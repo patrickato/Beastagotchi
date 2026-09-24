@@ -66,7 +66,8 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
     samples = _read_jsonl(root / "runtime-samples.jsonl")
     preflight = _read_json(root / "preflight.json")
     capsule = _read_json(root / "capsule-export.json")
-    final_state = _read_json(root / "state-final.json")
+    final_state_raw = _read_json(root / "state-final.json")
+    final_state = final_state_raw.get("state") if isinstance(final_state_raw.get("state"), dict) else final_state_raw
     runtime_final = _read_json(root / "ui-runtime-final.json")
 
     temp = _metric(_nested(r, "state", "system.temp.cpu_c") for r in samples)
