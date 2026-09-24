@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **339 passing tests** plus Python compile/shell validation.
+preserved source gate is **343 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -77,6 +77,17 @@ candidate work around dirty-region display writes, canonical live tokens,
 declarative visual effects/scenes, timed physical preview/revert, semantic render
 layers, a Theme Manager asset bridge and a neutral presentation-engine adapter.
 Those are design targets until individually implemented/tested.
+
+Implemented now:
+- bounded read-only Theme Manager source capability probe;
+- version/capability evidence exposed through canonical plugin/presentation state;
+- clean unload/live-install compatibility evidence kept distinct from a real managed handoff API;
+- physical presentation executor remains locked.
+
+Next:
+- keep Gate 1 visual acceptance ahead of a new backend detour;
+- add canonical live-token and semantic render-layer foundations in bounded blocks;
+- add Beast-native Doctor/Explain and improve Depot human workflow using the 3.0 audit;
 - validate stock/Jayofelony release/acquire semantics;
 - validate Korrie71 Theme Manager release/acquire semantics;
 - implement real Presentation Broker adapters;
