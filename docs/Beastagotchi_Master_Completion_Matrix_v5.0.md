@@ -387,8 +387,15 @@ approved scope.
 - [x] sensitive plugin config exposes credential presence only, never values
 - [x] technical/policy blocker semantics shared with Owner Sovereignty
 - [x] read-only dependency summary in Local API + platform bundle
-- [ ] provider arbitration for overlapping location/power/network/presentation providers
-- [ ] Plugin & Capability Center requirement/remediation UX
+- [x] read-only provider arbitration policy for overlapping capability providers
+- [x] arbitration distinguishes active / alternate / available-unselected / choice-required / unavailable states
+- [x] native canonical source is preferred by default while owner preference remains modeled
+- [x] deterministic recommendation + fallback-chain explanation without automatic switching
+- [x] configured-but-disabled plugins may remain available alternates
+- [ ] persistent owner provider preference store + audited set/clear action
+- [ ] provider freshness/confidence + anti-flap hysteresis
+- [ ] automatic failover after provider-specific handoff validation
+- [ ] Plugin & Capability Center requirement/remediation/provider UX
 - [ ] Beast Doctor/Explain integration with dependency graph
 - [ ] build-specific BOM generator/export: full / installed / missing / unused / conflicts
 - [ ] transactional dependency remediation with dry-run/provenance/rollback
