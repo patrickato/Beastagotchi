@@ -3,7 +3,7 @@
 **Status date:** 2026-09-23  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `v0.19-unified-experience`, Draft PR #9  
-**Current v0.19 source gate:** **353 automated tests passing** + Python compile + shell syntax
+**Current v0.19 source gate:** **360 automated tests passing** + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier
@@ -388,9 +388,14 @@ approved scope.
 - [x] Owner Sovereignty / Unrestricted Mode architecture approved and specified
 - [x] PluginBroker planning distinguishes policy blockers from technical blockers
 - [x] owner-override availability is exposed without weakening current managed execution
-- [ ] persistent Expert Mode state + visible indicator
-- [ ] per-action "Proceed unsupported anyway" path for policy blockers
-- [ ] unsupported/custom support-state reporting in Doctor/Support Bundle
+- [x] persistent Expert Mode state with owner-authorized administrator-session gate
+- [x] per-action plugin "Proceed unsupported anyway" path for policy blockers while Expert Mode is active
+- [x] technical blockers remain non-overridable
+- [x] successful overrides retain transactional plugin snapshot/verification/restart/health/rollback behavior
+- [x] customized/support-state persistence + override count/last-target evidence
+- [x] sanitized Support Bundle reports Expert/customized state
+- [x] read-only owner-mode status through Core/API/structured Operator tools
+- [ ] dedicated Beast Studio/TFT Expert Mode control + visible indicator
 - [ ] arbitrary/custom plugin/source import path with owner acknowledgement
 - [ ] exact manual/root escape-hatch instructions for self-disabling/protected operations
 - [ ] owner-authorized direct administration surface with local-auth/audit/recovery boundary
