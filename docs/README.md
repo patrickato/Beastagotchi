@@ -80,3 +80,5 @@ Historical files are evidence, not current instructions. Follow the explicit sou
 - `COLLABORATOR_AI_HANDOFF.md` — review order/context for another developer or AI.
 - `archive/continuity/Beastagotchi_Project_Continuity_Audit_v1.0.md` — historical 2026-09-21 continuity audit.
 - `adr/` — architectural decision records for decisions that should remain explicit.
+
+- [`KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`](KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md) — current Theme Manager reintegration audit.
