@@ -468,64 +468,134 @@ class Pages:
             d.text((338,241),f'{len(hist)} AP samples',font=f['tiny'],fill=t.c('dim'))
 
     def captures(self,d,state,ui):
-        t=ui.theme;f=ui.fonts;mode=ui.renderer_for('captures');total=self._v(state,'captures.total',self._v(state,'pwnagotchi.cache.handshake_ap_count',0));session=self._v(state,'pwnagotchi.handshakes',0);better=self._v(state,'wifi.handshake_ap_count',0)
-        metric(d,(8,42,148,98),'Stored',total,f,t,t.c('primary'));metric(d,(156,42,306,98),'Session HS',session,f,t,t.c('accent'));metric(d,(314,42,472,98),'Bettercap',better,f,t)
-        d.text((12,108),f'CAPTURE ANALYTICS // {mode.upper()} // TAP GRAPH TO CHANGE',font=f['tiny'],fill=t.c('dim'));box=(8,124,472,266);vals=[total,session,better]
-        if mode=='bars':bars(d,box,vals,t,t.c('accent'))
-        elif mode=='donut':donut(d,box,vals,t,[t.c('primary'),t.c('accent'),t.c('secondary')],center_text=total,font=f['small'])
-        elif mode=='radial':
-            panel(d,box,t);w=(472-8)//3
-            for i,(v,lab,col) in enumerate(zip(vals,['STORED','SESSION','LIVE'],[t.c('primary'),t.c('accent'),t.c('secondary')])):
-                radial(d,(12+i*w,132,8+(i+1)*w-4,258),v,t,col,minimum=0,maximum=max(1,max(vals)),label=lab,font=f['tiny'])
-        elif mode=='timeline':timeline(d,box,ui.events,t,t.c('accent'))
-        else:bars(d,box,vals,t,t.c('accent'))
+        t=ui.theme;f=ui.fonts
+        mode=ui.renderer_for('captures')
+        total=self._v(state,'captures.total',self._v(state,'pwnagotchi.cache.handshake_ap_count',0))
+        session=self._v(state,'pwnagotchi.handshakes',0)
+        better=self._v(state,'wifi.handshake_ap_count',0)
+        vals=[]
+        for value in (total,session,better):
+            try:vals.append(float(value or 0))
+            except Exception:vals.append(0.0)
+
+        card(d,(8,43,214,111),t,accent=t.c('primary'),width=2)
+        section_title(d,(18,52),'CAPTURE VAULT',f,t)
+        d.text((18,67),str(total),font=f['large'],fill=t.c('primary'))
+        d.text((18,91),'STORED CAPTURE RECORDS',font=f['tiny'],fill=t.c('dim'))
+        summary_strip(
+            d,(222,43,472,111),
+            [
+                ('SESSION HS',session,t.c('accent')),
+                ('LIVE APS',better,t.c('info')),
+            ],
+            f,t,
+        )
+
+        box=(8,119,472,268)
+        if max(vals or [0])<=0:
+            empty_state(
+                d,box,'VAULT EMPTY','No stored or live capture records are currently reported.',f,t,
+                hint='DETAILS APPEAR ONLY FROM REAL CAPTURE STATE',
+            )
+        else:
+            card(d,box,t)
+            section_title(d,(18,128),f'CAPTURE ANALYTICS · {str(mode).upper()}',f,t)
+            graph=(18,148,462,254)
+            if mode=='bars':bars(d,graph,vals,t,t.c('accent'))
+            elif mode=='donut':donut(d,graph,vals,t,[t.c('primary'),t.c('accent'),t.c('secondary')],center_text=total,font=f['small'])
+            elif mode=='radial':
+                w=(462-18)//3
+                for i,(v,lab,col) in enumerate(zip(vals,['STORED','SESSION','LIVE'],[t.c('primary'),t.c('accent'),t.c('secondary')])):
+                    radial(d,(20+i*w,150,16+(i+1)*w-4,250),v,t,col,minimum=0,maximum=max(1,max(vals)),label=lab,font=f['tiny'])
+            elif mode=='timeline':timeline(d,graph,ui.events,t,t.c('accent'))
+            else:bars(d,graph,vals,t,t.c('accent'))
 
     def map(self,d,state,ui):
-        t=ui.theme;f=ui.fonts;mapbox=(8,42,342,268);panel(d,mapbox,t)
-        for x in range(20,342,32):d.line((x,50,x,260),fill=t.c('grid'))
-        for y in range(50,268,28):d.line((12,y,338,y),fill=t.c('grid'))
+        t=ui.theme;f=ui.fonts
         expedition=ui.aux.get('expedition') if isinstance(getattr(ui,'aux',None),dict) else None
         pts=self._route_points(expedition)
+        gps_locked=bool(state.get('gps.fix'))
+        dist=state.get('expedition.distance_m')
+        dist_txt=f'{float(dist)/1609.344:.2f} mi' if isinstance(dist,(int,float)) else '--'
+        summary_strip(
+            d,(8,43,472,91),
+            [
+                ('GPS','LOCK' if gps_locked else 'NO FIX',t.c('accent') if gps_locked else t.c('warn')),
+                ('SAT',f"{self._v(state,'gps.satellites_used',0)}/{self._v(state,'gps.satellites_visible',0)}",t.c('info')),
+                ('DIST',dist_txt,t.c('secondary')),
+                ('ROUTE PTS',self._v(state,'expedition.route_points',0),t.c('primary')),
+            ],
+            f,t,
+        )
+
+        mapbox=(8,99,344,268)
         if pts:
-            lats=[p[0] for p in pts];lons=[p[1] for p in pts];lat0,lat1=min(lats),max(lats);lon0,lon1=min(lons),max(lons)
-            lat_span=max(1e-7,lat1-lat0);lon_span=max(1e-7,lon1-lon0);xa,ya,xb,yb=22,60,328,248
+            card(d,mapbox,t)
+            section_title(d,(18,108),'RECORDED ROUTE',f,t)
+            lats=[p[0] for p in pts];lons=[p[1] for p in pts]
+            lat0,lat1=min(lats),max(lats);lon0,lon1=min(lons),max(lons)
+            lat_span=max(1e-7,lat1-lat0);lon_span=max(1e-7,lon1-lon0);xa,ya,xb,yb=20,128,332,247
+            for x in range(xa,xb+1,52):d.line((x,ya,x,yb),fill=t.c('grid'))
+            for y in range(ya,yb+1,30):d.line((xa,y,xb,y),fill=t.c('grid'))
             xy=[]
             for lat,lon,_row in pts:
                 x=xa+int((lon-lon0)/lon_span*(xb-xa));y=yb-int((lat-lat0)/lat_span*(yb-ya));xy.append((x,y))
             if len(xy)>=2:d.line(xy,fill=t.c('primary'),width=2)
-            # Latest actual GPS point.
             x,y=xy[-1];d.ellipse((x-5,y-5,x+5,y+5),outline=t.c('accent'),fill=t.c('panel2'),width=2)
-            d.text((16,247),'REAL EXPEDITION ROUTE // AUTO FIT',font=f['tiny'],fill=t.c('dim'))
+            d.text((18,251),'REAL RECORDED FIXES · AUTO-FIT TRACE · NOT A BASEMAP',font=f['micro'],fill=t.c('dim'))
         else:
-            d.text((92,142),'NO GPS ROUTE DATA YET',font=f['small'],fill=t.c('dim'))
-            d.text((74,160),'Route appears only from recorded fixes.',font=f['tiny'],fill=t.c('dim'))
-        panel(d,(350,42,472,268),t);d.text((360,52),'GPS',font=f['tiny'],fill=t.c('dim'));d.text((360,67),'LOCK' if state.get('gps.fix') else 'NO FIX',font=f['medium'],fill=t.c('accent') if state.get('gps.fix') else t.c('warn'))
-        d.text((360,100),f"SAT {self._v(state,'gps.satellites_used',0)}/{self._v(state,'gps.satellites_visible',0)}",font=f['small'],fill=t.c('text'));sp=state.get('context.motion.speed_mph');d.text((360,124),f'SPD {sp:.1f} mph' if isinstance(sp,(int,float)) else 'SPD --',font=f['small'],fill=t.c('text'));d.text((360,148),str(self._v(state,'context.mode.effective','pwn')).upper(),font=f['medium'],fill=t.c('primary'))
-        dist=state.get('expedition.distance_m');dist_txt=f'{float(dist)/1609.344:.2f} mi' if isinstance(dist,(int,float)) else '--';d.text((360,182),'EXPEDITION',font=f['tiny'],fill=t.c('dim'));d.text((360,195),dist_txt,font=f['small'],fill=t.c('secondary'));d.text((360,216),f"AP {self._v(state,'expedition.ap_unique',0)}  PT {self._v(state,'expedition.route_points',0)}",font=f['tiny'],fill=t.c('text'))
+            empty_state(
+                d,mapbox,'NO RECORDED ROUTE','Field trace appears after real GPS fixes are recorded.',f,t,
+                accent=t.c('accent') if gps_locked else t.c('edge'),
+                hint='NO FAKE MAP OR POSITION IS DRAWN',
+            )
+
+        card(d,(352,99,472,268),t)
+        section_title(d,(362,108),'FIELD',f,t)
+        sp=state.get('context.motion.speed_mph')
+        label_value(d,(362,126),'SPEED',f'{sp:.1f} mph' if isinstance(sp,(int,float)) else '--',f,t,color=t.c('info'),max_chars=12)
+        label_value(d,(362,166),'MODE',str(self._v(state,'context.mode.effective','pwn')).upper(),f,t,color=t.c('primary'),max_chars=12)
+        label_value(d,(362,206),'UNIQUE AP',self._v(state,'expedition.ap_unique',0),f,t,color=t.c('accent'),max_chars=12)
+        d.text((362,247),'EXPEDITION DATA',font=f['micro'],fill=t.c('dim'))
 
     def expedition(self,d,state,ui):
         t=ui.theme;f=ui.fonts
-        active=bool(state.get('expedition.active'));eid=str(self._v(state,'expedition.id','--'))
-        d.text((12,44),'FIELD SESSION RECORDER',font=f['tiny'],fill=t.c('dim'))
-        panel(d,(8,58,472,111),t,accent=t.c('accent') if active else t.c('edge'))
-        d.text((18,68),'ACTIVE' if active else 'IDLE',font=f['medium'],fill=t.c('accent') if active else t.c('dim'))
-        d.text((102,69),eid[-20:],font=f['small'],fill=t.c('text'))
+        active=bool(state.get('expedition.active'))
+        eid=str(self._v(state,'expedition.id','--'))
         dur=state.get('expedition.duration_sec');mins=int(float(dur or 0)//60);hrs=mins//60;mins%=60
-        d.text((360,69),f'{hrs:02d}:{mins:02d}',font=f['medium'],fill=t.c('info'))
         dist=state.get('expedition.distance_m');dist_m=float(dist or 0) if isinstance(dist,(int,float)) else 0.0
-        metric(d,(8,120,120,181),'Distance',f'{dist_m/1609.344:.2f}mi',f,t,t.c('primary'))
-        metric(d,(126,120,238,181),'Route pts',self._v(state,'expedition.route_points',0),f,t,t.c('info'))
-        metric(d,(244,120,356,181),'Unique AP',self._v(state,'expedition.ap_unique',0),f,t,t.c('accent'))
-        metric(d,(362,120,472,181),'Captures',self._v(state,'expedition.captures_delta',0),f,t,t.c('secondary'))
-        panel(d,(8,190,472,268),t)
-        d.text((18,201),f"XP +{self._v(state,'expedition.xp_delta',0)}",font=f['small'],fill=t.c('accent'))
+        state_col=t.c('accent') if active else t.c('dim')
+
+        card(d,(8,43,472,99),t,accent=state_col,width=2 if active else 1)
+        section_title(d,(18,52),'FIELD SESSION',f,t)
+        status_badge(d,(18,68),'ACTIVE' if active else 'IDLE',f,t,color=state_col,min_width=68)
+        d.text((104,72),eid[-22:],font=f['tiny'],fill=t.c('text'))
+        tm=f'{hrs:02d}:{mins:02d}'
+        tw=d.textbbox((0,0),tm,font=f['medium'])[2]
+        d.text((458-tw,69),tm,font=f['medium'],fill=t.c('info'))
+
+        summary_strip(
+            d,(8,107,472,163),
+            [
+                ('DISTANCE',f'{dist_m/1609.344:.2f} mi',t.c('primary')),
+                ('ROUTE',self._v(state,'expedition.route_points',0),t.c('info')),
+                ('UNIQUE AP',self._v(state,'expedition.ap_unique',0),t.c('accent')),
+                ('CAPTURES',self._v(state,'expedition.captures_delta',0),t.c('secondary')),
+            ],
+            f,t,
+        )
+
+        card(d,(8,171,472,268),t)
+        section_title(d,(18,180),'SESSION RECORD',f,t)
+        d.text((18,197),f"XP +{self._v(state,'expedition.xp_delta',0)}",font=f['medium'],fill=t.c('accent'))
         mt=state.get('expedition.max_temp_c');mc=state.get('expedition.max_cpu_pct');mb=state.get('expedition.min_battery_pct')
-        d.text((118,201),f"MAX T {mt:.1f}C" if isinstance(mt,(int,float)) else 'MAX T --',font=f['small'],fill=t.c('warn'))
-        d.text((248,201),f"MAX CPU {mc:.0f}%" if isinstance(mc,(int,float)) else 'MAX CPU --',font=f['small'],fill=t.c('text'))
-        d.text((382,201),f"MIN B {mb:.0f}%" if isinstance(mb,(int,float)) else 'MIN B --',font=f['small'],fill=t.c('info'))
-        status='RECOVERED AFTER RESTART' if state.get('expedition.recovered') else 'LIVE CHECKPOINTING / CRASH RECOVERY ARMED'
-        d.text((18,232),status,font=f['tiny'],fill=t.c('secondary'))
-        d.text((18,249),'Route + AP details available through local expedition API.',font=f['tiny'],fill=t.c('dim'))
+        d.text((112,199),f"MAX T {mt:.1f}C" if isinstance(mt,(int,float)) else 'MAX T --',font=f['small'],fill=t.c('warn'))
+        d.text((235,199),f"CPU {mc:.0f}%" if isinstance(mc,(int,float)) else 'CPU --',font=f['small'],fill=t.c('text'))
+        d.text((335,199),f"MIN BAT {mb:.0f}%" if isinstance(mb,(int,float)) else 'MIN BAT --',font=f['small'],fill=t.c('info'))
+        divider(d,18,222,462,t)
+        status='RECOVERED AFTER RESTART' if state.get('expedition.recovered') else ('LIVE CHECKPOINTING · RECOVERY ARMED' if active else 'READY FOR NEXT FIELD SESSION')
+        d.text((18,232),status,font=f['tiny'],fill=t.c('secondary') if active else t.c('dim'))
+        d.text((18,250),'Archive/replay depth belongs in Expedition history, not this glance page.',font=f['micro'],fill=t.c('dim'))
 
     def beast(self,d,state,ui):
         t=ui.theme;f=ui.fonts
