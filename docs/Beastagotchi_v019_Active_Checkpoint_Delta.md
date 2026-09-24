@@ -444,3 +444,73 @@ Native <-> Theme Manager <-> Beast ownership switching. This token work was chos
 because it improves the long-term shared architecture without perturbing the
 screen that still needs human physical acceptance.
 
+## Plugin / Dependency / Capability catalog milestone — 2026-09-24
+
+The user's stock-plugin thought experiment was promoted into a durable platform
+architecture rather than left as a future "plugin menu" idea.
+
+Reviewed upstream reference:
+- `jayofelony/pwnagotchi`
+- branch `noai`
+- commit `93dda381ef11538e4ec03fd130abad3ceeea7a4c`
+
+Current upstream facts preserved:
+- 20 functional plugin source files are bundled under
+  `pwnagotchi/plugins/default/`;
+- `example.py` is developer/reference material;
+- `gps_listener`, `pwndroid` and `ups_hat_c` remain stock-known/configured
+  names but are not bundled in that directory at the reviewed commit;
+- the upstream defaults currently enable auto_backup, auto-update, fix_services,
+  grid and webcfg while most hardware/credential-specific plugins remain opt-in.
+
+Approved architecture:
+- Plugin Manager evolves into a Plugin & Capability Center;
+- all managed component classes converge on PROVIDES / REQUIRES / OPTIONAL /
+  CONFLICTS / USED BY vocabulary;
+- abstract capabilities are preferred over named providers;
+- overlapping providers are cataloged/arbitrated instead of creating duplicate
+  canonical truth;
+- missing requirements are classified into automatic-safe, confirmed
+  transactional, guided, provider-choice or unsupported remediation;
+- data-egress and credential-presence metadata are first-class;
+- the same resolver model extends to Packs, Hardware, Experiences, Apps and
+  Services;
+- Beast Doctor/Explain will consume the dependency graph.
+
+Reference-build package policy:
+- maintain a complete versioned **superset BOM** for the user's Pi 4 build;
+- do not bulk-install that superset;
+- actual installed/runtime software remains the dependency closure of selected
+  capabilities/hardware;
+- optional services remain inactive when their feature is not selected.
+
+Implemented in this block:
+- expanded `PluginIntegrationEngine` metadata for the Jayofelony stock-known
+  plugin family;
+- role, canonical namespaces, provides, requires, provider group, data-egress,
+  credential-required and hardware-specific fields;
+- explicit `catalog_only` requirements state;
+- dependency/remediation executor remains disabled;
+- new automated tests prevent catalog metadata from being mistaken for provider
+  selection or dependency mutation.
+
+New specifications:
+- `docs/Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
+- `docs/Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
+
+Source/CI evidence for the code-bearing checkpoint:
+- **351 tests passed in 7.17s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35957950912`
+
+This is source/CI validation only. No packages/services were installed on the
+physical Pi, no plugin configuration was changed and no new physical TFT
+acceptance is claimed.
+
+The physical v0.19 UX gate remains ahead of any dependency installer. Safe next
+work may continue with side-effect-free requirement modeling/probes, semantic
+render metadata and Doctor/Explain, but package/service mutation requires a later
+explicit transactional executor.
+
