@@ -72,12 +72,12 @@ The sample command gathers one-second objective evidence while the UI is being u
 
 The session records, when available:
 
-- canonical Core state snapshots;
+- privacy-curated Core state snapshots containing only physical/runtime acceptance fields;
 - Core health;
-- platform bundle;
 - display ownership/conflict state;
 - installed touch calibration;
 - component versions;
+- SHA-256 fingerprint of the Pwnagotchi config rather than the raw config;
 - selected installed-file SHA-256 fingerprints;
 - QR renderer availability/backend;
 - real Lineage Capsule export and QR frame count;
@@ -153,6 +153,17 @@ The timestamped working session remains under:
     /var/lib/beastagotchi/acceptance/v019/
 
 The bundle is intended to be uploaded back into the Beastagotchi development conversation for analysis.
+
+The automated collector deliberately excludes raw Pwnagotchi config, whole Core
+state, full platform bundle and raw Pwnagotchi journal because those can contain
+credentials, network identifiers, captures or precise location.
+
+Framebuffer screenshots are different: they preserve what was physically visible
+on the TFT at capture time. If the user captures a Networks/Map/other sensitive
+screen, the PNG can naturally contain that visible information. Treat physical
+acceptance archives as **private diagnostic evidence** unless they have been
+reviewed/sanitized for publication.
+
 
 ## QR dependency rule
 
