@@ -788,3 +788,37 @@ Source validation at the first complete implementation:
 The next work item is real target execution, not more abstract preparation of
 this same gate.
 
+## Studio Capsule Workshop exact-share contract — 2026-09-24
+
+Durable product rule:
+Capsule sharing should expose the **exact payload before transport**, not merely a
+friendly summary. The owner must be able to see what the QR actually represents.
+
+The first Beast Studio Capsule Workshop now implements that rule for Lineage
+Capsules:
+- choose a persistent roster creature;
+- explicitly choose whether to include name, curated appearance and achievement
+  IDs;
+- render the exact Capsule envelope JSON;
+- render the exact BCQ1 frame locally;
+- navigate frames manually;
+- keep integrity/authenticity wording explicit;
+- keep the privacy exclusions visible.
+
+Durable security rule:
+the Workshop remains paired-token protected and local-first. QR generation uses
+the Beast-owned renderer path and never sends Capsule material to an external QR
+service/CDN.
+
+Durable mutation rule:
+the current Workshop is **export/exact-preview only**. Building or viewing a
+Capsule must not create a creature, alter ancestry, award progression, publish
+Global data, or silently import remote lineage.
+
+Source gate for this implementation:
+- commit 9ce74f318e7830c5134d9aa94dda10a9a4c81dca;
+- Actions run 35979568253 (#367);
+- 406 tests + compile + shell + gallery + Pi source artifact green.
+
+Receive/import remains a later separately designed gate.
+
