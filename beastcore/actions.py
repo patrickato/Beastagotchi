@@ -20,6 +20,7 @@ from .roster import BeastRoster, BeastRosterError
 from .global_sync import GlobalProfileSync, GlobalPublishPolicyError, clean_policy
 from .memories import BeastMemoryEngine
 from .owner_mode import OwnerModeManager
+from .provider_preferences import ProviderPreferenceManager
 
 
 class ActionBroker:
@@ -30,7 +31,7 @@ class ActionBroker:
     Network/API exposure is a separate security decision.
     """
 
-    def __init__(self, state, store, events, *, plugin_broker: PluginBroker | None = None, service_broker: ServiceBroker | None = None, container_broker: ContainerBroker | None = None, owner_mode: OwnerModeManager | None = None) -> None:
+    def __init__(self, state, store, events, *, plugin_broker: PluginBroker | None = None, service_broker: ServiceBroker | None = None, container_broker: ContainerBroker | None = None, owner_mode: OwnerModeManager | None = None, provider_preferences: ProviderPreferenceManager | None = None) -> None:
         self.state = state
         self.store = store
         self.events = events
@@ -50,6 +51,7 @@ class ActionBroker:
         self.global_sync = GlobalProfileSync(state,store,self.roster)
         self.memories = BeastMemoryEngine(state,store,self.roster)
         self.owner_mode = owner_mode or OwnerModeManager()
+        self.provider_preferences = provider_preferences or ProviderPreferenceManager()
 
     def _plugin_plan(self, name: str, enabled: bool, *, owner_override: bool, expert_mode: bool) -> dict[str, Any]:
         try:
@@ -111,6 +113,54 @@ class ActionBroker:
                     "Unsupported changes may reduce compatibility or rollback guarantees and will be marked as customized when an override is used.",
                 ],
                 "blockers": [] if allowed else ["active administrator session required"],
+            }
+        if action in {"provider.preference_set", "provider.preference_clear"}:
+            capability = str(payload.get("capability") or "").strip()
+            provider = str(payload.get("provider") or "").strip()
+            session = self.operator_sessions.current()
+            level = str(session.get("level") or "observer")
+            authorized = bool(session.get("active")) and level in {"operator", "maintainer", "administrator"}
+            blockers = []
+            if not capability:
+                blockers.append("missing capability")
+            if action == "provider.preference_set" and not provider:
+                blockers.append("missing provider")
+            try:
+                if capability:
+                    ProviderPreferenceManager._clean_token(capability, "capability")
+                if action == "provider.preference_set" and provider:
+                    ProviderPreferenceManager._clean_token(provider, "provider")
+            except ValueError as exc:
+                blockers.append(str(exc))
+            if not authorized:
+                blockers.append("active operator session required")
+            decisions = self.state.get("plugins.provider_decisions", {}) or {}
+            decision = decisions.get(capability.lower().replace(" ", "_")) if isinstance(decisions, dict) else None
+            candidates = [
+                str(row.get("provider"))
+                for row in (decision.get("candidates") or [])
+                if isinstance(row, dict) and row.get("provider")
+            ] if isinstance(decision, dict) else []
+            warnings = []
+            if action == "provider.preference_set" and provider and provider not in candidates:
+                warnings.append("provider is not currently a ready/known candidate; preference will remain dormant until it becomes available")
+            if action == "provider.preference_set":
+                warnings.append("This changes provider policy only; it does not enable a plugin, start a service, switch hardware ownership, or perform failover.")
+            else:
+                warnings.append("Clearing returns the capability to automatic provider policy; it does not immediately mutate hardware or services.")
+            return {
+                "allowed": not blockers,
+                "operation": action,
+                "capability": capability,
+                "provider": provider if action == "provider.preference_set" else None,
+                "current": self.provider_preferences.snapshot(),
+                "current_decision": decision,
+                "known_candidates": candidates,
+                "requires_level": "operator",
+                "selection_mutation_enabled": False,
+                "automatic_failover_enabled": False,
+                "warnings": warnings,
+                "blockers": blockers,
             }
         if action == "service.restart":
             return self.service_broker.plan_restart(str(payload.get("unit") or ""))
@@ -282,6 +332,31 @@ class ActionBroker:
                 self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
             elif action == "owner.expert_mode_get":
                 result = {"ok": True, "state": self.owner_mode.snapshot()}
+            elif action == "provider.preference_set":
+                if not plan.get("allowed"):
+                    raise ValueError("; ".join(plan.get("blockers") or ["provider preference change blocked"]))
+                result = {
+                    "ok": True,
+                    "preferences": self.provider_preferences.set(
+                        str(requested.get("capability") or ""),
+                        str(requested.get("provider") or ""),
+                        actor=actor,
+                    ),
+                    "provider_switched": False,
+                }
+                self.state.update_many("provider_preferences", self.provider_preferences.state_patch(), priority=98)
+            elif action == "provider.preference_clear":
+                if not plan.get("allowed"):
+                    raise ValueError("; ".join(plan.get("blockers") or ["provider preference clear blocked"]))
+                result = {
+                    "ok": True,
+                    "preferences": self.provider_preferences.clear(
+                        str(requested.get("capability") or ""),
+                        actor=actor,
+                    ),
+                    "provider_switched": False,
+                }
+                self.state.update_many("provider_preferences", self.provider_preferences.state_patch(), priority=98)
             elif action == "operator.authorize":
                 result=self.operator_sessions.authorize(str(requested.get("level") or ""),int(requested.get("duration_sec") or 900),actor=actor)
             elif action == "operator.revoke":
@@ -430,7 +505,7 @@ class ActionBroker:
             "finished_at": finished,
             "actor": str(actor),
             "action": action,
-            "target": str(requested.get("name") or requested.get("unit") or requested.get("target") or requested.get("id") or ""),
+            "target": str(requested.get("name") or requested.get("unit") or requested.get("target") or requested.get("id") or requested.get("capability") or ""),
             "status": status,
             "request": requested,
             "plan": plan,
@@ -441,6 +516,20 @@ class ActionBroker:
         if status == "success" and action == "owner.expert_mode_set":
             mode = self.owner_mode.snapshot()
             mev = self.events.publish("owner.expert_mode.changed", "owner_mode", {"enabled": bool(mode.get("expert_mode_enabled")), "support_state": mode.get("support_state")}, "warning" if mode.get("expert_mode_enabled") else "info")
+            self.store.add_event(mev)
+        elif status == "success" and action in {"provider.preference_set", "provider.preference_clear"}:
+            pref = self.provider_preferences.snapshot()
+            mev = self.events.publish(
+                "provider.preference.changed",
+                "provider_preferences",
+                {
+                    "capability": str(requested.get("capability") or ""),
+                    "provider": pref.get("values", {}).get(str(requested.get("capability") or "")),
+                    "operation": action,
+                    "provider_switched": False,
+                },
+                "info",
+            )
             self.store.add_event(mev)
         elif status == "success" and action == "plugin.toggle" and bool((result.get("plan") or {}).get("owner_override_executed")):
             mev = self.events.publish("owner.override.used", "owner_mode", {"action": action, "target": row["target"], "policy_blockers": list((result.get("plan") or {}).get("policy_blockers") or [])}, "warning")
