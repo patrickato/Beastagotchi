@@ -24,6 +24,7 @@ from .expeditions import ExpeditionEngine
 from .channel_history import ChannelActivityEngine
 from .telemetry import TelemetryCatalog
 from .plugin_integration import PluginIntegrationEngine
+from .dependency_resolver import DependencyCapabilityResolver
 from .template_tokens import TemplateTokenRegistry
 from .records import RecordsEngine
 from .overview import OverviewEngine
@@ -57,7 +58,8 @@ class BeastCore:
         self.store = Store(db_path)
         self.channel_history = ChannelActivityEngine(self.state)
         self.telemetry = TelemetryCatalog(self.state)
-        self.plugin_integration = PluginIntegrationEngine(self.state)
+        self.dependencies = DependencyCapabilityResolver(self.state)
+        self.plugin_integration = PluginIntegrationEngine(self.state, resolver=self.dependencies)
         self.template_tokens = TemplateTokenRegistry(self.state)
         self.api = LocalAPI(self.state, self.events, self.store, host, port,
                             channel_history=self.channel_history, telemetry=self.telemetry)
@@ -90,7 +92,7 @@ class BeastCore:
         self.personality = PersonalityEngine(self.state)
         self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
-        self.packs = PackRegistryEngine(self.state)
+        self.packs = PackRegistryEngine(self.state, resolver=self.dependencies)
         self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
