@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **343 passing tests** plus Python compile/shell validation.
+preserved source gate is **351 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -114,7 +114,7 @@ Implemented now:
 
 Next:
 - keep Gate 1 visual acceptance ahead of a new backend detour;
-- add canonical live-token and semantic render-layer foundations in bounded blocks;
+- canonical live-token foundation is implemented; add semantic render-layer metadata in a bounded block;
 - add Beast-native Doctor/Explain and improve Depot human workflow using the 3.0 audit;
 - validate stock/Jayofelony release/acquire semantics;
 - validate Korrie71 Theme Manager release/acquire semantics;
