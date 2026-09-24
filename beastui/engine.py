@@ -1198,13 +1198,49 @@ class BeastUI:
         if page_id=='dashboard':
             row=self._dashboard_widget_at(x,y);return str((row or {}).get('key') or '') or None
         if page_id=='system':
-            zones=[((8,42,126,98),'health.core.state'),((132,42,238,98),'system.temp.cpu_c'),((244,42,350,98),'system.cpu.total'),((356,42,472,98),'system.memory.used_pct')]
+            # Match the actual v0.19 System header geometry. These used to
+            # point at pre-redesign metric boxes, which made inspector taps
+            # report the wrong source after the visual hierarchy changed.
+            zones=[
+                ((8,43,112,105),'health.core.state'),
+                ((113,43,175,105),'system.temp.cpu_c'),
+                ((176,43,235,105),'system.cpu.total'),
+                ((236,43,294,105),'system.memory.used_pct'),
+                ((302,43,472,105),'governor.mode'),
+            ]
         elif page_id=='captures':
-            zones=[((8,42,148,98),'captures.total'),((156,42,306,98),'pwnagotchi.handshakes'),((314,42,472,98),'wifi.handshake_ap_count')]
+            zones=[
+                ((8,43,214,111),'captures.total'),
+                ((222,43,347,111),'pwnagotchi.handshakes'),
+                ((348,43,472,111),'wifi.handshake_ap_count'),
+            ]
         elif page_id=='spectrum':
-            zones=[((246,194,356,264),'radio.primary.channel'),((364,194,472,264),'radio.primary.band'),((8,194,238,264),'wifi.ap_count')]
+            zones=[
+                ((8,43,123,91),'radio.primary.channel'),
+                ((124,43,239,91),'radio.primary.band'),
+                ((356,43,472,91),'wifi.ap_count'),
+            ]
         elif page_id=='expedition':
-            zones=[((8,113,157,181),'expedition.distance_m'),((164,113,313,181),'expedition.route_points'),((320,113,472,181),'expedition.ap_unique')]
+            zones=[
+                ((8,107,123,163),'expedition.distance_m'),
+                ((124,107,239,163),'expedition.route_points'),
+                ((240,107,355,163),'expedition.ap_unique'),
+                ((356,107,472,163),'expedition.captures_delta'),
+            ]
+        elif page_id=='beast':
+            zones=[
+                ((218,43,472,136),'progression.level'),
+                ((230,145,309,194),'pwnagotchi.mood'),
+                ((310,145,389,194),'progression.aura'),
+                ((390,145,472,194),'context.mode.effective'),
+                ((230,203,314,250),'progression.discovery.beast_unique_aps'),
+                ((315,203,389,250),'progression.discovery.device_first_witnessed'),
+                ((390,203,472,250),'progression.achievements.count'),
+            ]
+        elif page_id=='networks':
+            zones=[
+                ((8,43,123,91),'wifi.ap_count'),
+            ]
         else:
             zones=[]
         for box,key in zones:
