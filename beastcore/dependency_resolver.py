@@ -262,10 +262,23 @@ class DependencyCapabilityResolver:
         native = self.native_providers()
         if req in native:
             return self._result(requirement, "capability", "satisfied", remediation="none", providers=native[req], optional=optional)
-        if req in self._capability_names():
+        caps = self._capability_names()
+        aliases = {"rtl_sdr": "sdr", "gnss": "gps"}
+        cap_name = aliases.get(req, req)
+        if cap_name in caps:
             return self._result(
                 requirement, "capability", "satisfied", remediation="none",
-                providers=[f"native:capability:{req}"], optional=optional,
+                providers=[f"native:capability:{cap_name}"], optional=optional,
+            )
+        known_hardware_caps = {
+            "gps", "sdr", "rtl_sdr", "bluetooth", "wifi", "ethernet",
+            "keyboard", "mouse", "display", "i2c",
+        }
+        if self.state.get("capabilities.present") is not None and req in known_hardware_caps:
+            return self._result(
+                requirement, "hardware", "hardware_absent", remediation="guided",
+                detail=f"required hardware capability {requirement} is not detected",
+                evidence={"capabilities_present": sorted(caps)}, optional=optional,
             )
 
         if req.endswith(".service"):
