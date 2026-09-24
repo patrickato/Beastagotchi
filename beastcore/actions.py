@@ -51,10 +51,44 @@ class ActionBroker:
         self.memories = BeastMemoryEngine(state,store,self.roster)
         self.owner_mode = owner_mode or OwnerModeManager()
 
+    def _plugin_plan(self, name: str, enabled: bool, *, owner_override: bool, expert_mode: bool) -> dict[str, Any]:
+        try:
+            return self.plugin_broker.plan_toggle(
+                name,
+                enabled,
+                owner_override=owner_override,
+                expert_mode=expert_mode,
+            )
+        except TypeError as exc:
+            # Preserve the older PluginBroker/test-double call contract for normal
+            # managed operations.  An override must never silently fall back to a
+            # broker that does not understand override semantics.
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            if owner_override:
+                raise PluginBrokerError("active plugin broker does not support owner override") from exc
+            return self.plugin_broker.plan_toggle(name, enabled)
+
+    def _plugin_toggle(self, name: str, enabled: bool, *, owner_override: bool, expert_mode: bool) -> dict[str, Any]:
+        try:
+            return self.plugin_broker.toggle(
+                name,
+                enabled,
+                restart=True,
+                owner_override=owner_override,
+                expert_mode=expert_mode,
+            )
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            if owner_override:
+                raise PluginBrokerError("active plugin broker does not support owner override") from exc
+            return self.plugin_broker.toggle(name, enabled, restart=True)
+
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         if action == "plugin.toggle":
             expert = bool(self.owner_mode.snapshot().get("expert_mode_enabled"))
-            return self.plugin_broker.plan_toggle(
+            return self._plugin_plan(
                 str(payload.get("name") or ""),
                 bool(payload.get("enabled")),
                 owner_override=bool(payload.get("owner_override", False)),
@@ -352,10 +386,9 @@ class ActionBroker:
                 result={"ok":True,"policy":policy,"snapshot":self.global_sync.build_snapshot(policy),"state":patch,"network_io_performed":False}
             elif action == "plugin.toggle":
                 expert = bool(self.owner_mode.snapshot().get("expert_mode_enabled"))
-                result = self.plugin_broker.toggle(
+                result = self._plugin_toggle(
                     str(requested.get("name") or ""),
                     bool(requested.get("enabled")),
-                    restart=True,
                     owner_override=bool(requested.get("owner_override", False)),
                     expert_mode=expert,
                 )
