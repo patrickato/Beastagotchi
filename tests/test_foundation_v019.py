@@ -150,6 +150,12 @@ def test_platform_bundle_exposes_resource_and_presentation_truth():
         "presentation.theme_manager.enabled": False,
         "presentation.conflict_count": 0,
         "presentation.executor_enabled": False,
+        "plugins.requirements_summary": {"selected_component_count": 3, "active_technical_blocker_count": 1},
+        "packs.requirements_summary": {"selected_component_count": 2, "active_policy_blocker_count": 1},
+        "owner.expert_mode.enabled": True,
+        "owner.customized": True,
+        "owner.override_count": 2,
+        "owner.support_state": "customized",
     })
     api = LocalAPI(state, object(), Store())
     bundle = api.platform_bundle()
@@ -161,6 +167,11 @@ def test_platform_bundle_exposes_resource_and_presentation_truth():
     assert bundle["presentation"]["active_owner"] == "beast"
     assert bundle["presentation"]["theme_manager_installed"] is True
     assert bundle["presentation"]["executor_enabled"] is False
+    assert bundle["dependencies"]["execution_enabled"] is False
+    assert bundle["dependencies"]["plugins"]["selected_component_count"] == 3
+    assert bundle["dependencies"]["packs"]["active_policy_blocker_count"] == 1
+    assert bundle["owner"]["expert_mode_enabled"] is True
+    assert bundle["owner"]["support_state"] == "customized"
     assert bundle["incidents"]["items"][0]["status"] == "resolved"
 
 
