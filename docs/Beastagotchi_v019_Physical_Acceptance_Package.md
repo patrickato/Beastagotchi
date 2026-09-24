@@ -29,12 +29,15 @@ GitHub Actions now emits a second v0.19 artifact named:
     v019-pi-acceptance-source
 
 It contains:
-- a `git archive` tar.gz of the exact tested branch head;
-- a SHA-256 file for that tarball;
-- `COMMIT_SHA.txt` with the full source commit.
+- a `git archive` tar.gz of the real PR/source branch head;
+- a portable basename-only SHA-256 file for that tarball;
+- `SOURCE_COMMIT_SHA.txt` with the source branch commit archived;
+- `CI_TESTED_SHA.txt` with the GitHub Actions commit tested by the workflow.
 
-This is the preferred source package for the physical gate because the Pi can be
-tested against the exact commit that produced the green CI result and gallery.
+For pull-request workflows GitHub may test a synthetic merge commit. Beast
+therefore records the source SHA and CI-tested SHA separately instead of
+pretending they are always identical. The archive is always generated from the
+real PR/source head named in `SOURCE_COMMIT_SHA.txt`.
 
 The artifact does not auto-install or auto-claim the TFT. After verifying the
 archive hash, extract it and follow the normal staged Core/UI installation path.
