@@ -36,3 +36,17 @@ jobs:
 
       - name: Shell syntax
         run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh
+
+
+      - name: Render sanitized real-state UX gallery
+        run: |
+          mkdir -p artifacts/v019-real-state-gallery
+          PYTHONPATH=. python tools/render_v019_ux_gallery.py             --root beastui             --state tests/fixtures/v018_target_sanitized_state.json             --out artifacts/v019-real-state-gallery             --all-themes
+
+      - name: Upload v0.19 real-state UX gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-real-state-ux-gallery
+          path: artifacts/v019-real-state-gallery
+          if-no-files-found: error
+          retention-days: 30
