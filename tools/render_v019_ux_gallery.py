@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from beastui.engine import BeastUI
+from beastcore.capsules import BeastCapsuleCodec
 
 
 THEMES = (
@@ -33,7 +34,74 @@ PLATFORM_OVERLAYS = (
     "incidents",
     "connectivity",
 )
-INTERACTION_SURFACES = ("control_center", "apps")
+INTERACTION_SURFACES = ("control_center", "apps", "capsule_share")
+
+
+def _gallery_capsule(state: dict) -> dict:
+    """Build a clearly non-importable visual proof from the sanitized capture.
+
+    This is not a local roster export and is labeled PREVIEW in both payload and
+    UI. It exists only so CI can validate a real QR matrix/layout without
+    inventing telemetry or pretending the gallery owns a creature record.
+    """
+    source = {
+        "level": state.get("progression.level"),
+        "stage": state.get("progression.stage"),
+        "lineage": state.get("progression.beast.lineage") or "sanitized",
+        "name": state.get("progression.beast.name") or "SANITIZED BEAST",
+    }
+    sid = hashlib.sha256(json.dumps(source, sort_keys=True).encode()).hexdigest()[:20]
+    payload = {
+        "format": "lineage_v1",
+        "preview": True,
+        "creature_id": "creature-gallery-" + sid,
+        "name": str(source["name"])[:64],
+        "kind": "beast",
+        "lineage": str(source["lineage"])[:80],
+        "generation": int(state.get("progression.beast.generation") or 0),
+        "level": int(state.get("progression.level") or 1),
+        "stage": str(state.get("progression.stage") or "--")[:64],
+        "legend": False,
+        "parents": [],
+        "achievement_count": int(state.get("progression.achievements.count") or 0),
+        "gallery_source": "sanitized_real_state_fixture",
+    }
+    envelope = BeastCapsuleCodec.build(
+        "lineage",
+        payload,
+        created_at=0.0,
+        capsule_id="capsule-gallery-preview-" + sid,
+        producer={"name": "Beastagotchi", "format": "gallery_preview"},
+        privacy={
+            "local_ids_included": False,
+            "credentials_included": False,
+            "captures_included": False,
+            "network_history_included": False,
+            "exact_location_included": False,
+            "logs_included": False,
+            "name_included": True,
+            "gallery_preview": True,
+        },
+    )
+    encoded = BeastCapsuleCodec.encode(envelope)
+    frames = BeastCapsuleCodec.qr_frames(encoded, max_frame_chars=220)
+    return {
+        "ok": True,
+        "capsule_type": "lineage",
+        "envelope": envelope,
+        "encoded": encoded,
+        "encoded_chars": len(encoded),
+        "qr": {
+            "transport": "animated_qr_text_frames",
+            "frame_count": len(frames),
+            "max_frame_chars": 220,
+            "frames": frames,
+            "renderer_required": True,
+            "renderer_bundled": False,
+        },
+        "import_performed": False,
+        "gallery_preview": True,
+    }
 
 
 def _sha256(path: str | Path | None) -> str | None:
@@ -65,6 +133,10 @@ def render(root: Path, out: Path, theme: str, page: str, state: dict, *, histori
         ui.drawer = True
     elif surface == "apps":
         ui.app_launcher = True
+    elif surface == "capsule_share":
+        ui.capsule_share_overlay = True
+        ui.capsule_share = _gallery_capsule(state)
+        ui.capsule_frame_idx = 0
     elif surface in PLATFORM_OVERLAYS:
         ui.platform_overlay = surface
         ui.platform_offset = 0
@@ -118,6 +190,12 @@ def main() -> int:
         "pages": list(PAGES),
         "platform_overlays": list(PLATFORM_OVERLAYS),
         "interaction_surfaces": list(INTERACTION_SURFACES),
+        "capsule_gallery_preview": {
+            "derived_from_sanitized_state": True,
+            "not_a_roster_export": True,
+            "importable": False,
+            "qr_backend_required_for_render": True,
+        },
         "frames": [],
     }
 
