@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .plugin_broker import DISPLAY_OWNERS, PROTECTED_PLUGINS
+from .theme_manager_interop import ThemeManagerProbe
 
 
 # These bindings describe where useful output from common Pwnagotchi plugins is
@@ -37,6 +38,7 @@ class PluginIntegrationEngine:
 
     def __init__(self, state) -> None:
         self.state = state
+        self.theme_manager_probe = ThemeManagerProbe()
 
     @staticmethod
     def _binding(name: str) -> dict[str, Any]:
@@ -53,6 +55,7 @@ class PluginIntegrationEngine:
         rows: list[dict[str, Any]] = []
         enabled = integrated = display_isolated = 0
         enabled_display_conflicts: list[str] = []
+        theme_manager_interop: dict[str, Any] | None = None
         if isinstance(raw, list):
             for item in raw:
                 if not isinstance(item, dict):
@@ -74,6 +77,10 @@ class PluginIntegrationEngine:
                 display_owner = normalized in {x.replace("-", "_") for x in DISPLAY_OWNERS}
                 if display_owner and is_enabled:
                     enabled_display_conflicts.append(name)
+                interop = None
+                if normalized == "theme_manager":
+                    interop = self.theme_manager_probe.probe(item.get("path"))
+                    theme_manager_interop = interop
                 rows.append({
                     **item,
                     "role": bind.get("role", "plugin"),
@@ -85,6 +92,7 @@ class PluginIntegrationEngine:
                     "legacy_display_owner": display_owner,
                     "toggle_capable": bool(item.get("configured") or item.get("installed_custom")),
                     "restart_required": None,  # learned registry can make this plugin-specific later
+                    **({"interop": interop} if interop is not None else {}),
                 })
         rows.sort(key=lambda r: (not bool(r.get("enabled")), str(r.get("name", "")).lower()))
         return {
@@ -96,4 +104,9 @@ class PluginIntegrationEngine:
             "plugins.display_conflicts_enabled": enabled_display_conflicts,
             "plugins.display_conflict_count": len(enabled_display_conflicts),
             "plugins.integration_policy": "canonical_data_first",
+            "plugins.theme_manager.inspectable": bool(theme_manager_interop and theme_manager_interop.get("inspectable")),
+            "plugins.theme_manager.version": theme_manager_interop.get("version") if theme_manager_interop else None,
+            "plugins.theme_manager.capabilities": list(theme_manager_interop.get("capabilities") or []) if theme_manager_interop else [],
+            "plugins.theme_manager.managed_handoff_supported": bool(theme_manager_interop and theme_manager_interop.get("managed_handoff_supported")),
+            "plugins.theme_manager.compatibility_handoff_evidence": bool(theme_manager_interop and theme_manager_interop.get("compatibility_handoff_evidence")),
         }
