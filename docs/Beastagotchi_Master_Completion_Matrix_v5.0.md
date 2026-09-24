@@ -208,7 +208,10 @@ approved scope.
 - [x] separate offline Capsule namespace + pseudonymous creature/parent IDs (no raw roster IDs)
 - [x] Lineage Capsule achievement IDs opt-in; capture/network/location/log/secret fields excluded
 - [x] bounded multi-frame QR-ready text framing/reassembly with per-frame corruption detection
-- [ ] actual QR bitmap renderer / animated TFT sharing UX
+- [~] actual QR/TFT share path: optional real QR renderer + Capsule Share overlay + CI/gallery proof implemented; target-Pi dependency packaging and physical scan acceptance pending
+- [x] QR transport layer protected from theme scanlines/effects
+- [x] representative 480×320 off-screen QR density gate targets >=3 px/module
+- [ ] automatic animated frame cycling / receiver progress UX
 - [ ] QR/camera scan + import preview UX
 - [ ] signed Capsule authenticity / creature identity proof
 - [ ] remote-lineage storage distinct from locally owned Beasts
@@ -232,7 +235,7 @@ approved scope.
 - [ ] explicit opt-in Beast-to-Beast descriptor exchange
 - [~] Lineage Capsule exchange: export/encode/QR-frame foundation complete; receive/import remains non-mutating
 - [ ] Beast Card / PeerDex Capsule
-- [ ] actual QR render/scan transport
+- [~] actual QR render/scan transport: render side implemented/off-screen decoded; physical TFT scan + receive side pending
 - [ ] automatic nearby Lineage Capsule exchange after explicit user approval
 - [ ] local Beast + remote lineage synthesis path
 - [ ] later peer group/party/cooperative survey concepts
@@ -397,6 +400,9 @@ approved scope.
 - [x] Pack manifests support `extension_class`, `content_roles`, signal contracts, offline transports, Capsule types and Companion component declarations
 - [x] plugin/extension design rule: contribute facts/signals rather than directly awarding canonical achievements
 - [x] offline/sneakernet ecosystem direction: QR/file/USB/SD/NFC/Bluetooth/local/Beast-to-Beast transports share one Capsule contract
+- [x] Capsule Share Beast App overlay wired to real Beast Core Lineage export
+- [x] truthful QR dependency/unavailable behavior; no decorative fake QR fallback
+- [~] optional `qrcode` runtime classified in BOM; production packaging boundary pending
 - [~] plugin compatibility/dependency metadata coverage
 - [x] shared read-only DependencyCapabilityResolver used by Plugins + Beast Packs
 - [x] side-effect-free declared-requirement probes for capability/service/package/module/executable/path/config/credential presence
