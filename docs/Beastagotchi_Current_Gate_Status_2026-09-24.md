@@ -7,6 +7,7 @@ Authoritative detail remains in:
 - `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
 - `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
 - `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
+- `docs/Beastagotchi_Maturity_Architecture_Review_2026-09-24.md`
 
 ## How to read this
 
