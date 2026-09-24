@@ -24,6 +24,8 @@ from beastui.customization import (
     PALETTE_SLOTS, DEFAULT_CONTEXT_DECKS, MAX_DASHBOARD_WIDGETS,
 )
 from beastui.apps import AppRegistry
+from beastui.qr_render import draw_qr, qr_backend_status
+from PIL import Image, ImageDraw
 from .action_client import BeastActionClient
 from .library_files import LibraryFileManager, LibraryFileError
 from .update_policies import UpdatePolicyStore, UpdatePolicyError
@@ -45,7 +47,7 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 @media(max-width:1050px){body{overflow:auto}main{height:auto;grid-template-columns:1fr}.preview{order:-1;min-height:420px}.right{border-left:0;border-top:1px solid var(--edge)}aside{border-right:0;border-bottom:1px solid var(--edge)}.device{max-width:720px}}
 </style></head><body>
 <header><b>BEAST STUDIO</b><span class="sub">Live compositor • layered customization • transactional controls</span><span id="conn">CONNECTING</span></header>
-<main><aside><div class="nav"><button class="tab active" data-tab="visual">VISUAL</button><button class="tab" data-tab="dashboard">DASH</button><button class="tab" data-tab="decks">DECKS</button><button class="tab" data-tab="data">DATA</button><button class="tab" data-tab="plugins">PLUGINS</button><button class="tab" data-tab="packs">PACKS</button><button class="tab" data-tab="roster">ROSTER</button><button class="tab" data-tab="global">GLOBAL</button><button class="tab" data-tab="search">SEARCH</button><button class="tab" data-tab="ops">OPS</button></div>
+<main><aside><div class="nav"><button class="tab active" data-tab="visual">VISUAL</button><button class="tab" data-tab="dashboard">DASH</button><button class="tab" data-tab="decks">DECKS</button><button class="tab" data-tab="data">DATA</button><button class="tab" data-tab="plugins">PLUGINS</button><button class="tab" data-tab="packs">PACKS</button><button class="tab" data-tab="roster">ROSTER</button><button class="tab" data-tab="capsules">CAPSULES</button><button class="tab" data-tab="global">GLOBAL</button><button class="tab" data-tab="search">SEARCH</button><button class="tab" data-tab="ops">OPS</button></div>
 <section id="visual" class="section"><h3>VISUAL SYSTEM</h3><label>Theme</label><select id="theme"></select><label>Beast face</label><select id="faceProfile"></select><div class="mini">Built-in follows the active theme. Enabled Face Packs remain separate from personality/mood logic.</div><label>Face motion</label><select id="animationProfile"></select><div class="mini">Animation Packs add bounded declarative motion without video/frame decoding.</div><label>Preview page</label><select id="page"></select><label>Output proof</label><select id="previewOutput"></select><div id="previewOutputNote" class="mini">480×320 is the validated reference layout.</div><div id="themeOpts" class="group"></div><div class="group"><h3>PALETTE OVERRIDES</h3><div class="mini">Theme-native defaults remain underneath. Change only the semantic color slots you want.</div><div id="palette"></div></div><div class="group"><h3>DATA RENDERERS</h3><div id="renderers"></div></div></section>
 <section id="dashboard" class="section hidden"><h3>LIVE DASHBOARD COMPOSER</h3><div class="mini">Add, remove, drag, resize, overlap and hide real live instruments. The browser overlay and TFT share the same 12×8 grid; no fake data is introduced.</div><div class="group"><h3>PACK LAYOUT TEMPLATES</h3><div id="packBoardInfo" class="mini"></div><select id="layoutTemplate"></select><button id="importLayout" style="margin-top:7px">IMPORT TEMPLATE AS EDITABLE BOARD</button></div><label>Composition</label><select id="boardSelect"></select><div class="composeTools"><button id="newBoard">+ NEW BOARD</button><button id="deleteBoard">DELETE BOARD</button></div><label>Board name</label><input id="boardLabel" maxlength="22" placeholder="Main Dashboard"><div class="composeTools"><button id="addWidget">+ ADD INSTRUMENT</button><button id="focusDashboard">EDIT ON PREVIEW</button></div><div id="dashWidgets"></div></section>
 <section id="decks" class="section hidden"><h3>CONTEXT DECKS</h3><div class="mini">Curated launcher views keep a large app universe clean. ALL always remains available; a deck never hides capability from the system.</div><label>Edit deck</label><select id="deckSelect"></select><label>Deck label</label><input id="deckLabel" maxlength="18"><label><input id="deckActive" type="checkbox" style="width:auto"> Preferred deck</label><div id="deckApps" class="group"></div></section>
@@ -63,6 +65,22 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <div id="synthStatus" class="status">Choose two eligible Beasts.</div></div>
 <div class="group"><h3>HALL OF LEGENDS</h3><div class="mini">Level-100 creatures may be commemorated without forcing them to stay retired. Hall status is independent of active/resting state.</div><button id="hallRefresh">REFRESH HALL + ANCESTRY</button><div id="hallList"></div></div>
 <div class="group"><h3>ANCESTRY TREE</h3><div class="mini">Persistent parent/child relationships and mutation lineage. This textual tree foundation will later feed a dedicated visual family-tree renderer.</div><div id="ancestryTree" class="status"></div></div>
+</section>
+<section id="capsules" class="section hidden"><h3>CAPSULE WORKSHOP</h3>
+<div class="mini">Build an exact local preview of a privacy-curated Beast Capsule before sharing it. Export is read-only: this screen does not import, synthesize, publish, or mutate your roster.</div>
+<div class="group"><h3>LINEAGE CAPSULE</h3>
+<label>Creature</label><select id="capsuleBeast"></select>
+<label><input id="capsuleName" type="checkbox" style="width:auto" checked> Include chosen creature name</label>
+<label><input id="capsuleAppearance" type="checkbox" style="width:auto" checked> Include curated appearance traits</label>
+<label><input id="capsuleAchievements" type="checkbox" style="width:auto"> Include earned achievement IDs</label>
+<div class="mini">Achievement count can be present without IDs. Captures, credentials, exact location, logs, raw network history and local roster IDs are never part of the Lineage Capsule.</div>
+<button id="capsuleBuild" class="primary" style="margin-top:9px">BUILD EXACT SHARE PREVIEW</button>
+<div id="capsuleStatus" class="status">Nothing has been exported yet.</div></div>
+<div class="group"><h3>QR TRANSPORT</h3>
+<img id="capsuleQr" alt="Capsule QR frame" style="display:none;width:min(100%,420px);aspect-ratio:1/1;object-fit:contain;background:#fff;border:1px solid var(--edge);border-radius:8px">
+<div class="row" style="margin-top:8px"><button id="capsulePrev">← PREV FRAME</button><button id="capsuleNext">NEXT FRAME →</button></div>
+<div id="capsuleFrameStatus" class="status">Build a Capsule to generate QR-ready frames.</div></div>
+<div class="group"><h3>EXACT SHARE SNAPSHOT</h3><div class="mini">This is the exact Capsule envelope currently represented by the QR frames. If a field is not shown here, it is not in this export.</div><pre id="capsulePreview" class="status" style="max-height:420px;overflow:auto;white-space:pre-wrap"></pre></div>
 </section>
 <section id="global" class="section hidden"><h3>GLOBAL INTERACTION</h3>
 <div class="mini">Optional public/community layer. Local Beast data remains authoritative. No Global connector is configured in this milestone, so saving these settings performs no network upload.</div>
@@ -96,7 +114,7 @@ let schema=null,base=null,draft=null,undo=[],redo=[],timer=null,plugins=[],varia
 function clone(x){return JSON.parse(JSON.stringify(x))}function option(el,v,t){let o=document.createElement('option');o.value=v;o.textContent=t||v;el.appendChild(o)}function push(){undo.push(clone(draft));if(undo.length>60)undo.shift();redo=[]}
 async function jfetch(url,opt={}){opt.headers={...(opt.headers||{}),'X-Beast-Studio-Token':TOKEN};let r=await fetch(url,opt);if(!r.ok)throw Error(await r.text());return r.json()}
 function mutate(fn){push();fn();rebuild()}function queuePreview(){clearTimeout(timer);timer=setTimeout(preview,90)}
-function setTab(id){activeTab=id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));['visual','dashboard','decks','data','plugins','packs','roster','global','search','ops'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='plugins')loadPlugins();if(id==='packs')loadPacks();if(id==='roster')loadRoster();if(id==='global')loadGlobalProfile();if(id==='ops')loadOps();if(id==='dashboard'){draft.page='dashboard';draft.preview_board_id=boardEditorId;queuePreview();renderLayoutOverlay()}else renderLayoutOverlay()}
+function setTab(id){activeTab=id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));['visual','dashboard','decks','data','plugins','packs','roster','capsules','global','search','ops'].forEach(x=>$(x).classList.toggle('hidden',x!==id));if(id==='plugins')loadPlugins();if(id==='packs')loadPacks();if(id==='roster')loadRoster();if(id==='capsules')loadCapsuleWorkshop();if(id==='global')loadGlobalProfile();if(id==='ops')loadOps();if(id==='dashboard'){draft.page='dashboard';draft.preview_board_id=boardEditorId;queuePreview();renderLayoutOverlay()}else renderLayoutOverlay()}
 document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>setTab(x.dataset.tab));
 function rebuild(){
  $('theme').innerHTML='';schema.themes.forEach(x=>option($('theme'),x.id,x.label));$('theme').value=draft.theme;
