@@ -149,22 +149,54 @@ Reassembly:
 - reports missing frames;
 - verifies the reassembled BC1 Capsule.
 
-### What is not implemented yet
+### QR rendering / current validation boundary
 
-The current repository produces **QR-ready text frames**, not QR bitmap images.
+The repository now includes an **optional** Beast UI QR rendering adapter:
 
-No QR rendering dependency was added to the base system.
+`beastui/qr_render.py`
 
-The current API reports:
+It uses the lightweight Python `qrcode` backend when that module is available.
+The dependency is currently present in the **development/CI** requirement set so
+the 480×320 gallery can validate a real machine-readable matrix. It is **not yet
+silently installed into the protected Pwnagotchi runtime by `install_ui.sh`**.
 
-`renderer_bundled: false`
+Production behavior is truthful:
+- real Capsule + QR backend available -> render a real black/white QR;
+- Capsule unavailable -> show an explicit unavailable state;
+- QR backend unavailable -> say the renderer dependency is missing;
+- never substitute decorative QR-like art.
 
-A later rendering adapter can turn each text frame into an actual QR image and
-cycle them on the TFT/Studio. That should be benchmarked on the target Pi and
-should not add a permanent heavy dependency merely to display occasional
-Capsules.
+The first Capsule Share TFT surface is implemented in the Beast App launcher. It:
+- fetches a fresh real Lineage Capsule from Beast Core asynchronously;
+- shows creature identity/lineage/level/stage from that Capsule;
+- exposes frame count plus 48px+ PREV/CLOSE/NEXT controls;
+- labels unsigned Capsules **UNSIGNED · INTEGRITY ONLY**;
+- repeats the privacy boundary: no captures, GPS or credentials;
+- keeps QR transport above theme scanline/effect layers so decoration cannot
+  corrupt machine-readable modules.
 
-Camera/scanner ingestion is also future work.
+The CI gallery also renders one **GALLERY PREVIEW · NOT IMPORTABLE** Capsule
+derived only from the sanitized real-device fixture. The preview is explicitly
+marked in the payload and manifest and is not a local roster export.
+
+Source/off-screen validation proves:
+- real QR matrix generation;
+- a minimum 3 px/module target for the representative 206px QR box;
+- touch geometry at the reference resistive minimum;
+- frame navigation/close behavior;
+- gallery rendering;
+- protection from theme scanlines.
+
+During manual off-screen artifact review, the QR in the generated 480×320 PNG
+decoded back to its exact `BCQ1...` frame text. This is useful evidence, but it
+is **not** a physical TFT/phone-camera acceptance result.
+
+Still pending:
+- target-Pi dependency packaging decision;
+- physical TFT brightness/contrast/camera scan reliability;
+- automatic frame cycling/timing;
+- receiver progress/missing-frame UX;
+- camera/scanner ingestion.
 
 ## Local API
 
@@ -391,12 +423,15 @@ Do not bolt signatures on casually.
 
 ## Implementation next steps
 
-1. Add actual QR renderer as an optional lightweight adapter/Pack and benchmark
-   it on the physical Pi.
-2. Add Studio/TFT Capsule preview/share UI.
-3. Add scan/import preview without roster mutation.
-4. Define signed Capsule identity/authenticity v2.
-5. Add PeerDex Beast Card Capsule.
-6. Add Challenge Capsule.
-7. Define remote-lineage storage separately from local owned Beasts.
-8. Only then allow confirmed lineage import/synthesis semantics.
+1. Decide/package the optional `qrcode` runtime cleanly without turning the
+   protected Pwnagotchi environment into Beast's dependency dumping ground.
+2. Physically validate the Capsule Share surface on the 480×320 TFT with a real
+   phone/camera: readability, brightness, 3px-class modules and repeated scans.
+3. Tune manual vs automatic frame cycling from physical scan evidence.
+4. Add Capsule Workshop / exact-share preview in Beast Studio.
+5. Add scan/import preview without roster mutation.
+6. Define signed Capsule identity/authenticity v2.
+7. Add PeerDex Beast Card Capsule.
+8. Add Challenge Capsule.
+9. Define remote-lineage storage separately from local owned Beasts.
+10. Only then allow confirmed lineage import/synthesis semantics.
