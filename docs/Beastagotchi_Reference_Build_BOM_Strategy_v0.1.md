@@ -127,8 +127,18 @@ Current development/test requirements in `requirements-dev.txt` are:
 - numpy >= 1.26
 - pypdf >= 5
 - PyMuPDF >= 1.24
+- qrcode >= 8.0
 
 These must not automatically be treated as production-runtime requirements.
+
+Current special case:
+- `qrcode >= 8.0` is used by CI to validate the real Capsule Share QR renderer.
+  It is a candidate **optional runtime dependency** for capability
+  `transport.qr.render`, not yet an unconditional install into `/opt/.pwn`.
+  Beast should either package it in a Beast-owned runtime boundary or explicitly
+  present/install it through the dependency/capability workflow once that path
+  is ready.
+
 The BOM should distinguish:
 - runtime-required;
 - optional runtime;
