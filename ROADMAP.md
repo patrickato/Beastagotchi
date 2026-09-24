@@ -95,12 +95,20 @@ Implemented foundation:
 - technical-vs-policy blockers use Owner Sovereignty semantics;
 - sensitive plugin configuration exposes only presence, never credential values;
 - `GET /dependencies` and platform-bundle summaries expose read-only graph health;
-- requirement execution/provider selection are explicitly disabled;
-- reference architecture and BOM policy are documented.
+- read-only provider arbitration now distinguishes active native/preferred/selected
+  providers, alternates, available-but-unselected providers and choice-required
+  states without mutating upstream components;
+- configured-but-disabled plugins can remain valid alternates;
+- deterministic recommendation/fallback chains and human-readable reasons exist;
+- owner preference is modeled as a future explicit input, not silently invented;
+- automatic failover/provider mutation remain explicitly disabled;
+- reference architecture, arbitration policy and BOM policy are documented.
 
 Next:
-- provider arbitration/selection policy without mutating upstream components;
-- Plugin & Capability Center requirement/status/USED BY presentation;
+- persistent owner provider preference + transactional set/clear action, without
+  enabling automatic provider mutation;
+- provider health freshness/confidence and anti-flap hysteresis;
+- Plugin & Capability Center requirement/status/USED BY/provider presentation;
 - Beast Doctor/Explain integration;
 - build-specific BOM generator/export;
 - common resolver adoption by Experiences/Apps/Hardware Studio;
@@ -138,7 +146,7 @@ Implemented foundation:
 
 Next:
 - dedicated Beast Studio/TFT Expert Mode control + obvious indicator;
-- extend policy-vs-technical blocker semantics into the common Dependency &
+- policy-vs-technical blocker semantics now extend into the common Dependency &
   Capability Resolver;
 - reverse `used_by` impact in override confirmations;
 - unsupported plugin/source import;
