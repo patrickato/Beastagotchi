@@ -60,6 +60,11 @@ class BeastUI:
     APP_NAV_PREV=(12,224,154,274)
     APP_NAV_CLOSE=(162,224,318,274)
     APP_NAV_NEXT=(326,224,468,274)
+    CONTROL_APP_BOX=(352,40,468,88)
+    CONTROL_QUICK_BOXES=(
+        (16,96,236,174),(244,96,464,174),
+        (16,180,236,258),(244,180,464,258),
+    )
 
     def __init__(self,root='/opt/beast-ui',framebuffer='/dev/fb1',output=None,theme_id='classic', *, physical_size=None, display_mode='fit', display_resample='bilinear'):
         self.root=Path(root); self.output=output
@@ -805,11 +810,18 @@ class BeastUI:
                     self.touch_zones_overlay=not self.touch_zones_overlay; self.help_overlay=False
                 elif hit('help-close',(0,244,238,277),x,y,minimum=56):self.help_overlay=False
             elif self.drawer:
-                if x>=365 and 36<=y<=66:self.app_launcher=True;self.app_offset=0;self.drawer=False;self.dirty.set()
-                elif 46<=y<=100:self.theme_library=True; self.drawer=False
-                elif 101<=y<=155:self.visualizer_overlay=True; self.visualizer_offset=0; self.drawer=False
-                elif 156<=y<=210:self.achievements_overlay=True; self.drawer=False
-                elif 211<=y<=270:self.help_overlay=True; self.drawer=False
+                if self.CONTROL_APP_BOX[0]<=x<=self.CONTROL_APP_BOX[2] and self.CONTROL_APP_BOX[1]<=y<=self.CONTROL_APP_BOX[3]:
+                    self.app_launcher=True;self.app_offset=0;self.drawer=False;self.dirty.set()
+                else:
+                    opened=False
+                    for idx,box in enumerate(self.CONTROL_QUICK_BOXES):
+                        if box[0]<=x<=box[2] and box[1]<=y<=box[3]:
+                            if idx==0:self.theme_library=True;self.drawer=False
+                            elif idx==1:self.visualizer_overlay=True;self.visualizer_offset=0;self.drawer=False
+                            elif idx==2:self.achievements_overlay=True;self.drawer=False
+                            elif idx==3:self.help_overlay=True;self.drawer=False
+                            opened=True;break
+                    if opened:self.dirty.set()
             else:
                 _pid=self.pages.IDS[self.page]
                 if _pid=='recon' and hit('recon-main',(8,58,252,244),x,y,minimum=72):self.cycle_renderer('recon')
@@ -1092,19 +1104,29 @@ class BeastUI:
 
     def _drawer(self,d):
         if not self.drawer:return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,39,472,274),t,accent=t.c('secondary'),width=2)
-        d.text((18,41),'BEAST CONTROL CENTER',font=f['tiny'],fill=t.c('secondary'))
-        d.rounded_rectangle((382,38,464,64),radius=5,fill=t.c('panel2'),outline=t.c('accent'),width=1);d.text((405,47),'APPS',font=f['tiny'],fill=t.c('accent'))
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,38,472,274),t,accent=t.c('secondary'),width=2)
+
+        d.text((18,48),'BEAST CONTROL CENTER',font=f['medium'],fill=t.c('secondary'))
+        d.text((18,68),f'{self.theme.label[:28]}',font=f['tiny'],fill=t.c('dim'))
+
+        box=self.CONTROL_APP_BOX
+        d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=t.c('accent'),width=2)
+        d.text((385,57),'APPS',font=f['small'],fill=t.c('accent'))
+
         rows=[
-            (46,100,'THEME LIBRARY','Looks, motion, palettes',t.c('primary')),
-            (101,155,'VISUALIZER STUDIO','Graphs, charts, renderers',t.c('info')),
-            (156,210,'ACHIEVEMENTS','Badges, awards, rarity',t.c('accent')),
-            (211,270,'CONTROLS / HELP','Gestures + touch-zone debug',t.c('warn')),
+            ('THEME LIBRARY','Identity, palette, motion',t.c('primary')),
+            ('VISUALIZER STUDIO','Graphs + renderers',t.c('info')),
+            ('ACHIEVEMENTS','Progress, awards, rarity',t.c('accent')),
+            ('CONTROLS / HELP','Gestures + touch debug',t.c('warn')),
         ]
-        for y1,y2,title,sub,col in rows:
-            d.rounded_rectangle((16,y1,464,y2),radius=7,fill=t.c('panel2'),outline=col,width=2)
-            d.text((28,y1+8),title,font=f['small'],fill=col);d.text((202,y1+9),sub,font=f['tiny'],fill=t.c('text'))
-        d.text((330,42),f'{self.theme.label[:20]}',font=f['tiny'],fill=t.c('dim'))
+        for box,(title,sub,col) in zip(self.CONTROL_QUICK_BOXES,rows):
+            x1,y1,x2,y2=box
+            d.rounded_rectangle(box,radius=8,fill=t.c('panel2'),outline=col,width=2)
+            d.text((x1+12,y1+14),title,font=f['small'],fill=col)
+            d.text((x1+12,y1+36),sub[:29],font=f['tiny'],fill=t.c('text'))
+            d.text((x1+12,y2-16),'OPEN',font=f['micro'],fill=t.c('dim'))
 
     def _deck_category_map(self):
         rows=list(getattr(self,'context_decks',[]) or [])
