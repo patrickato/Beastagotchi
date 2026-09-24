@@ -6,6 +6,9 @@ CURRENT="$ROOT/current"
 PY=/opt/.pwn/bin/python3
 UI_ROOT=/opt/beast-ui
 CORE_ROOT=/opt/beast-core
+BEAST_SITE=/opt/beast-python/site-packages
+DEPS_DIR=/var/lib/beastagotchi/dependencies
+QR_VERSION=8.2
 BIN=/opt/beast-ui/bin
 REPORT=/opt/beast-ui/bin/v019_acceptance_report.py
 CAPTURE=/opt/beast-ui/bin/capture_fb.py
@@ -71,7 +74,7 @@ write_preflight() {
   curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/types' > "$out/capsule-types.json" 2>/dev/null || true
   curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/export?type=lineage&name=0&achievements=0&appearance=0&qr_chars=220' > "$out/capsule-export.json" 2>/dev/null || true
 
-  PYTHONPATH="$CORE_ROOT:$UI_ROOT" "$PY" - <<'PY' > "$out/preflight.json"
+  PYTHONPATH="$CORE_ROOT:$UI_ROOT:$BEAST_SITE" "$PY" - <<'PY' > "$out/preflight.json"
 import hashlib, importlib.util, json, pathlib, time
 result={"ts":time.time()}
 try:
@@ -272,7 +275,8 @@ qr=(p.get("qr_renderer") or {}).get("available")
 print("Installed Beast UI:",v)
 print("QR renderer available:",qr)
 if not qr:
-    print("NOTE: the physical session can continue, but Capsule QR will truthfully show renderer unavailable.")
+    print("NOTE: Capsule QR renderer is missing.")
+    print("For the complete QR sub-gate, run before the session: sudo beast-v019-accept prepare-qr")
 PY
 
   echo
