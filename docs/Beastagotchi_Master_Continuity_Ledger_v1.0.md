@@ -637,3 +637,58 @@ Canonical documents:
 - `docs/Beastagotchi_Beast_Packs_Depot_Spec_v0.1.md`
 - `docs/Beastagotchi_Secrets_Achievements_Seasonal_Spec_v0.9.md`
 
+## Capsule Share visible transport / QR compositor protection — 2026-09-24
+
+The first user-visible Beast Capsule transport surface is implemented.
+
+New pieces:
+- optional `beastui/qr_render.py` adapter using Python `qrcode` when present;
+- `qrcode>=8.0` in CI/development dependencies, deliberately not yet forced
+  into the target Pwnagotchi virtualenv;
+- Beast UI local API client for real Lineage Capsule export;
+- **Capsules** Identity app;
+- asynchronous Capsule Share overlay with real QR, manual frame navigation and
+  explicit privacy/authenticity labels;
+- honest unavailable state when Core/renderer is missing;
+- no decorative fake QR fallback.
+
+A regression test exposed that the global theme scanline layer could paint over
+the QR after the transport surface had rendered. This was treated as a real
+compositor defect. Capsule transport now renders above normal theme
+scanlines/effects, while Monster/Rare overlays retain higher intentional
+precedence.
+
+The CI real-state gallery now contains a clearly labeled
+`GALLERY PREVIEW · NOT IMPORTABLE` Capsule screen. Its data is derived only from
+the sanitized real-device fixture; it does not impersonate a local roster record.
+
+Source/off-screen gate:
+- 394 tests green at run `35974384239` (#302);
+- compile/shell/gallery green;
+- artifact `10796753380`;
+- digest
+  `sha256:fa9efe68f4a5bf6f30b53675f8ce700e8da9694f4f52195a2feb7a66779d9f57`;
+- representative QR density >=3 px/module;
+- rendered 480×320 gallery PNG manually decoded back to the exact BCQ1 frame.
+
+Durable dependency decision:
+QR rendering should be represented as an optional Beast capability/runtime
+dependency rather than casually dumping another package into Pwnagotchi's
+protected environment. The packaging boundary should be resolved before the
+physical test package.
+
+Durable visual decision:
+machine-readable transport is a protected render layer. Theme decoration may
+frame it but must never cross/corrupt its modules or quiet zone.
+
+Physical acceptance still pending:
+- actual ILI9486 panel;
+- camera/phone scan reliability;
+- display brightness/contrast;
+- repeated frame scans;
+- best automatic-frame interval;
+- thermal/render cost on target.
+
+The Capsule Share screen should be included in the next substantial physical
+v0.19 acceptance package.
+
