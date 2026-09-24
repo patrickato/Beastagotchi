@@ -567,21 +567,63 @@ Validation:
 This is source/CI evidence only. No target/off-screen or physical TFT handoff claim is
 made.
 
-## Execution priority after the audit
+## Current-build reconciliation after the audit
 
-The audit does **not** justify abandoning the current visible v0.19 UX gate for another
-long backend detour. The best course is:
+A direct review of the active v0.19 source and its CI gallery changed two parts of
+the initial action list:
 
-1. keep the read-only interop probe as the safe foundation now completed;
-2. return to the substantial visible Unified UX / captured-state gallery work and get
-   the next physical 480x320 acceptance checkpoint;
-3. in parallel-sized bounded blocks, add the canonical token registry and semantic
-   render-layer metadata because both help Beast UI and Theme Manager interop without
-   taking display ownership;
-4. add Beast Doctor/Explain and the improved Depot human workflow;
-5. prototype measured dirty-region writes behind a feature flag;
-6. define Visual Asset Interop v1 and a Theme Manager import/preview path;
-7. only after current v0.19 physical UX acceptance, activate real Presentation Broker
-   adapters and repeatedly validate Native <-> Theme Manager <-> Beast rollback;
-8. once that adapter is concrete, approach Korrie with the smallest useful managed-mode
-   API rather than asking either project to adopt the other's architecture wholesale.
+- Beast already has a real dirty-row framebuffer writer in
+  `beastui/framebuffer.py`. It keeps the previous RGB565 frame, finds changed rows,
+  merges nearby spans, falls back to a full write above a configurable threshold,
+  and exposes byte/span/saved-byte telemetry. The remaining work is **target
+  benchmarking and refinement**, not inventing the mechanism from scratch.
+- GitHub CI already renders and uploads the full v0.19 comparison gallery from the
+  sanitized real v0.18 Pi capture. That artifact is now part of the normal source
+  gate and has been reviewed off-screen; physical TFT acceptance is still distinct.
+
+The next neutral interoperability substrate has also been implemented:
+
+- `beastcore/template_tokens.py` provides an allow-listed canonical
+  `TemplateTokenRegistry`;
+- values resolve only from Beast Core `StateRegistry`;
+- missing values remain unavailable rather than being synthesized;
+- source/quality/timestamp/error truth is preserved;
+- formatting, aliases, privacy class and publication-policy metadata are
+  declarative;
+- `GET /template-tokens` provides bounded local read-only access;
+- the future Theme Manager `STAT_SOURCE` adapter remains deliberately disabled.
+
+Token milestone validation:
+- **348 tests passed in 6.34s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state gallery render/upload passed
+- GitHub Actions run `35953678888`
+
+This remains source/CI evidence only.
+
+## Execution priority after current-build reconciliation
+
+The audit still does **not** justify abandoning the visible v0.19 acceptance gate.
+The best course is now:
+
+1. keep the Theme Manager capability probe and canonical Template Token Registry as
+   completed neutral foundations;
+2. keep the generated real-state gallery as the off-screen review artifact and move
+   to the next bounded physical 480x320 acceptance checkpoint when the user is ready;
+3. add semantic render-layer metadata in a bounded non-visual-breaking block so
+   Inspector/interop can reason about meaning without pixel inference;
+4. add Beast Doctor/Explain using existing canonical health, incidents, topology and
+   audited-action evidence rather than parsing logs into a competing truth source;
+5. benchmark/refine the **existing** dirty-row framebuffer writer on the actual Pi,
+   including compose/write time, dirty coverage, span count and bytes saved;
+6. improve Depot Gallery/preview/search/phone-handoff workflow without weakening
+   Beast's trust/staging/transaction model;
+7. define Visual Asset Interop v1 and a Theme Manager import/preview path;
+8. only after current v0.19 physical UX acceptance, activate real Presentation
+   Broker adapters and repeatedly validate Native <-> Theme Manager <-> Beast
+   rollback;
+9. once that adapter is concrete, approach Korrie with the smallest useful
+   managed-mode API rather than asking either project to adopt the other's
+   architecture wholesale.
+
