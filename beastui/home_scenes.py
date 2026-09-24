@@ -222,9 +222,15 @@ def _hero_scene(d,state,ui, *, variant='classic'):
     if not status or status=='--':status='SCANNING THE FIELD'
 
     # Identity floats over the visual scene, avoiding a hard portrait border.
-    d.text((18,205),name[:18],font=f['large'],fill=t.c('text'))
-    d.text((19,230),f'LV {lvl:02d}  {stage[:14]}',font=f['small'],fill=t.c('secondary'))
-    d.text((19,247),mood[:18],font=f['tiny'],fill=t.c('dim'))
+    with _scene_layer(
+        ui,'home.creature.identity','text',(14,198,270,262),z=30,
+        signals=('progression.beast.name','progression.level','progression.stage',
+                 'beast.expression','pwnagotchi.mood'),
+        update_class='live',resource_class='tiny',
+    ):
+        d.text((18,205),name[:18],font=f['large'],fill=t.c('text'))
+        d.text((19,230),f'LV {lvl:02d}  {stage[:14]}',font=f['small'],fill=t.c('secondary'))
+        d.text((19,247),mood[:18],font=f['tiny'],fill=t.c('dim'))
 
     # Compact glass HUD on the right. This is one information plane, not a wall
     # of cards; large live values dominate and labels recede.
