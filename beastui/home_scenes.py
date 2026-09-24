@@ -6,12 +6,37 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
+from .concept_creatures import concept_creature
 
 
 def _scene_layer(ui, layer_id, kind, bounds, **kwargs):
     runtime=getattr(ui,'scene_runtime',None)
     if runtime is None:return nullcontext()
     return runtime.layer(layer_id,kind,bounds,**kwargs)
+
+def _paste_concept_creature(canvas, name, box, phase: float, *, opacity=255, scale_pulse=.018):
+    art=concept_creature(name)
+    if art is None:return False
+    x1,y1,x2,y2=[int(v) for v in box]
+    max_w=max(1,x2-x1);max_h=max(1,y2-y1)
+    img=art.copy()
+    img.thumbnail((max_w,max_h),Image.Resampling.LANCZOS)
+    pulse=1.0+float(scale_pulse)*math.sin(float(phase)*1.37)
+    if abs(pulse-1.0)>.001:
+        img=ImageEnhance.Brightness(img).enhance(max(.75,pulse))
+    if opacity<255:
+        a=img.getchannel('A').point(lambda v:int(v*max(0,min(255,int(opacity)))/255))
+        img.putalpha(a)
+    px=x1+(max_w-img.width)//2;py=y1+(max_h-img.height)//2
+    base=canvas.convert('RGBA');base.alpha_composite(img,(px,py));canvas.paste(base.convert('RGB'))
+    return True
+
+
+def _metric(d,x,y,label,value,font_label,font_value,label_col,value_col,*,right=None):
+    d.text((x,y),str(label),font=font_label,fill=label_col)
+    if right is None:d.text((x,y+11),str(value),font=font_value,fill=value_col)
+    else:_text_right(d,right,y+3,str(value),font_value,value_col)
+
 
 def _mix(a, b, t: float):
     t=max(0.0,min(1.0,float(t)))
