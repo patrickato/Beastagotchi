@@ -84,17 +84,27 @@ Approved direction:
 Implemented foundation:
 - transactional plugin toggle + config snapshot/health rollback already exists;
 - Pack dependency/capability/conflict vocabulary already exists;
-- stock plugin capability/requirement/provider/egress metadata is now cataloged in PluginIntegrationEngine;
-- requirement execution is explicitly disabled: this milestone is catalog-only;
+- stock plugin capability/requirement/provider/egress metadata is cataloged;
+- shared read-only DependencyCapabilityResolver is used by Plugins and Beast Packs;
+- bounded declared-requirement probes cover canonical capabilities, services,
+  packages, executables, Python modules, paths, config presence and credential
+  presence without installing/changing anything;
+- provider index + reverse `used_by` graph exist;
+- available providers are distinct from active/selected components;
+- active dependency health is distinct from whole-catalog readiness;
+- technical-vs-policy blockers use Owner Sovereignty semantics;
+- sensitive plugin configuration exposes only presence, never credential values;
+- `GET /dependencies` and platform-bundle summaries expose read-only graph health;
+- requirement execution/provider selection are explicitly disabled;
 - reference architecture and BOM policy are documented.
 
 Next:
-- side-effect-free requirement probes for declared requirements only;
-- reverse dependency / `used_by` graph;
-- provider arbitration;
-- Plugin & Capability Center requirement/status presentation;
+- provider arbitration/selection policy without mutating upstream components;
+- Plugin & Capability Center requirement/status/USED BY presentation;
 - Beast Doctor/Explain integration;
 - build-specific BOM generator/export;
+- common resolver adoption by Experiences/Apps/Hardware Studio;
+- generalized version-range resolution and guided configuration;
 - transactional dependency remediation only after dry-run/provenance/rollback are proven.
 
 ### Cross-cutting — Owner Sovereignty / Unrestricted Mode
