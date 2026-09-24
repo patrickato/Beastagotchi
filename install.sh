@@ -10,7 +10,11 @@ install -d -o root -g beastagotchi -m 0770 /var/lib/beastagotchi/packs/inbox
 install -d -m 0755 /opt/beast-core /etc/beastagotchi /var/lib/beastagotchi
 rm -rf /opt/beast-core/beastcore
 cp -a "$SRC/beastcore" /opt/beast-core/
-install -m 0644 "$SRC/config/core.toml" /etc/beastagotchi/core.toml
+if [[ -f /etc/beastagotchi/core.toml ]]; then
+  echo 'Preserving existing Beast Core configuration: /etc/beastagotchi/core.toml'
+else
+  install -m 0644 "$SRC/config/core.toml" /etc/beastagotchi/core.toml
+fi
 install -m 0644 "$SRC/systemd/beast-core.service" /etc/systemd/system/beast-core.service
 install -m 0755 "$SRC/tools/enroll_home_dock.py" /usr/local/bin/beast-enroll-home
 install -m 0755 "$SRC/tools/beast_paths.sh" /usr/local/bin/beast-paths
