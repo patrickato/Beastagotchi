@@ -69,6 +69,34 @@ Next:
 - remove/update flows and clearer rollback history;
 - dedicated adapters for code-bearing app/renderer/integration/hardware Packs.
 
+### Cross-cutting — Plugin & Capability Center / Dependency Resolver
+
+Approved direction:
+- treat Jayofelony stock/stock-known plugins as a first-class Pwnagotchi compatibility class;
+- keep upstream plugins doing their native job while Beast normalizes useful data/actions instead of cloning every plugin;
+- model `PROVIDES / REQUIRES / OPTIONAL / CONFLICTS / USED BY` across Plugins, Packs, Hardware, Experiences, Apps and Services;
+- prefer abstract capabilities such as `location.position`, `power.battery.telemetry` and `network.internet` over hard dependencies on one implementation;
+- arbitrate overlapping providers so several enabled GPS/power plugins do not create duplicate canonical truth;
+- distinguish safe automatic remediation, confirmed transactional remediation, guided user action, provider choice and unsupported blockers;
+- expose data-egress/credential/hardware requirements without ever exposing secret values;
+- maintain a complete versioned **superset BOM** for the user's Pi 4 reference build while installing/running only the dependency closure needed by selected features.
+
+Implemented foundation:
+- transactional plugin toggle + config snapshot/health rollback already exists;
+- Pack dependency/capability/conflict vocabulary already exists;
+- stock plugin capability/requirement/provider/egress metadata is now cataloged in PluginIntegrationEngine;
+- requirement execution is explicitly disabled: this milestone is catalog-only;
+- reference architecture and BOM policy are documented.
+
+Next:
+- side-effect-free requirement probes for declared requirements only;
+- reverse dependency / `used_by` graph;
+- provider arbitration;
+- Plugin & Capability Center requirement/status presentation;
+- Beast Doctor/Explain integration;
+- build-specific BOM generator/export;
+- transactional dependency remediation only after dry-run/provenance/rollback are proven.
+
 ### Gate 3 — Presentation ownership / Theme Manager coexistence
 
 A fresh review of the substantially expanded Theme Manager is captured in
