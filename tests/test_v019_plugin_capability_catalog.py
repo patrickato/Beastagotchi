@@ -90,6 +90,7 @@ def test_sensitive_plugin_config_exposes_presence_not_secret_value():
 def test_disabled_but_configured_plugin_is_available_alternate_not_active_provider():
     state = _S({
         "gps.state": "fixed",
+        "capabilities.present": ["phone.pwndroid"],
         "platform.plugins": [
             {
                 "name": "pwndroid",
