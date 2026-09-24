@@ -98,7 +98,7 @@ New readers should start here:
 9. [`ROADMAP.md`](ROADMAP.md) — current execution order
 10. [`docs/UX_POLISH_MILESTONE_v0.19.md`](docs/UX_POLISH_MILESTONE_v0.19.md) — UX acceptance milestone
 11. [`docs/Beastagotchi_v019_Physical_Acceptance_Package.md`](docs/Beastagotchi_v019_Physical_Acceptance_Package.md) — bounded physical TFT acceptance workflow
-11. [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — common project vocabulary
+12. [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — common project vocabulary
 
 For another developer or AI reviewer, see [`docs/COLLABORATOR_AI_HANDOFF.md`](docs/COLLABORATOR_AI_HANDOFF.md).
 
