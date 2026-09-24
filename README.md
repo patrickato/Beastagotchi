@@ -53,7 +53,7 @@ The immediate development milestone is **v0.19 — Unified Experience**. It now 
 The major unfinished v0.19 gates are:
 
 - complete the visible hierarchy/interaction cleanup and produce another real-state comparison gallery;
-- perform physical 480×320 readability/touch/thermal acceptance after a substantial visible delta;
+- execute the implemented bounded 480×320 physical-acceptance package for readability/touch/thermal/framebuffer evidence, including real Capsule QR phone scanning;
 - keep the new read-only Theme Manager capability probe as the interop foundation, then implement and physically validate real Presentation Broker adapters for **Native Pwnagotchi / Korrie71 Theme Manager / Beast UI**;
 - continue responsive-display, performance, recovery, hardware and companion work without weakening the reference TFT experience.
 
@@ -97,6 +97,7 @@ New readers should start here:
 8. [`docs/Beastagotchi_Preservation_Recovery_Workflow.md`](docs/Beastagotchi_Preservation_Recovery_Workflow.md) — required long-term backup/continuity process
 9. [`ROADMAP.md`](ROADMAP.md) — current execution order
 10. [`docs/UX_POLISH_MILESTONE_v0.19.md`](docs/UX_POLISH_MILESTONE_v0.19.md) — UX acceptance milestone
+11. [`docs/Beastagotchi_v019_Physical_Acceptance_Package.md`](docs/Beastagotchi_v019_Physical_Acceptance_Package.md) — bounded physical TFT acceptance workflow
 11. [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — common project vocabulary
 
 For another developer or AI reviewer, see [`docs/COLLABORATOR_AI_HANDOFF.md`](docs/COLLABORATOR_AI_HANDOFF.md).
