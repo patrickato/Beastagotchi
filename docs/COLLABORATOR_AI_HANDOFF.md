@@ -18,6 +18,7 @@ This repository snapshot is intended to let an external developer or AI resume o
 13. `docs/Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
 14. `docs/Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`
 15. `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
+16. `docs/Beastagotchi_Doctor_Explain_v0.1.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -40,6 +41,7 @@ External reviewers are especially invited to critique:
 - plugin compatibility and configuration safety.
 - dependency/capability graph design, provider arbitration and how to keep a maximal known-universe BOM without a kitchen-sink runtime.
 - provider arbitration, common resolver adoption by Experiences/Apps/Hardware Studio, and generated BOM/Doctor UX now that the shared read-only graph exists.
+- Beast Doctor causal-chain explanation, known-good fingerprints, blast-radius previews and how to keep explanations truthful instead of inventing confidence.
 - owner sovereignty / Expert Mode design: preserve owner freedom without turning local policy override into unauthenticated remote privilege.
 - performance/thermal behavior on Pi 4.
 - code organization, duplicated historical code and migration path to v1.0.
@@ -60,3 +62,4 @@ Please distinguish architectural critique from personal preferences and cite fil
 - The shared DependencyCapabilityResolver is read-only and already used by Plugins + Packs. Do not add package/service mutation to it; remediation execution belongs to separately planned/audited transactions.
 - Secret-bearing plugin config may expose presence only; do not surface credential values into canonical state, dependency evidence, logs or support bundles.
 - Provider arbitration is read-only: native-first defaults, owner preference modeling, recommendations and fallback chains must not be confused with an enabled handoff/failover executor.
+- Persistent provider preferences are owner policy only; setting one must not silently enable/switch a provider. Preserve the Explain-before-act path and keep automatic failover disabled until provider handoffs have probation/rollback evidence.
