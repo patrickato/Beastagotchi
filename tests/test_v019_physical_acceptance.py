@@ -124,6 +124,26 @@ def test_v019_acceptance_harness_curates_sensitive_evidence():
     assert "name=0&achievements=0&appearance=0" in script
 
 
+def test_v019_qr_optional_dependency_is_beast_owned_and_provenanced():
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "tools" / "v019_physical_acceptance.sh").read_text()
+    ui_service = (root / "ui_systemd" / "beast-ui.service").read_text()
+    studio_service = (root / "ui_systemd" / "beast-studio.service").read_text()
+    installer = (root / "install_ui.sh").read_text()
+
+    assert "QR_VERSION=8.2" in script
+    assert '--target "$BEAST_SITE"' in script
+    assert '"qrcode==$QR_VERSION"' in script
+    assert '"wheel_sha256"' in script
+    assert '"dependency_scope":"beast_owned_optional"' in script
+    assert '"pwnagotchi_site_packages_modified":False' in script
+    assert "prepare-qr" in script and "remove-qr" in script
+    assert "/opt/beast-python/site-packages" in ui_service
+    assert "/opt/beast-python/site-packages" in studio_service
+    assert "/opt/beast-python/site-packages" in installer
+    assert "/opt/.pwn/lib/" not in script
+
+
 def test_v019_acceptance_harness_keeps_owner_decision_explicit():
     script = (Path(__file__).resolve().parents[1] / "tools" / "v019_physical_acceptance.sh").read_text()
     assert "finish [observe|pass|rollback]" in script
