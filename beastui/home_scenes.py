@@ -366,12 +366,26 @@ def render_home_scene(d, state, ui) -> bool:
     """
     scene=str(getattr(ui.theme,'home_scene',None) or '').strip().lower()
     if not scene:return False
-    if scene=='hero':return _hero_scene(d,state,ui,variant='classic')
-    if scene=='hero_cyber':return _hero_scene(d,state,ui,variant='cyber')
-    if scene=='hero_ice':return _hero_scene(d,state,ui,variant='ice')
-    if scene=='hero_synth':return _hero_scene(d,state,ui,variant='synth')
-    if scene=='hero_tactical':return _hero_scene(d,state,ui,variant='tactical')
-    if scene=='wopr':return _wopr_scene(d,state,ui)
-    if scene=='lcars':return _lcars_scene(d,state,ui)
-    if scene=='terminal':return _terminal_scene(d,state,ui)
-    return False
+    renderers={
+        'hero':lambda:_hero_scene(d,state,ui,variant='classic'),
+        'hero_cyber':lambda:_hero_scene(d,state,ui,variant='cyber'),
+        'hero_ice':lambda:_hero_scene(d,state,ui,variant='ice'),
+        'hero_synth':lambda:_hero_scene(d,state,ui,variant='synth'),
+        'hero_tactical':lambda:_hero_scene(d,state,ui,variant='tactical'),
+        'wopr':lambda:_wopr_scene(d,state,ui),
+        'lcars':lambda:_lcars_scene(d,state,ui),
+        'terminal':lambda:_terminal_scene(d,state,ui),
+    }
+    renderer=renderers.get(scene)
+    if renderer is None:return False
+    runtime=getattr(ui,'scene_runtime',None)
+    if runtime is not None:runtime.set_scene('home:'+scene)
+    if scene.startswith('hero'):return renderer()
+    with _scene_layer(
+        ui,'home.scene_structure','scene',(0,34,480,278),z=20,
+        signals=('context.mode.effective','wifi.ap_count','wifi.client_count',
+                 'pwnagotchi.handshakes','radio.primary.channel','system.cpu.total',
+                 'system.temp.cpu_c','health.core.state'),
+        update_class='live',resource_class='moderate',
+    ):
+        return renderer()
