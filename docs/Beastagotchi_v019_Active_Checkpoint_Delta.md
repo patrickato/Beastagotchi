@@ -565,3 +565,10 @@ jurisdiction.
 
 No current managed safety check was silently removed by this milestone.
 
+Source/CI evidence after the policy-vs-technical blocker code change:
+- **353 tests passed in 6.87s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35959564793`
+
