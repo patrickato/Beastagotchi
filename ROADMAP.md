@@ -97,6 +97,34 @@ Next:
 - build-specific BOM generator/export;
 - transactional dependency remediation only after dry-run/provenance/rollback are proven.
 
+### Cross-cutting — Owner Sovereignty / Unrestricted Mode
+
+Approved direction:
+- Beastagotchi is an owner-controlled open platform, not a locked appliance;
+- safe defaults, compatibility checks, snapshots, rollback and trusted sources are the managed path, not permanent ownership restrictions;
+- plans distinguish technical blockers from Beast policy/support blockers;
+- policy blockers are explicitly owner-overridable when the requested action is technically possible;
+- persistent Expert Mode plus per-action "Proceed unsupported anyway" are retained UX requirements;
+- unsupported/custom systems remain usable and are labeled accurately rather than punished or feature-locked;
+- SSH/root/manual administration remains the ultimate escape hatch;
+- owner override remains locally authorized and must not become an unauthenticated remote bypass;
+- exact manual instructions should be provided when Beast cannot safely perform a self-disabling action from its own running control plane;
+- warnings about dependency, conflict, egress, resource/thermal impact and rollback remain visible even when the owner proceeds.
+
+Implemented foundation:
+- Owner Sovereignty / Unrestricted Mode specification;
+- PluginBroker planning now distinguishes `technical_blockers` and `policy_blockers`;
+- plans expose `owner_override_available` without yet executing the override;
+- current managed executor remains conservative and transactional.
+
+Next:
+- persistent Expert Mode state + obvious UI indicator;
+- per-action unsupported override planning/confirmation;
+- support-state/customization reporting in Doctor/Support Bundle;
+- unsupported plugin/source import;
+- exact manual/root escape-hatch instructions for self-disabling operations;
+- direct owner administration surface only after local-auth/audit/recovery boundaries are explicit.
+
 ### Gate 3 — Presentation ownership / Theme Manager coexistence
 
 A fresh review of the substantially expanded Theme Manager is captured in
