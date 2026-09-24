@@ -152,6 +152,11 @@ class PresentationBroker:
         theme = self._theme_manager()
         theme_installed = bool(theme)
         theme_enabled = bool(theme and theme.get("enabled"))
+        theme_interop = theme.get("interop") if isinstance(theme, dict) and isinstance(theme.get("interop"), dict) else {}
+        theme_version = theme_interop.get("version") or self.state.get("plugins.theme_manager.version")
+        theme_capabilities = list(theme_interop.get("capabilities") or self.state.get("plugins.theme_manager.capabilities", []) or [])
+        theme_managed = bool(theme_interop.get("managed_handoff_supported") or self.state.get("plugins.theme_manager.managed_handoff_supported", False))
+        theme_compat = bool(theme_interop.get("compatibility_handoff_evidence") or self.state.get("plugins.theme_manager.compatibility_handoff_evidence", False))
         beast_active = self._service_active("beast-ui.service")
         pwn_active = str(self.state.get("pwnagotchi.service.state") or "").lower() == "active"
 
@@ -182,7 +187,10 @@ class PresentationBroker:
             "presentation.beast.service_active": beast_active,
             "presentation.theme_manager.installed": theme_installed,
             "presentation.theme_manager.enabled": theme_enabled,
-            "presentation.theme_manager.managed_handoff_supported": False,
+            "presentation.theme_manager.version": theme_version,
+            "presentation.theme_manager.capabilities": theme_capabilities,
+            "presentation.theme_manager.managed_handoff_supported": theme_managed,
+            "presentation.theme_manager.compatibility_handoff_evidence": theme_compat,
             "presentation.conflicts": conflicts,
             "presentation.conflict_count": len(conflicts),
             "presentation.executor_enabled": False,
