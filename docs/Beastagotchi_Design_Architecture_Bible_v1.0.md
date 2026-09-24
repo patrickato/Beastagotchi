@@ -94,41 +94,52 @@ Beast Core should be the only privileged component that performs sensitive OS ac
 
 ### Main swipe carousel
 
-The default high-frequency pages:
+The current high-frequency reference pages are:
 
-1. **HOME** — Beast Core / summary
-2. **RECON** — live RF radar + target/encounter activity
-3. **NETWORKS** — searchable/sortable AP/browser
-4. **SPECTRUM** — channel/spectrum visualizations
-5. **CAPTURES** — Capture Vault
-6. **MAP** — GPS / encounter field map
-7. **BEAST** — progression, personality, evolution, memories
-8. **SYSTEM** — health / services / hardware summary
+1. **HOME** — Beast identity + live summary
+2. **OVERVIEW** — whole-device state + attention
+3. **DASHBOARD** — user-composed live instruments
+4. **RECON** — live observed Wi-Fi field
+5. **NETWORKS** — current AP browser
+6. **SPECTRUM** — observed channel activity
+7. **CAPTURES** — capture analytics / Vault entry point
+8. **MAP** — recorded GPS / field route
+9. **EXPEDITION** — current field-session glance
+10. **BEAST** — progression, personality, evolution, memories
+11. **SYSTEM** — health / resources / hardware summary
+
+This is a curated default carousel, **not a product ceiling**. Apps and Studio
+surfaces provide depth; future pages may join the carousel when they earn a
+persistent high-frequency role.
 
 ### Persistent footer
 
 Always available unless a deliberate immersive mode hides it:
 
-- large **Previous** arrow
-- **Home** button
-- page position indicator / dots
-- active page name
-- large **Next** arrow
+- large **Previous** target
+- **Home** target
+- active-page identity / position context
+- large **Next** target
 
-Optional theme variants may change the footer geometry but must preserve functionality.
+Optional theme variants may change footer geometry but must preserve function
+and the validated touch-target policy.
 
 ### Global gesture model
 
+The reference ADS7846/XPT2046 panel is effectively single-contact, so core
+navigation must never depend on multitouch.
+
 - horizontal swipe: previous / next main page
-- vertical swipe: scroll inside current page
 - tap: select / open
-- long press: context menu / customize
-- swipe down: Quick Control Drawer
-- swipe up: optional App Launcher / notifications shortcut
-- two-finger or explicit edit control: customization mode only
+- long press: context / inspect / customize where supported
+- swipe down: Beast Control Center
+- swipe up: App Launcher or close/deeper-navigation behavior where explicitly shown
+- vertical swipes inside scrollable overlays/lists: page/scroll that surface
+- explicit visible edit controls: customization modes
 
-Navigation must never rely exclusively on gestures. Every core action needs a visible touch alternative.
-
+Navigation must never rely exclusively on gestures. Every core action needs a
+visible touch alternative, and visible art may be smaller only when its actual
+hitbox still meets the touch policy.
 ---
 
 ## 4. Apps / Modules Universe
@@ -1101,9 +1112,14 @@ Animation always loses before radio stability does.
 - background pages: no full rendering
 - expensive maps/charts: cached layers + incremental redraw
 
-### Load shedding
+### Resource-pressure response
 
-Beast Core may instruct UI to reduce:
+Routine operation should **not** depend on thermal load shedding. First remove
+duplicate polling, cache static work, suspend inactive optional rendering/
+services, consolidate collectors and avoid unnecessary framebuffer writes.
+
+Only under actual measured resource/thermal pressure may Beast Core temporarily
+reduce optional presentation cost such as:
 
 - particles
 - glow layers
@@ -1111,27 +1127,40 @@ Beast Core may instruct UI to reduce:
 - graph sampling density
 - background effects
 
-when CPU temperature/load crosses configured thresholds.
+Radio stability, Beast Core responsiveness, touch confidence and readable
+information outrank decorative richness. The cause of sustained pressure should
+remain visible and diagnosable rather than being silently masked by degradation.
 
 ---
 
 ## 24. Screen / Touch Constraints
 
-Native target: **480×320 landscape**.
+Native reference target: **480×320 landscape**, ILI9486 framebuffer with
+ADS7846/XPT2046 resistive single-contact touch.
 
-Every approved design must be tested at native resolution before implementation.
+Every approved design must be tested at native resolution before physical
+acceptance.
 
-Rules:
+Validated interaction policy:
 
-- avoid relying on ultra-fine text visible only in high-resolution concept art
-- minimum practical touch target around 34–44 px depending on context
-- preserve large Previous/Next targets
-- prioritize high-contrast text
-- scrolling lists must clip cleanly
-- scroll state must be obvious
-- detail pages need an obvious Back path
-- avoid edge gestures that conflict with hardware/display behavior
+- **<48 px:** avoid as direct finger targets;
+- **48–52 px:** constrained secondary controls only;
+- **56–64 px:** ordinary touch controls;
+- **72+ px:** primary / critical controls;
+- visible art may be smaller only when the hitbox remains sufficiently large;
+- edge targets require extra inward padding / generous logical hit regions;
+- no core action may require multitouch.
 
+Additional rules:
+
+- avoid ultra-fine text visible only in high-resolution concept art;
+- preserve large Previous / Home / Next targets;
+- prioritize high-contrast text;
+- scrolling lists must clip cleanly and expose their scroll/page state;
+- detail surfaces need an obvious Back/Close path;
+- avoid ambiguous edge gestures;
+- physical TFT behavior is the final authority when a numeric calibration or
+  desktop/off-screen assumption disagrees with real use.
 ---
 
 ## 25. Visual QA Pipeline
