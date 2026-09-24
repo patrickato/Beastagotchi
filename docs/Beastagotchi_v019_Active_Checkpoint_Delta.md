@@ -691,3 +691,16 @@ Lightbulb directions preserved with this milestone:
 No target-Pi package/service/config mutation and no physical display behavior
 changed in this milestone.
 
+Source/CI evidence:
+- **375 tests passed in 5.54s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35966042145` (#244)
+
+One intermediate CI pass correctly caught that a disabled PwnDroid candidate was
+being tested as a ready alternate without supplying its declared phone-provider
+requirement. The test fixture was corrected to make the prerequisite explicit;
+the implementation continued to reject unready candidates, which is the desired
+behavior.
+
