@@ -82,7 +82,7 @@ case "$ARCHIVE_NAME" in
   *) echo "Archive filename does not contain source SHA prefix $SHORT"; exit 6 ;;
 esac
 
-ROOT_NAME="$(tar -tzf "$ARCHIVE" | head -n1 | cut -d/ -f1)"
+ROOT_NAME="$(tar -tzf "$ARCHIVE" | awk -F/ 'NR==1{first=$1} END{print first}')"
 [[ "$ROOT_NAME" == "Beastagotchi-v019-$SHORT" ]] || {
   echo "Archive root mismatch: expected Beastagotchi-v019-$SHORT, got $ROOT_NAME"
   exit 6
@@ -113,6 +113,20 @@ systemctl is-active beast-ui.service > "$SESSION/beast-ui-service-before.txt" 2>
 sha256sum /etc/pwnagotchi/config.toml > "$SESSION/pwnagotchi-config-before.sha256" 2>/dev/null || true
 if [[ -f /etc/beastagotchi/core.toml ]]; then
   cp -a /etc/beastagotchi/core.toml "$SESSION/core.toml.before"
+fi
+if [[ -f /var/lib/beastagotchi/beast.db && -x /opt/.pwn/bin/python3 ]]; then
+  echo "Creating local pre-stage Beast SQLite backup..."
+  BACKUP_DB="$SESSION/beast.db.before" /opt/.pwn/bin/python3 - <<'PY'
+import os, sqlite3
+src=sqlite3.connect("/var/lib/beastagotchi/beast.db", timeout=10)
+dst=sqlite3.connect(os.environ["BACKUP_DB"])
+try:
+    src.backup(dst)
+finally:
+    dst.close()
+    src.close()
+PY
+  chmod 0600 "$SESSION/beast.db.before"
 fi
 
 echo "Extracting exact source commit $SOURCE_SHA ..."
