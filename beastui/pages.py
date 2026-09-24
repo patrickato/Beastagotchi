@@ -380,13 +380,35 @@ class Pages:
         rows=sorted(aps,key=lambda a:a.get('rssi',-999),reverse=True)
         hidden=sum(1 for a in rows if not str(a.get('hostname') or a.get('ssid') or '').strip())
         secure=sum(1 for a in rows if str(a.get('encryption') or '').upper() not in {'','OPEN','NONE'})
-        section_title(d,(12,43),'VISIBLE NETWORKS',f,t)
-        d.text((12,55),f'{len(rows)} OBSERVED  ·  {secure} SECURE  ·  {hidden} HIDDEN',font=f['tiny'],fill=t.c('dim'))
+        strongest=rows[0].get('rssi') if rows else None
+        strongest_txt=f'{strongest} dBm' if isinstance(strongest,(int,float)) else '--'
 
-        # Fewer, taller rows trade raw density for legibility on the 3.5" TFT.
-        # The full catalog remains available through detail/operations surfaces.
-        y=72
-        for i,ap in enumerate(rows[:6]):
+        # Same summary grammar as Recon/Spectrum/Expedition: one glance tells
+        # the user what changed before they read individual rows.
+        summary_strip(
+            d,(8,43,472,91),
+            [
+                ('OBSERVED',len(rows),t.c('primary')),
+                ('SECURE',secure,t.c('secondary')),
+                ('HIDDEN',hidden,t.c('info')),
+                ('STRONGEST',strongest_txt,t.c('accent')),
+            ],
+            f,t,
+        )
+
+        list_box=(8,99,472,268)
+        if not rows:
+            empty_state(
+                d,list_box,'NO NETWORK OBSERVATIONS','Waiting for live Bettercap network state.',f,t,
+                hint='NO DEMO NETWORKS ARE INSERTED',
+            )
+            return
+
+        # Five taller rows fit the 3.5-inch TFT with a proper hierarchy:
+        # identity first, then channel/security/RSSI, then a real-RSSI rail.
+        y=99
+        visible=rows[:5]
+        for i,ap in enumerate(visible):
             rssi=ap.get('rssi')
             try:
                 strength=max(0.0,min(1.0,(float(rssi)+100.0)/70.0))
@@ -396,24 +418,21 @@ class Pages:
             ch=ap.get('channel','--')
             sec=str(ap.get('encryption') or 'OPEN').upper()
             accent=t.c('accent') if i==0 else t.c('primary')
-            card(d,(8,y,472,y+29),t,accent=accent if i==0 else t.c('edge'))
-            d.text((17,y+6),name[:28],font=f['small'],fill=t.c('text'))
-            d.text((259,y+7),f'CH {ch}',font=f['tiny'],fill=t.c('info'))
-            d.text((313,y+7),str(rssi if rssi is not None else '--'),font=f['tiny'],fill=accent)
-            d.text((365,y+7),sec[:13],font=f['micro'],fill=t.c('dim') if sec in {'OPEN','NONE'} else t.c('secondary'))
-            # Tiny strength rail is visual support for the real RSSI value, not
-            # a synthetic score.
-            d.rectangle((17,y+22,242,y+24),fill=t.c('edge'))
+            card(d,(8,y,472,y+30),t,accent=accent if i==0 else t.c('edge'),width=2 if i==0 else 1)
+            d.text((17,y+5),name[:29],font=f['small'],fill=t.c('text'))
+            meta=f'CH {ch} · {sec[:12]}'
+            d.text((17,y+17),meta,font=f['micro'],fill=t.c('dim'))
+            val=f'{rssi} dBm' if isinstance(rssi,(int,float)) else '--'
+            vb=d.textbbox((0,0),val,font=f['tiny']);vw=max(0,vb[2]-vb[0])
+            d.text((460-vw,y+6),val,font=f['tiny'],fill=accent)
+            d.rectangle((298,y+22,460,y+24),fill=t.c('edge'))
             if strength>0:
-                d.rectangle((17,y+22,17+int(225*strength),y+24),fill=accent)
-            y+=32
+                d.rectangle((298,y+22,298+int(162*strength),y+24),fill=accent)
+            y+=33
 
-        if not rows:
-            card(d,(8,78,472,178),t)
-            d.text((128,108),'NO NETWORK OBSERVATIONS YET',font=f['medium'],fill=t.c('dim'))
-            d.text((114,134),'Waiting for live Bettercap state…',font=f['tiny'],fill=t.c('dim'))
-        elif len(rows)>6:
-            d.text((12,266),f'+ {len(rows)-6} MORE · open detail/search for complete list',font=f['micro'],fill=t.c('dim'))
+        if len(rows)>5:
+            d.text((12,265),f'+ {len(rows)-5} MORE · OPEN DETAIL/SEARCH FOR FULL CATALOG',font=f['micro'],fill=t.c('dim'))
+
 
     def spectrum(self,d,state,ui):
         t=ui.theme;f=ui.fonts
