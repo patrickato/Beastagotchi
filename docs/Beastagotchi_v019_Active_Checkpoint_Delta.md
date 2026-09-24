@@ -255,3 +255,24 @@ This reconciliation is documentation/provenance work only. It does not add a new
 target-runtime or physical TFT acceptance result and does not change the rule
 that PR #9 remains unmerged until the visible/physical v0.19 gates are complete.
 
+
+
+## Recovery consolidation status — 2026-09-23 evening
+
+The private pinned-chat recovery now contains six ordered readable screenshot
+batches totaling **78 screenshots**, plus two earlier source images, for **80
+preserved image artifacts** in this recovery pass.
+
+The recovery has reached strong chronological overlap with the current repository
+record. Major engineering/design gaps required for safe continuation are considered
+closed. Further older screenshots remain valuable for literal-history enrichment,
+smaller idea recovery and contradiction checks, but are no longer prerequisites
+for reconstructing current v0.19 architecture or next-work order.
+
+Public GitHub continues to contain only sanitized engineering/provenance material;
+raw screenshots/transcript-like evidence remains private in the Beastagotchi
+Preservation Library.
+
+This is preservation/documentation work only. The current implementation source
+gate remains the previously established **332 tests + Python compile + shell
+syntax**; no new target/off-screen or physical TFT validation is implied.
