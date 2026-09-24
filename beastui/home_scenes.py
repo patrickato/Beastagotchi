@@ -195,17 +195,23 @@ def _hero_scene(d,state,ui, *, variant='classic'):
 
     # The Beast is now a scene anchor, not a framed thumbnail. Art may bleed
     # under HUD layers and fade into the information field.
-    used=False
-    if asset_path is not None:
-        used=paste_scene_asset(
-            canvas,asset_path,(6,38,278,269),phase=ui.phase,opacity=248,
-            brightness_pulse=.035,tint=glow_col,tint_strength=.04,
-            edge_fade=54,
-        )
-    d=ImageDraw.Draw(canvas)
-    if not used:
-        _portrait(d,(18,48,260,260),t,state,ui.phase,
-                  variant='cyber' if is_cyber or is_synth else 'ice' if is_ice else 'tactical' if is_tactical else 'classic')
+    with _scene_layer(
+        ui,'home.creature.art','creature',(6,38,278,269),z=20,
+        signals=('pwnagotchi.mood','beast.expression'),
+        update_class='ambient',cacheable=True,resource_class='moderate',
+        reduced_motion='static_art',
+    ):
+        used=False
+        if asset_path is not None:
+            used=paste_scene_asset(
+                canvas,asset_path,(6,38,278,269),phase=ui.phase,opacity=248,
+                brightness_pulse=.035,tint=glow_col,tint_strength=.04,
+                edge_fade=54,
+            )
+        d=ImageDraw.Draw(canvas)
+        if not used:
+            _portrait(d,(18,48,260,260),t,state,ui.phase,
+                      variant='cyber' if is_cyber or is_synth else 'ice' if is_ice else 'tactical' if is_tactical else 'classic')
 
     name=str(_v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
     lvl=int(_v(state,'progression.level',1) or 1)
