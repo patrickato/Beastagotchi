@@ -329,3 +329,56 @@ Current implementation:
 Canonical specification:
 `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`.
 
+## Shared dependency/capability resolver implementation — 2026-09-24
+
+The previously approved Dependency & Capability Resolver is now a real shared
+read-only service rather than plugin-only catalog metadata.
+
+Implemented:
+- new `beastcore/dependency_resolver.py` with common `RequirementResult` and
+  `DependencyCapabilityResolver`;
+- Beast Core shares one resolver instance across PluginIntegrationEngine and
+  PackRegistryEngine;
+- bounded, non-mutating probes for:
+  - canonical/abstract capabilities;
+  - service state from Beast's existing canonical service inventory;
+  - Debian package presence through `dpkg-query -W`;
+  - executable presence;
+  - Python module presence without importing/executing it;
+  - filesystem/device path presence;
+  - configuration presence;
+  - credential presence only;
+- no resolver path installs/removes software, starts/stops services, mutates
+  configuration, selects providers or sends data;
+- native capability providers are inferred from existing canonical Beast state,
+  avoiding new background polling;
+- enabled/available component providers are indexed and reverse `used_by`
+  relationships are produced;
+- provider **availability** is distinct from active **selection**, which lets an
+  installed-but-disabled dependency Pack satisfy availability without pretending
+  it is currently active;
+- active selected-component blocker totals are distinct from whole-catalog
+  readiness, so disabled optional hardware plugins do not make the running Beast
+  look unhealthy;
+- mandatory missing prerequisites become technical blockers when evidence is
+  factual; unknown/unproven requirements remain policy blockers rather than
+  invented facts;
+- known absent hardware classes are technical blockers;
+- resolver owner-override availability follows the same policy-vs-technical
+  semantics as Expert Mode;
+- Pwnagotchi plugin config inspection now records sensitive-field
+  `present=true/false` while continuing to omit the secret value itself;
+- credential-required stock plugins consume only that presence evidence;
+- Plugin and Pack catalog rows now carry requirement result/evidence,
+  technical/policy blockers and reverse usage;
+- read-only `GET /dependencies` and platform-bundle summaries expose graph
+  health to future Studio/Doctor surfaces.
+
+This remains an observation/planning layer. Provider arbitration, dependency
+installation and remediation execution are deliberately disabled.
+
+The next dependency-system priorities are provider arbitration policy,
+Plugin & Capability Center/Doctor presentation, generated BOM exports, wider
+adoption by Experiences/Apps/Hardware Studio, generalized version resolution and
+only later transactional remediation.
+
