@@ -773,8 +773,10 @@ same principles:
 
 Durable packaging decision:
 the physical v0.19 gate should use a commit-pinned CI source artifact. GitHub
-Actions now emits `v019-pi-acceptance-source` containing the exact tested HEAD
-archive, archive SHA-256 and full commit SHA.
+Actions now emits `v019-pi-acceptance-source` containing a PR/source-head archive,
+portable archive SHA-256, `SOURCE_COMMIT_SHA.txt` and `CI_TESTED_SHA.txt`. PR CI
+may test a synthetic merge commit, so source and tested SHAs are deliberately
+recorded separately rather than conflated.
 
 Source validation at the first complete implementation:
 - commit `a8318ca810406290f4b4cfdb73d946345abc2350`;
