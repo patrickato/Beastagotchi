@@ -420,6 +420,8 @@ class LocalAPI:
                 body = self.template_token_bundle(names)
                 if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
                     body["catalog"] = self.template_tokens.catalog()
+            elif parsed.path == "/platform-profile":
+                body = self.state.get("platform.profile", {}) or {}
             elif parsed.path == "/signals":
                 q = urllib.parse.parse_qs(parsed.query)
                 raw = str(q.get("names", [""])[0])
