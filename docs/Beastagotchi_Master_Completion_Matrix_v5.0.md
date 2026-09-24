@@ -203,8 +203,17 @@ approved scope.
 - [ ] dedicated visual ancestry/family-tree renderer
 - [ ] additional synthesis slots earned through high-level/rare milestones
 - [ ] evaluate later-generation Monster×Monster / Monster×Beast rules
-- [ ] privacy-safe cross-device Lineage Capsule exchange for optional community ancestry
-- [ ] physical roster/switch/synthesis usability validation
+- [x] transport-neutral Beast Capsule codec with bounded canonical encoding/integrity checks
+- [x] privacy-curated Lineage Capsule export from local roster
+- [x] separate offline Capsule namespace + pseudonymous creature/parent IDs (no raw roster IDs)
+- [x] Lineage Capsule achievement IDs opt-in; capture/network/location/log/secret fields excluded
+- [x] bounded multi-frame QR-ready text framing/reassembly with per-frame corruption detection
+- [ ] actual QR bitmap renderer / animated TFT sharing UX
+- [ ] QR/camera scan + import preview UX
+- [ ] signed Capsule authenticity / creature identity proof
+- [ ] remote-lineage storage distinct from locally owned Beasts
+- [ ] confirmed cross-device lineage import/synthesis semantics
+- [ ] physical roster/switch/synthesis/Capsule usability validation
 
 ## 6B. Peer encounters / Beast social layer
 
@@ -212,6 +221,7 @@ approved scope.
 - [x] compatibility decision: ordinary Pwnagotchi peers count as Beastagotchi encounters even when remote device has no Beastagotchi
 - [x] two-tier interaction model defined: Pwnagotchi-compatible encounter vs Beast-to-Beast encounter
 - [x] privacy-safe cross-device Lineage Capsule concept protected
+- [x] Lineage Capsule export/BC1 transport foundation implemented
 - [ ] Beast Bridge canonical peer_detected / peer_lost events
 - [x] persistent PeerDex / social encounter table keyed by pwngrid fingerprint (storage/query foundation; bridge/UI integration still pending)
 - [ ] first-meeting / reunion / recurring-friend achievement families
@@ -220,7 +230,9 @@ approved scope.
 - [ ] Beast UI nearby-peer / old-friend presentation
 - [ ] Beast peer-extension public descriptor schema
 - [ ] explicit opt-in Beast-to-Beast descriptor exchange
-- [ ] Lineage Capsule export/import
+- [~] Lineage Capsule exchange: export/encode/QR-frame foundation complete; receive/import remains non-mutating
+- [ ] Beast Card / PeerDex Capsule
+- [ ] actual QR render/scan transport
 - [ ] automatic nearby Lineage Capsule exchange after explicit user approval
 - [ ] local Beast + remote lineage synthesis path
 - [ ] later peer group/party/cooperative survey concepts
@@ -260,6 +272,9 @@ approved scope.
 - [x] rare-event acknowledgement path
 - [x] fade/drift/cross/orbit/ghost/storm/apparition/cinematic mechanism foundations
 - [x] seasonal/day-phase/moon context foundations
+- [x] extension contract: plugins/hardware/Packs contribute canonical facts/signals; Achievement Engine owns unlock decisions
+- [x] Pack manifest content-role/signals metadata foundation for future Achievement/Trophy Packs
+- [ ] Achievement/Trophy Pack runtime consumer/rule loader
 - [ ] hundreds-scale long-tail achievement catalog
 - [ ] trophy cabinet / collections presentation
 - [ ] hidden achievements
@@ -300,7 +315,7 @@ approved scope.
 - [ ] native Kiwix/ZIM reader
 - [ ] polished on-device search input suitable for touch targets
 - [ ] broader file manager/portal UX
-- [ ] QR import/share workflows
+- [~] QR import/share workflows: BC1/BCQ1 Capsule text framing + Lineage export implemented; QR rendering/scanning/import UI pending
 - [ ] built-in offline manual integrated into Library
 
 ## 10. Operations / services / observability
@@ -377,6 +392,11 @@ approved scope.
 - [x] dependency metadata remains catalog-only; automatic requirements executor explicitly disabled
 - [x] shared Dependency & Capability Resolver architecture approved across Plugins/Packs/Hardware/Experiences/Apps/Services
 - [x] reference-build superset BOM policy: catalog broadly, install only selected-feature dependency closure
+- [x] extension taxonomy formalized: Pwnagotchi Plugin / Beast Pack / Beast App / Companion Expansion
+- [x] adapter pattern retained for normalizing existing plugin/service/hardware data into canonical Beast state/events
+- [x] Pack manifests support `extension_class`, `content_roles`, signal contracts, offline transports, Capsule types and Companion component declarations
+- [x] plugin/extension design rule: contribute facts/signals rather than directly awarding canonical achievements
+- [x] offline/sneakernet ecosystem direction: QR/file/USB/SD/NFC/Bluetooth/local/Beast-to-Beast transports share one Capsule contract
 - [~] plugin compatibility/dependency metadata coverage
 - [x] shared read-only DependencyCapabilityResolver used by Plugins + Beast Packs
 - [x] side-effect-free declared-requirement probes for capability/service/package/module/executable/path/config/credential presence
@@ -425,6 +445,9 @@ approved scope.
 - [ ] generalized plugin install/update path
 - [ ] schema-driven config editor for plugin options
 - [ ] broader Beast adapter library for useful plugin data
+- [ ] generic Beast-native plugin cards generated from capability/config/action declarations
+- [ ] Plugin Profiler for callback duration/errors/staleness/resource attribution
+- [ ] Companion Expansion orchestration after component-level transaction boundaries are defined
 - [ ] trusted-plugin quick-install catalog
 - [ ] broken/experimental plugin sandbox/workbench
 
