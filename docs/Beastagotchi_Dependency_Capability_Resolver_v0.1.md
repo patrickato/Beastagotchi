@@ -159,8 +159,15 @@ Beast should provide exact instructions and automatically re-check afterward.
 ### CHOOSE-PROVIDER
 Multiple valid providers exist and Beast needs a policy or user selection.
 
-### UNSUPPORTED
-Beast can explain the blocker but should not attempt an unsafe or impossible fix.
+### UNSUPPORTED / POLICY-BLOCKED
+The managed path does not support or recommend the operation. Beast explains why,
+but an authenticated owner may explicitly override the policy when the operation
+is technically possible.
+
+### TECHNICALLY IMPOSSIBLE
+The requested action cannot presently execute as described. Owner Override does
+not turn absent hardware, missing privilege, an invalid binary format or a
+nonexistent source into a successful operation.
 
 ## Provider arbitration
 
@@ -427,6 +434,23 @@ Not implemented yet:
 - generalized Plugin install/update transaction.
 
 This boundary is intentional.
+
+## Owner sovereignty / unrestricted path
+
+The Resolver is advisory to an authenticated owner, not a permanent policy lock.
+
+Normal plans distinguish:
+- `technical_blockers` — cannot presently execute as described;
+- `policy_blockers` — managed/supported mode recommends stopping;
+- `owner_override_available` — the owner may deliberately proceed outside the
+  managed/support boundary when no technical blocker prevents the operation.
+
+Beast should continue to display dependencies, conflicts, data-egress, version,
+resource and recovery warnings in Owner Override mode, but policy warnings become
+informational after explicit owner approval.
+
+See `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`.
+
 
 ## Next implementation phases
 
