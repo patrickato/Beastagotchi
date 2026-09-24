@@ -70,6 +70,13 @@ Next:
 - dedicated adapters for code-bearing app/renderer/integration/hardware Packs.
 
 ### Gate 3 — Presentation ownership / Theme Manager coexistence
+
+A fresh review of the substantially expanded Theme Manager is captured in
+`docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`. It adds
+candidate work around dirty-region display writes, canonical live tokens,
+declarative visual effects/scenes, timed physical preview/revert, semantic render
+layers, a Theme Manager asset bridge and a neutral presentation-engine adapter.
+Those are design targets until individually implemented/tested.
 - validate stock/Jayofelony release/acquire semantics;
 - validate Korrie71 Theme Manager release/acquire semantics;
 - implement real Presentation Broker adapters;
