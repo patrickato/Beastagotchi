@@ -63,6 +63,7 @@ def main() -> int:
     themes = THEMES if args.all_themes else ("classic", "blackice", "synthwave", "lcars")
     manifest = {
         "source_state": str(Path(args.state)),
+        "state_provenance": state.get("_beast_capture"),
         "themes": list(themes),
         "pages": list(PAGES),
         "frames": [],
