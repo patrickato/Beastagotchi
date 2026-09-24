@@ -18,7 +18,7 @@ are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
 Development lives on `v0.19-unified-experience` in Draft PR #9. The current
-preserved source gate is **353 passing tests** plus Python compile/shell validation.
+preserved source gate is **360 passing tests** plus Python compile/shell validation.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -113,16 +113,27 @@ Approved direction:
 
 Implemented foundation:
 - Owner Sovereignty / Unrestricted Mode specification;
-- PluginBroker planning now distinguishes `technical_blockers` and `policy_blockers`;
-- plans expose `owner_override_available` without yet executing the override;
-- current managed executor remains conservative and transactional.
+- PluginBroker planning distinguishes `technical_blockers` and `policy_blockers`;
+- persistent Expert Mode state exists and changing it requires an active
+  owner-authorized administrator session;
+- explicit per-action plugin policy override is supported only while Expert Mode
+  is active; technical blockers remain absolute;
+- plugin override retains transactional snapshot/verification/restart/health/
+  rollback behavior;
+- successful overrides persist customized/support-state evidence and durable
+  audit events;
+- read-only owner-mode status is available through Core/API/structured Operator
+  tools;
+- sanitized Support Bundles report Expert/customized state.
 
 Next:
-- persistent Expert Mode state + obvious UI indicator;
-- per-action unsupported override planning/confirmation;
-- support-state/customization reporting in Doctor/Support Bundle;
+- dedicated Beast Studio/TFT Expert Mode control + obvious indicator;
+- extend policy-vs-technical blocker semantics into the common Dependency &
+  Capability Resolver;
+- reverse `used_by` impact in override confirmations;
 - unsupported plugin/source import;
 - exact manual/root escape-hatch instructions for self-disabling operations;
+- verified return-to-managed-baseline workflow;
 - direct owner administration surface only after local-auth/audit/recovery boundaries are explicit.
 
 ### Gate 3 — Presentation ownership / Theme Manager coexistence
