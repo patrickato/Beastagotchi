@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .util import run
+from .provider_arbitration import CapabilityProviderArbitrator
 
 
 _HARD_FAILURES = {
@@ -78,6 +79,7 @@ class DependencyCapabilityResolver:
         self.which = which
         self.path_exists = path_exists or (lambda p: Path(p).exists())
         self.module_finder = module_finder or importlib.util.find_spec
+        self.arbitrator = CapabilityProviderArbitrator(state)
 
     @staticmethod
     def _norm(value: Any) -> str:
@@ -457,7 +459,7 @@ class DependencyCapabilityResolver:
                 "unresolved_requirements": unresolved,
             }
 
-        return {
+        graph = {
             "schema": self.schema,
             "execution_enabled": False,
             "provider_selection_enabled": False,
@@ -476,3 +478,7 @@ class DependencyCapabilityResolver:
                 "catalog_unresolved_count": unresolved_total,
             },
         }
+        arbitration = self.arbitrator.evaluate(normalized, graph)
+        graph["arbitration"] = arbitration
+        graph["provider_selection_enabled"] = bool(arbitration.get("selection_mutation_enabled", False))
+        return graph
