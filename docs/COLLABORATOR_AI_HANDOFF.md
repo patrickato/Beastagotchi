@@ -16,6 +16,7 @@ This repository snapshot is intended to let an external developer or AI resume o
 11. `docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`
 12. `docs/Beastagotchi_Dependency_Capability_Resolver_v0.1.md`
 13. `docs/Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`
+14. `docs/Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -37,6 +38,7 @@ External reviewers are especially invited to critique:
 - Theme Manager coexistence/merge strategy.
 - plugin compatibility and configuration safety.
 - dependency/capability graph design, provider arbitration and how to keep a maximal known-universe BOM without a kitchen-sink runtime.
+- owner sovereignty / Expert Mode design: preserve owner freedom without turning local policy override into unauthenticated remote privilege.
 - performance/thermal behavior on Pi 4.
 - code organization, duplicated historical code and migration path to v1.0.
 - test gaps, packaging and CI.
@@ -52,3 +54,4 @@ Please distinguish architectural critique from personal preferences and cite fil
 - Do not invent telemetry when live/persisted data is absent.
 - Build substantial, test-backed blocks before asking for another physical Pi test.
 - Cataloging the full software/service universe is approved; bulk-installing/enabling that universe is not. Optional dependencies remain feature/hardware driven.
+- A Beast policy blocker is not ownership authority: technically possible unsupported operations need an explicit owner override/manual escape path; technical impossibility remains distinct.
