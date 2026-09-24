@@ -53,13 +53,19 @@ jobs:
 
 
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p artifacts/v019-pi-acceptance
-          SHORT_SHA="${GITHUB_SHA:0:12}"
-          ARCHIVE="artifacts/v019-pi-acceptance/beastagotchi-v019-pi-acceptance-${SHORT_SHA}.tar.gz"
-          git archive --format=tar.gz --prefix="Beastagotchi-v019-${SHORT_SHA}/" -o "$ARCHIVE" HEAD
-          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
-          printf '%s\n' "$GITHUB_SHA" > artifacts/v019-pi-acceptance/COMMIT_SHA.txt
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          OUTDIR="artifacts/v019-pi-acceptance"
+          NAME="beastagotchi-v019-pi-acceptance-${SHORT_SHA}.tar.gz"
+          ARCHIVE="$OUTDIR/$NAME"
+          git archive --format=tar.gz --prefix="Beastagotchi-v019-${SHORT_SHA}/" -o "$ARCHIVE" "$SOURCE_SHA"
+          (cd "$OUTDIR" && sha256sum "$NAME" > "${NAME}.sha256")
+          printf '%s\n' "$SOURCE_SHA" > "$OUTDIR/SOURCE_COMMIT_SHA.txt"
+          printf '%s\n' "$GITHUB_SHA" > "$OUTDIR/CI_TESTED_SHA.txt"
 
       - name: Upload v0.19 Pi acceptance source bundle
         uses: actions/upload-artifact@v4
