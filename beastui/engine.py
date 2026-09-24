@@ -17,6 +17,8 @@ from .hitbox import hit, expanded_hitbox, MIN_TARGET, NORMAL_TARGET, PRIMARY_TAR
 from .datafeed import DataFeed
 from .face import FaceEngine
 from .framebuffer import FrameBuffer
+from .scene_runtime import SceneRuntime
+from .scene_compositor import compositor_cache_telemetry
 from .display import DisplayTransform
 from .input import TouchInput
 from .pages import Pages
@@ -102,7 +104,8 @@ class BeastUI:
         self.custom_boards=validate_custom_boards(pref.get('custom_boards'))
         self.pack_boards=discover_enabled_pack_boards()
         self.face_profile_pref=str(pref.get('face_profile') or 'builtin');self.animation_profile_pref=str(pref.get('animation_profile') or 'none')
-        self.face=FaceEngine(profile_id=self.face_profile_pref,animation_profile_id=self.animation_profile_pref); self.pages=Pages(self.face); self.page=0; self.phase=0.0
+        self.face=FaceEngine(profile_id=self.face_profile_pref,animation_profile_id=self.animation_profile_pref); self.pages=Pages(self.face); self.page=0; self.phase=0.0; self.phase_override=None
+        self.scene_runtime=SceneRuntime()
         self.apps=self._build_app_registry()
         _app_ids=[a.id for a in self.apps.all()]
         self.context_decks=validate_context_decks(pref.get('context_decks'),app_ids=_app_ids)
@@ -2049,13 +2052,14 @@ class BeastUI:
                 'target_fps':round(self.adaptive_fps(),1),'lifetime_fps':round(self._frame_count/elapsed,2),
                 'drawer':self.drawer,'help':self.help_overlay,'touch_zones':self.touch_zones_overlay,
                 'spectrum_renderer':self.renderer_for('spectrum'),'data_error':self.data_error,'native_pwnagotchi':self.native_source.info().__dict__ if self._is_native_theme() else None,
-                'framebuffer':self.fb.telemetry(),'display':self.display_transform.metadata(),'ts':time.time(),
+                'framebuffer':self.fb.telemetry(),'display':self.display_transform.metadata(),
+                'scene':self.scene_runtime.snapshot(),'compositor_cache':compositor_cache_telemetry(),'ts':time.time(),
             }
             self.runtime_path.parent.mkdir(parents=True,exist_ok=True); self.runtime_path.write_text(json.dumps(obj,separators=(',',':'))+'\n')
         except Exception:log.debug('runtime telemetry write failed',exc_info=True)
 
     def _compose_native(self):
-        self.phase=time.monotonic()
+        self.phase=float(self.phase_override) if self.phase_override is not None else time.monotonic()
         mode=self._native_mode()
         opts=self.options_for_theme(self.theme.id)
         ink=self._native_ink_color()
@@ -2119,10 +2123,11 @@ class BeastUI:
     def _compose(self,page_idx):
         if self._is_native_theme():
             return self._compose_native()
-        self.phase=time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
+        self.phase=float(self.phase_override) if self.phase_override is not None else time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
         page_id=self.pages.IDS[page_idx];title=self.pages.TITLES[page_id]
+        self.scene_runtime.begin(page_id=page_id,scene_id=f'page:{page_id}',theme_id=self.theme.id)
         if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),title)
-        self._header(d,title);getattr(self.pages,page_id)(d,self.state,self)
+        self._header(d,title);getattr(self.pages,page_id)(d,self.state,self);self.scene_runtime.end()
         im=draw_foreground_effects(im,self.theme,self.phase,self.render_options_for_theme(self.theme.id));d=ImageDraw.Draw(im)
         self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
         _scanline_opt=str(self.render_options_for_theme(self.theme.id).get('scanline','on')).lower()
