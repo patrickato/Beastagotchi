@@ -115,6 +115,7 @@ class BeastCore:
             owner_mode=self.owner_mode,
             provider_preferences=self.provider_preferences,
         )
+        self.actions.doctor = self.doctor
         self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)
         self.api.backup_manager = self.actions.backup_manager
