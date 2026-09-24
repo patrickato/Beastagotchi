@@ -192,8 +192,10 @@ Implemented visual transport step:
   is not silently installed into the protected Pwnagotchi environment.
 
 Next:
-- package the QR renderer dependency through a clean Beast-owned/capability-aware
-  runtime path;
+- Beast-owned optional Python runtime path is now implemented for the QR renderer:
+  `prepare-qr` installs the CI-tested qrcode 8.2 wheel into
+  `/opt/beast-python/site-packages` with SHA-256 provenance and `remove-qr`
+  removes it without modifying Pwnagotchi site-packages;
 - physically validate TFT/phone-camera scanning before choosing animation timing;
 - automatic frame cycling + receiver/missing-frame UX after physical evidence;
 - Capsule Workshop / exact-share preview in Studio;
