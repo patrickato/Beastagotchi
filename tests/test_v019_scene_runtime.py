@@ -1,0 +1,138 @@
+from pathlib import Path
+
+import pytest
+from PIL import Image, ImageDraw, ImageFont
+
+from beastui.home_scenes import render_home_scene
+from beastui.scene_compositor import (
+    ambient_glow,
+    clear_compositor_caches,
+    compositor_cache_telemetry,
+    paste_scene_asset,
+)
+from beastui.scene_runtime import SceneLayerSpec, SceneRuntime
+
+
+class _Theme:
+    id = "classic"
+    home_scene = "hero"
+
+    _colors = {
+        "bg": (2, 4, 8),
+        "ink": (3, 6, 10),
+        "panel": (10, 18, 28),
+        "panel2": (14, 22, 34),
+        "primary": (90, 220, 255),
+        "secondary": (170, 110, 255),
+        "accent": (255, 190, 70),
+        "dim": (105, 125, 145),
+        "edge": (36, 68, 88),
+        "text": (235, 245, 255),
+        "info": (100, 210, 255),
+        "warn": (255, 190, 70),
+        "danger": (255, 80, 90),
+        "grid": (20, 42, 52),
+    }
+
+    def c(self, name, fallback=None):
+        return self._colors.get(name, fallback or (255, 255, 255))
+
+
+class _UI:
+    def __init__(self, root: Path):
+        self.root = root
+        self.theme = _Theme()
+        self.phase = 1.25
+        font = ImageFont.load_default()
+        self.fonts = {
+            "micro": font, "tiny": font, "small": font, "medium": font,
+            "large": font, "body": font, "title": font,
+        }
+        self.scene_runtime = SceneRuntime()
+        self.scene_runtime.begin(page_id="home", scene_id="page:home", theme_id="classic")
+
+
+def test_scene_runtime_records_semantic_layer_contract():
+    rt = SceneRuntime()
+    rt.begin(page_id="home", scene_id="home:hero", theme_id="classic")
+    with rt.layer(
+        "home.hud", "instrument", (280, 40, 470, 216),
+        signals=("wifi.ap_count",), update_class="live", resource_class="light",
+    ):
+        pass
+    rt.end()
+    snap = rt.snapshot()
+    assert snap["scene"] == "home:hero"
+    assert snap["layer_count"] == 1
+    row = snap["layers"][0]
+    assert row["id"] == "home.hud"
+    assert row["signals"] == ["wifi.ap_count"]
+    assert row["render_ms"] >= 0
+
+
+def test_scene_runtime_rejects_semantic_id_reuse_with_different_metadata():
+    rt = SceneRuntime()
+    rt.begin(page_id="home")
+    rt.register(SceneLayerSpec("x", "text", (0, 0, 10, 10)))
+    with pytest.raises(ValueError):
+        rt.register(SceneLayerSpec("x", "graph", (0, 0, 20, 20)))
+
+
+def test_home_hero_publishes_layer_registry(tmp_path: Path):
+    ui = _UI(tmp_path)
+    image = Image.new("RGB", (480, 320), ui.theme.c("bg"))
+    draw = ImageDraw.Draw(image)
+    state = {
+        "progression.beast.name": "BEAST",
+        "progression.level": 12,
+        "progression.stage": "Scout",
+        "pwnagotchi.mood": "awake",
+        "beast.expression": "focused",
+        "context.mode.effective": "pwn",
+        "radio.primary.channel": 11,
+        "wifi.ap_count": 17,
+        "wifi.client_count": 6,
+        "pwnagotchi.handshakes": 3,
+        "captures.pmkid_count": 1,
+        "pwnagotchi.status": "Watching the field",
+        "wifi.encounters.session_unique": 22,
+        "gps.fix": True,
+        "system.cpu.total": 18.0,
+        "system.temp.cpu_c": 53.0,
+    }
+    assert render_home_scene(draw, state, ui) is True
+    snap = ui.scene_runtime.snapshot()
+    assert snap["scene"] == "home:hero"
+    ids = {row["id"] for row in snap["layers"]}
+    assert {
+        "home.environment",
+        "home.creature.art",
+        "home.creature.identity",
+        "home.field_hud",
+        "home.status_ribbon",
+        "home.system_chips",
+    }.issubset(ids)
+    hud = next(row for row in snap["layers"] if row["id"] == "home.field_hud")
+    assert "wifi.ap_count" in hud["signals"]
+    env = next(row for row in snap["layers"] if row["id"] == "home.environment")
+    assert env["decorative"] is True
+
+
+def test_compositor_reuses_glow_and_asset_preprocessing(tmp_path: Path):
+    clear_compositor_caches()
+    base = Image.new("RGB", (480, 320), (0, 0, 0))
+    ambient_glow(base, (120, 100), 70, (0, 255, 255), strength=0.2)
+    first = compositor_cache_telemetry()
+    assert first["glow_misses"] == 1
+    ambient_glow(base, (120, 100), 70, (0, 255, 255), strength=0.2)
+    second = compositor_cache_telemetry()
+    assert second["glow_hits"] == 1
+
+    asset = tmp_path / "portrait.png"
+    Image.new("RGB", (64, 64), (180, 40, 90)).save(asset)
+    assert paste_scene_asset(base, asset, (8, 38, 278, 269), phase=0.1, edge_fade=30)
+    third = compositor_cache_telemetry()
+    assert third["asset_misses"] == 1
+    assert paste_scene_asset(base, asset, (8, 38, 278, 269), phase=0.9, edge_fade=30)
+    fourth = compositor_cache_telemetry()
+    assert fourth["asset_hits"] == 1
