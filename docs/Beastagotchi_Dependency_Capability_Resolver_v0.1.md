@@ -1,6 +1,6 @@
 # Beastagotchi Dependency & Capability Resolver — v0.1
 
-**Status:** approved architecture / first catalog metadata implemented  
+**Status:** approved architecture / shared read-only resolver implemented for Plugins + Packs  
 **Date:** 2026-09-24  
 **Reference build:** Raspberry Pi 4 / Jayofelony 64-bit Pwnagotchi `noai` branch  
 **Jayofelony reference commit reviewed:** `93dda381ef11538e4ec03fd130abad3ceeea7a4c`
@@ -110,6 +110,28 @@ The Resolver must be able to represent at least:
 - user-selected provider.
 
 The Resolver reports presence only for secrets. It must never reveal secret values.
+
+## Requirement declaration syntax
+
+The shared resolver accepts both abstract capability IDs and typed presence probes.
+
+Examples:
+
+- `location.position` — abstract capability/provider requirement;
+- `service:gpsd.service` — canonical service-inventory requirement;
+- `package:curl` — Debian package presence probe using `dpkg-query -W`;
+- `executable:rtl_433` — PATH presence probe;
+- `python:serial` — Python module presence probe without importing/executing it;
+- `path:/dev/ttyUSB0` — path/device presence probe;
+- `config:some.canonical.state.key` — configuration-presence state;
+- `credential:some.presence.state.key` — credential-presence state only;
+- `capability:location.position` — explicit capability form.
+
+Presence probes are bounded and read-only. A successful probe is evidence that a
+prerequisite exists; it is not permission to mutate it.
+
+Secrets are never returned. Stock plugin config inspection now records only
+whether a sensitive field is populated, never its value.
 
 ## Resolution states
 
@@ -418,20 +440,40 @@ storage/resource effect and conflicts, and only perform approved actions.
 ## Current implementation boundary
 
 Implemented now:
-- stock plugin role/capability/requirement catalog metadata in
-  `beastcore/plugin_integration.py`;
-- provider-group, data-egress, credential and hardware-specific metadata;
-- catalog explicitly reports that requirement resolution is `catalog_only`;
-- dependency installation/remediation executor remains disabled.
+- shared `beastcore/dependency_resolver.py` / `DependencyCapabilityResolver`;
+- one resolver instance is shared by Core's PluginIntegrationEngine and
+  PackRegistryEngine;
+- stock plugin role/capability/requirement/provider/egress/credential/hardware
+  metadata;
+- bounded read-only requirement probes for canonical capabilities, services,
+  Debian package presence, executable presence, Python module presence,
+  paths/device nodes, config presence and credential presence;
+- canonical/native-provider discovery from existing Beast state rather than new
+  background pollers;
+- provider index and reverse `used_by` graph;
+- provider availability is distinct from active selection, allowing an installed
+  but disabled dependency Pack to remain available without making it active;
+- active/selected requirement health is separated from whole-catalog readiness so
+  disabled optional plugins do not make the running system look broken;
+- technical blockers vs policy blockers use the same Owner Sovereignty semantics
+  established by Expert Mode;
+- known absent hardware capabilities are technical blockers;
+- unknown/unproven requirements are policy blockers rather than invented facts;
+- stock plugin sensitive config fields expose only `present=true/false`;
+- Plugin and Pack catalog rows include resolved requirement evidence;
+- read-only `GET /dependencies` summary and platform-bundle dependency summary;
+- dependency installation/remediation executor remains disabled;
+- provider selection/arbitration remains disabled.
 
 Not implemented yet:
-- live package/module/executable/service requirement resolution;
-- provider selection/arbitration;
-- reverse `used_by` graph;
-- automatic package installation;
+- active provider selection/arbitration policy;
+- generalized version-range resolver;
 - schema-driven plugin config;
-- credential-entry workflow;
-- generalized Plugin install/update transaction.
+- guided credential-entry workflow;
+- automatic package/service installation;
+- generalized Plugin install/update transaction;
+- common resolver adoption by Experiences/Apps/Hardware Studio;
+- transaction executor for remediation plans.
 
 This boundary is intentional.
 
@@ -454,13 +496,14 @@ See `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md`.
 
 ## Next implementation phases
 
-1. Define common requirement/result dataclasses and canonical capability IDs.
-2. Add side-effect-free resolver probes for declared requirements only.
-3. Build reverse `used_by` graph.
-4. Surface resolver results in Plugin & Capability Center and Doctor.
-5. Add build-specific BOM generator/export.
-6. Add provider arbitration without mutating upstream plugins.
+1. Surface the existing resolver evidence in Plugin & Capability Center and Beast
+   Doctor/Explain.
+2. Add active-provider arbitration policy without mutating upstream plugins.
+3. Add build-specific BOM generator/export using the same provider/requirement
+   graph.
+4. Add common resolver adoption by Experiences, Apps and Hardware Studio.
+5. Add generalized version-range resolution.
+6. Add guided configuration/credential setup using presence-only secret handling.
 7. Add transactional remediation plans.
-8. Add explicit package/service installer only after dry-run, provenance and rollback
-   behavior are proven.
-9. Extend the same resolver contract to Packs, Experiences, Apps and Hardware Studio.
+8. Add explicit package/service installer only after dry-run, provenance and
+   rollback behavior are proven.
