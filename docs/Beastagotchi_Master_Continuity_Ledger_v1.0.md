@@ -442,3 +442,92 @@ architecture work should continue to ask what additional user-facing capability
 the same underlying data or mechanism can unlock, rather than treating roadmap
 implementation as a silent checklist exercise.
 
+## Provider preferences + health/confidence + Beast Doctor — 2026-09-24
+
+The read-only provider arbitration milestone was extended into a first genuinely
+user-explainable provider-management layer.
+
+Implemented:
+
+- persistent `ProviderPreferenceManager` at
+  `/var/lib/beastagotchi/provider-preferences.json`;
+- atomic private `0600` writes;
+- persistent capability -> provider owner preference plus set timestamp/actor;
+- canonical `providers.preferences` state;
+- audited Action Broker operations:
+  - `provider.preference_set`
+  - `provider.preference_clear`;
+- an active owner-authorized Operator session is required to mutate preference
+  policy;
+- saving/clearing a preference does **not** enable a plugin, start a service,
+  switch hardware ownership or perform failover;
+- a temporarily unavailable/unknown provider preference may remain dormant
+  instead of being silently erased;
+- provider candidates now expose initial evidence health/confidence:
+  - live canonical state can carry high confidence and measured freshness;
+  - requirements-ready component providers are `ready_unverified` or
+    `standby_ready`;
+  - blocked/uncertain providers remain explicitly weaker evidence;
+- confidence describes **evidence quality**, not vendor/device quality.
+
+The first `BeastDoctor` implementation now consumes provider/dependency state
+rather than creating duplicate pollers.
+
+Doctor can explain:
+- why a capability's provider is active;
+- current provider health/confidence/freshness;
+- owner preference and preference mismatch;
+- alternates and fallback chain;
+- Plugin/Pack reverse `USED BY` relationships;
+- downstream components that may degrade if the active provider disappears;
+- whether automatic failover exists (currently false);
+- bounded evidence-based recommendations.
+
+New read-only surfaces:
+- `GET /doctor`
+- `GET /explain?capability=...`
+- `GET /explain?provider=...`
+- `GET /provider-preferences`
+- structured Operator tools `doctor.explain` and `provider.preferences`.
+
+Structured mutation tools:
+- `provider.preference_set`
+- `provider.preference_clear`.
+
+A low-frequency Doctor Core loop publishes bounded canonical summary state.
+Sanitized Support Bundles preserve non-secret provider-policy and Doctor status.
+
+Durable product rule:
+
+> **Explain before act.**
+
+Before Beast offers an important provider/component mutation, the desired flow is:
+Explain -> Plan -> Preview impact -> Snapshot -> Execute -> Observe probation ->
+Rollback/Accept -> Record.
+
+This principle should later be shared by Plugin disable/remove, Pack removal/update,
+service changes, hardware role reassignment, Presentation Broker handoff and
+dependency remediation.
+
+Additional Lightbulb directions retained from this block:
+- causal-chain troubleshooting such as
+  `Expedition route missing -> location unavailable -> preferred PwnDroid not
+  ready -> phone link absent`;
+- a known-good machine fingerprint combining BOM, providers, versions, hardware,
+  plugins/Packs and customization state;
+- "what changed since known-good?" Doctor comparison;
+- pre-action blast-radius simulation showing what loses capability and what has a
+  replacement provider;
+- field-TFT Doctor condensed to OK / ATTENTION / DEGRADED / ACTION REQUIRED with
+  one-tap causal explanation;
+- browser workshop graph for full dependency/provider exploration;
+- recovery recommendations ranked by reversibility rather than by aggression.
+
+Canonical specs:
+- `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
+- `docs/Beastagotchi_Doctor_Explain_v0.1.md`
+
+Automatic failover remains deliberately disabled. Provider switching/handoff has
+not been physically or transactionally validated merely because policy and
+explanation now exist.
+
