@@ -402,12 +402,28 @@ Capsules remain data objects, not hidden executable attachments.
 
 ### Capsule Workshop
 
-A Beast App for:
-- previewing exactly what will be shared;
-- selecting optional fields;
-- choosing QR/file/NFC transport;
-- inspecting incoming Capsule provenance/integrity;
-- exporting a human-readable summary.
+The first **Beast Studio Capsule Workshop** is now implemented for Lineage
+Capsules.
+
+Current behavior:
+- chooses a persistent roster creature;
+- explicitly controls whether to include the chosen name, curated appearance and
+  achievement IDs;
+- fetches a fresh privacy-curated Lineage Capsule from Beast Core;
+- shows the exact Capsule envelope JSON that the QR frames represent;
+- renders the exact selected BCQ1 frame through the local Beast-owned QR renderer;
+- provides manual previous/next frame navigation;
+- repeats the privacy/authenticity boundary in the UI;
+- performs **no import, publication, synthesis or roster mutation**.
+
+This is intentionally an export/exact-preview workshop, not yet a full
+Inbox/Outbox or receive/import environment.
+
+Still planned:
+- file/NFC transport choice;
+- incoming Capsule provenance/integrity inspection;
+- human-readable export summary;
+- Inbox/Outbox history.
 
 ### Signed identity
 
@@ -429,10 +445,10 @@ Do not bolt signatures on casually.
 1. Physically validate the Capsule Share surface on the 480×320 TFT with a real
    phone/camera: readability, brightness, 3px-class modules and repeated scans.
 2. Tune manual vs automatic frame cycling from physical scan evidence.
-3. Add Capsule Workshop / exact-share preview in Beast Studio.
-4. Add scan/import preview without roster mutation.
-5. Define signed Capsule identity/authenticity v2.
-6. Add PeerDex Beast Card Capsule.
-7. Add Challenge Capsule.
-8. Define remote-lineage storage separately from local owned Beasts.
-9. Only then allow confirmed lineage import/synthesis semantics.
+3. Extend the implemented Studio Capsule Workshop with file export and later
+   receive/import preview while keeping roster mutation disabled.
+4. Define signed Capsule identity/authenticity v2.
+5. Add PeerDex Beast Card Capsule.
+6. Add Challenge Capsule.
+7. Define remote-lineage storage separately from local owned Beasts.
+8. Only then allow confirmed lineage import/synthesis semantics.
