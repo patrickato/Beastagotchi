@@ -177,6 +177,22 @@ INTEGRATIONS: tuple[dict[str, Any], ...] = (
         "purpose": "Research backend for richer HDMI/DSI/DRM displays; not a replacement for the proven SPI RGB565 path and not based on LVGL XML/UI-editor formats.",
     },
     {
+        "id": "backup-restic", "label": "Restic Recovery Vault",
+        "category": "backup", "lane": "external_process", "maturity": "candidate",
+        "provides": ["backup.encrypted_snapshots", "backup.remote_repository", "backup.deduplicated"],
+        "requires": ["package:restic", "executable:restic"],
+        "activation": "on_demand_subprocess", "isolation": "sandboxed_process",
+        "purpose": "Encrypted snapshot/repository backend for USB, local, SFTP and object-storage recovery destinations.",
+    },
+    {
+        "id": "backup-rclone", "label": "rclone Recovery Transport",
+        "category": "backup", "lane": "external_process", "maturity": "candidate",
+        "provides": ["backup.remote_transport", "backup.client_side_encryption", "backup.cloud_optional"],
+        "requires": ["package:rclone", "executable:rclone"],
+        "activation": "on_demand_subprocess", "isolation": "sandboxed_process",
+        "purpose": "Optional transport/encryption provider for user-selected remote storage without making any cloud mandatory.",
+    },
+    {
         "id": "location-gpsd", "label": "gpsd Location Service",
         "category": "location", "lane": "os_service", "maturity": "established",
         "provides": ["location.position", "location.fix", "location.satellites", "location.receiver_or_gpsd"],
