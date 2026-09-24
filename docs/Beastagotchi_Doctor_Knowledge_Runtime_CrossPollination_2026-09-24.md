@@ -339,3 +339,23 @@ This protects the Condition Pack contract from turning into a second programming
 The standalone collaboration now maintains release staging documentation under `test-plugins/release/pwndoctor/` before code freeze. The intended final package includes the Doctor runtime, first-party Medical Library, user-pack examples, complete configuration/install/upgrade/rollback/uninstall instructions, dependencies, usage, safety model, compatibility policy, troubleshooting, tests, GPLv3 license, release checklist and checksums.
 
 This staging approach should be reused for future Beast-originated standalone utilities: documentation and release discipline are developed alongside code rather than after implementation is declared complete.
+## 28. Upstream compatibility fingerprint
+
+The standalone PwnDoctor now records a privacy-light compatibility fingerprint in its Patient Chart:
+- Pwnagotchi version
+- Python version
+- architecture
+- kernel
+- OS ID/version/build ID
+
+The same pattern should be reused by Beast's adaptive platform/upstream compatibility layer. It intentionally excludes hostnames, MAC addresses, SSIDs, IP addresses, GPS and owner identity.
+
+Compatibility should be evidence-labeled rather than binary: physical_validated, ci_validated, community_reported, unknown, known_incompatible.
+
+Unknown upstream state should degrade specific assumptions/probes, not force an all-or-nothing product failure.
+
+## 29. Reproducible release packaging lesson
+
+PwnDoctor release staging now has a canonical assembler that copies frozen source into a standalone package, generates a machine-readable release manifest and SHA256SUMS, and verifies the output in CI.
+
+This is a good reusable pattern for Beast standalone utilities/Packs: keep one canonical development source, generate release artifacts from it, and make package assembly itself part of CI.
