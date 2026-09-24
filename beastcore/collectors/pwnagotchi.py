@@ -33,7 +33,13 @@ def _safe_field_rows(opts: dict[str, Any] | None) -> list[dict[str, Any]]:
         preview: Any = None
         if not sensitive and isinstance(value, (bool, int, float, str)):
             preview = value
-        rows.append({"key": str(key), "type": typ, "sensitive": sensitive, "preview": preview})
+        rows.append({
+            "key": str(key),
+            "type": typ,
+            "sensitive": sensitive,
+            "present": value not in {None, ""} if not isinstance(value, (list, dict)) else bool(value),
+            "preview": preview,
+        })
     return rows
 
 
