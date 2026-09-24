@@ -234,36 +234,53 @@ def _hero_scene(d,state,ui, *, variant='classic'):
 
     # Compact glass HUD on the right. This is one information plane, not a wall
     # of cards; large live values dominate and labels recede.
-    alpha_panel(canvas,(282,47,470,216),fill=t.c('panel'),outline=t.c('edge'),alpha=176,radius=12)
-    d=ImageDraw.Draw(canvas)
-    d.text((298,60),'FIELD LINK',font=f['tiny'],fill=t.c('dim'))
-    d.text((298,75),mode[:14],font=f['large'],fill=t.c('accent'))
-    d.text((299,101),f"CHANNEL {_v(state,'radio.primary.channel','--')}",font=f['small'],fill=t.c('text'))
-    d.line((298,122,454,122),fill=t.c('edge'))
+    with _scene_layer(
+        ui,'home.field_hud','instrument',(282,47,470,216),z=40,
+        signals=('context.mode.effective','radio.primary.channel','wifi.ap_count',
+                 'wifi.client_count','pwnagotchi.handshakes','pwnagotchi.pmkids',
+                 'captures.pmkid_count'),
+        update_class='live',resource_class='light',
+    ):
+        alpha_panel(canvas,(282,47,470,216),fill=t.c('panel'),outline=t.c('edge'),alpha=176,radius=12)
+        d=ImageDraw.Draw(canvas)
+        d.text((298,60),'FIELD LINK',font=f['tiny'],fill=t.c('dim'))
+        d.text((298,75),mode[:14],font=f['large'],fill=t.c('accent'))
+        d.text((299,101),f"CHANNEL {_v(state,'radio.primary.channel','--')}",font=f['small'],fill=t.c('text'))
+        d.line((298,122,454,122),fill=t.c('edge'))
 
-    rows=[
-        ('APS',_v(state,'wifi.ap_count',0),t.c('primary')),
-        ('CLIENTS',_v(state,'wifi.client_count',0),t.c('info')),
-        ('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0),t.c('accent')),
-        ('PMKIDS',_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0)),t.c('secondary')),
-    ]
-    for i,(lab,val,col) in enumerate(rows):
-        x=298+(i%2)*82;y=136+(i//2)*38
-        d.text((x,y),lab,font=f['micro'],fill=t.c('dim'))
-        d.text((x,y+11),str(val)[:8],font=f['medium'],fill=col)
+        rows=[
+            ('APS',_v(state,'wifi.ap_count',0),t.c('primary')),
+            ('CLIENTS',_v(state,'wifi.client_count',0),t.c('info')),
+            ('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0),t.c('accent')),
+            ('PMKIDS',_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0)),t.c('secondary')),
+        ]
+        for i,(lab,val,col) in enumerate(rows):
+            x=298+(i%2)*82;y=136+(i//2)*38
+            d.text((x,y),lab,font=f['micro'],fill=t.c('dim'))
+            d.text((x,y+11),str(val)[:8],font=f['medium'],fill=col)
 
     # Bottom conversational/status ribbon stays visually connected to the scene.
-    alpha_panel(canvas,(10,272-39,470,269),fill=t.c('panel'),outline=t.c('edge'),alpha=150,radius=9)
-    d=ImageDraw.Draw(canvas)
-    d.text((20,239),status[:48],font=f['small'],fill=t.c('text'))
-    session=_v(state,'wifi.encounters.session_unique',0)
-    _text_right(d,458,254,f'{session} SIGNALS',f['tiny'],t.c('info'))
+    with _scene_layer(
+        ui,'home.status_ribbon','text',(10,233,470,269),z=50,
+        signals=('pwnagotchi.status','beast.status_text','wifi.encounters.session_unique'),
+        update_class='live',resource_class='tiny',
+    ):
+        alpha_panel(canvas,(10,272-39,470,269),fill=t.c('panel'),outline=t.c('edge'),alpha=150,radius=9)
+        d=ImageDraw.Draw(canvas)
+        d.text((20,239),status[:48],font=f['small'],fill=t.c('text'))
+        session=_v(state,'wifi.encounters.session_unique',0)
+        _text_right(d,458,254,f'{session} SIGNALS',f['tiny'],t.c('info'))
 
     # Small live system chips remain visible without becoming the composition.
-    temp=_v(state,'system.temp.cpu_c','--');temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
-    cpu=_v(state,'system.cpu.total','--');cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
-    gps='GPS' if state.get('gps.fix') else 'NO GPS'
-    d.text((300,198),f'{gps}  ·  CPU {cpu}  ·  {temp}',font=f['micro'],fill=t.c('dim'))
+    with _scene_layer(
+        ui,'home.system_chips','instrument',(294,192,462,214),z=55,
+        signals=('gps.fix','system.cpu.total','system.temp.cpu_c'),
+        update_class='live',resource_class='tiny',
+    ):
+        temp=_v(state,'system.temp.cpu_c','--');temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+        cpu=_v(state,'system.cpu.total','--');cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+        gps='GPS' if state.get('gps.fix') else 'NO GPS'
+        d.text((300,198),f'{gps}  ·  CPU {cpu}  ·  {temp}',font=f['micro'],fill=t.c('dim'))
     return True
 
 def _wopr_scene(d,state,ui):
