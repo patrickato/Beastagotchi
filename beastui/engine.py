@@ -31,6 +31,7 @@ from .widgets import panel
 from .design import TOKENS
 from . import __version__ as UI_VERSION
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
+from .qr_render import draw_qr, qr_backend_status
 from .customization import (
     validate_dashboard_widgets, dashboard_history_keys, validate_context_decks,
     validate_palette_overrides, validate_correlation_keys, validate_custom_boards, PALETTE_SLOTS, dashboard_widget_box,
@@ -73,6 +74,10 @@ class BeastUI:
         (16,96,236,174),(244,96,464,174),
         (16,180,236,258),(244,180,464,258),
     )
+    CAPSULE_QR_BOX=(16,54,222,260)
+    CAPSULE_PREV=(232,224,304,274)
+    CAPSULE_CLOSE=(308,224,382,274)
+    CAPSULE_NEXT=(386,224,464,274)
 
     def __init__(self,root='/opt/beast-ui',framebuffer='/dev/fb1',output=None,theme_id='classic', *, physical_size=None, display_mode='fit', display_resample='bilinear'):
         self.root=Path(root); self.output=output
@@ -121,6 +126,7 @@ class BeastUI:
         self.beastdex_overlay=False; self.beastdex_offset=0; self.beastdex_detail=None
         self.capture_vault_overlay=False; self.capture_vault_offset=0; self.capture_vault_detail=None
         self.performance_overlay=False; self.performance_offset=0
+        self.capsule_share_overlay=False; self.capsule_share={}; self.capsule_frame_idx=0; self.capsule_loading=False
         self.studio_overlay=False
         self.platform_overlay=None; self.platform_offset=0
         self.achievement_tab='achievements'; self.achievement_filter='all'; self.achievement_sort='progress'; self.achievement_offset=0; self.achievement_detail=None
