@@ -822,3 +822,50 @@ Source gate for this implementation:
 
 Receive/import remains a later separately designed gate.
 
+## Pi staging artifact / physical provenance chain — 2026-09-24
+
+Durable release/testing rule:
+**software staging and display ownership are separate decisions**.
+
+The v0.19 Pi artifact now contains a self-contained staging path that verifies and
+installs the exact tested source without claiming the TFT.
+
+The staging wrapper:
+- verifies archive SHA-256 and commit/root provenance;
+- preserves an existing Beast Core config;
+- makes a private SQLite backup of the local Beast database before the new Core
+  starts;
+- reuses normal installers;
+- starts Beast Core only;
+- optionally prepares the Beast-owned QR dependency;
+- finishes with a target preflight;
+- leaves Beast UI stopped and Pwnagotchi display ownership untouched.
+
+A separate explicit:
+`beast-v019-accept start`
+remains required to begin the bounded TFT handoff.
+
+Durable evidence rule:
+physical acceptance evidence must identify the exact staged source commit, the CI
+commit that tested it and the source archive digest. The acceptance harness now
+imports this staging provenance and includes it in both JSON and text reports.
+
+Durable recovery rule:
+the pre-stage Beast DB backup is evidence/recovery material, not an automatic
+schema rollback. Automatic database rollback across unknown future migrations
+must not be invented casually.
+
+Final code-bearing gate for this block:
+- source `89e88277c351c1b60f1af3e01a3002d84d46ed63`;
+- run `35981407684` (#384);
+- 415 tests;
+- compile/shell/gallery/Pi artifact green;
+- independently verified artifact id `10800377275`;
+- source checksum/root/staging-script syntax all verified.
+
+Lightbulb implication:
+this source->artifact->staging->physical-evidence provenance chain should become
+the model for future beta/release validation too. Later Doctor/"known-good"
+fingerprints can reference the same deployment identity instead of inventing a
+parallel provenance system.
+
