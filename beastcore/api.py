@@ -19,6 +19,7 @@ class LocalAPI:
         self.operator_policy = None
         self.operator_tools = None
         self.backup_manager = None
+        self.template_tokens = None
 
     async def start(self) -> None:
         self.server = await asyncio.start_server(self._handle, self.host, self.port)
@@ -36,6 +37,12 @@ class LocalAPI:
             if ":" in line:
                 k,v = line.split(":",1); headers[k.strip().lower()] = v.strip()
         return method, target, headers
+
+    def template_token_bundle(self, names: list[str] | None = None) -> dict[str, Any]:
+        """Resolve allow-listed presentation tokens from canonical state only."""
+        if self.template_tokens is None:
+            return {"schema": 1, "count": 0, "known_count": 0, "live_count": 0, "items": []}
+        return self.template_tokens.snapshot(names)
 
     def platform_bundle(self) -> dict[str, Any]:
         """Return the high-value whole-platform snapshot used by Beast Studio.
@@ -306,6 +313,13 @@ class LocalAPI:
             elif parsed.path == "/operator-policy":
                 level = str(self.state.get("operator.policy.level") or "observer")
                 body = self.operator_policy.snapshot(level) if self.operator_policy is not None else {}
+            elif parsed.path == "/template-tokens":
+                q = urllib.parse.parse_qs(parsed.query)
+                raw_names = str(q.get("names", [""])[0])
+                names = [x.strip() for x in raw_names.split(",") if x.strip()][:64] or None
+                body = self.template_token_bundle(names)
+                if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
+                    body["catalog"] = self.template_tokens.catalog()
             elif parsed.path == "/plugins":
                 items = list(self.state.get("plugins.catalog", []) or [])
                 body = {
@@ -378,7 +392,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/template-tokens","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
