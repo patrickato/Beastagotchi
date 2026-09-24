@@ -350,3 +350,55 @@ def test_v019_app_launcher_geometry_respects_touch_minimum():
     assert min(box[1] for box in BeastUI.APP_CARD_BOXES) > BeastUI.APP_CAT_PREV[3]
     assert len(BeastUI.CONTROL_QUICK_BOXES) == 4
     assert max(box[3] for box in BeastUI.CONTROL_QUICK_BOXES) < TOKENS.footer_y
+
+
+def test_v019_beast_identity_changes_home_and_beast_render(tmp_path):
+    from PIL import Image
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    base = {
+        "progression.level": 43,
+        "progression.max_level": 100,
+        "progression.stage": "Hunter",
+        "progression.aura": "glow",
+        "progression.level_progress_pct": 71.0,
+        "progression.xp": 12345,
+        "progression.xp_next_level": 777,
+        "progression.discovery.beast_unique_aps": 212,
+        "progression.discovery.device_first_witnessed": 19,
+        "progression.achievements.count": 28,
+        "progression.roster.summary": {"total": 3, "beasts": 2, "monsters": 1, "legends": 0},
+        "pwnagotchi.mood": "awake",
+        "context.mode.effective": "pwn",
+        "beast.expression": "curious",
+        "wifi.ap_count": 5,
+        "wifi.encounters.session_unique": 8,
+        "wifi.encounters.lifetime_unique": 500,
+        "radio.primary.channel": 6,
+        "system.cpu.total": 20.0,
+        "system.temp.cpu_c": 55.0,
+        "pwnagotchi.handshakes": 1,
+        "health.core.state": "healthy",
+        "dock.state": "field",
+    }
+    identities = [
+        ("hex", {"progression.beast.name": "Hex", "progression.beast.kind": "beast", "progression.beast.lineage": "black_ice", "progression.beast.generation": 0}),
+        ("orbit", {"progression.beast.name": "Orbit", "progression.beast.kind": "monster", "progression.beast.lineage": "starcore", "progression.beast.generation": 1}),
+    ]
+    rendered = {}
+    for ident, patch in identities:
+        state = dict(base)
+        state.update(patch)
+        for page in ("home", "beast"):
+            out = tmp_path / f"{ident}-{page}.png"
+            ui = BeastUI(root=root, output=str(out), theme_id="classic")
+            ui.state = state
+            ui.page = ui.pages.IDS.index(page)
+            ui.render()
+            with Image.open(out) as im:
+                assert im.size == (480, 320)
+                rendered[(ident, page)] = im.tobytes()
+
+    assert rendered[("hex", "home")] != rendered[("orbit", "home")]
+    assert rendered[("hex", "beast")] != rendered[("orbit", "beast")]
