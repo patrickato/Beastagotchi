@@ -7,7 +7,46 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 
-_CACHE_LIMIT = 24\n_ASSET_CACHE = OrderedDict()\n_GLOW_CACHE = OrderedDict()\n_CACHE_STATS = {\n    "asset_hits": 0, "asset_misses": 0,\n    "glow_hits": 0, "glow_misses": 0,\n}\n\n\ndef _cache_get(cache, key, hit_key, miss_key):\n    item = cache.get(key)\n    if item is not None:\n        cache.move_to_end(key)\n        _CACHE_STATS[hit_key] += 1\n        return item\n    _CACHE_STATS[miss_key] += 1\n    return None\n\n\ndef _cache_put(cache, key, value):\n    cache[key] = value\n    cache.move_to_end(key)\n    while len(cache) > _CACHE_LIMIT:\n        cache.popitem(last=False)\n\n\ndef clear_compositor_caches() -> None:\n    _ASSET_CACHE.clear()\n    _GLOW_CACHE.clear()\n    for key in _CACHE_STATS:\n        _CACHE_STATS[key] = 0\n\n\ndef compositor_cache_telemetry() -> dict:\n    out = {key: int(value) for key, value in _CACHE_STATS.items()}\n    out["asset_entries"] = len(_ASSET_CACHE)\n    out["glow_entries"] = len(_GLOW_CACHE)\n    return out\n\ndef mix(a, b, t: float):
+_CACHE_LIMIT = 24
+_ASSET_CACHE = OrderedDict()
+_GLOW_CACHE = OrderedDict()
+_CACHE_STATS = {
+    "asset_hits": 0, "asset_misses": 0,
+    "glow_hits": 0, "glow_misses": 0,
+}
+
+
+def _cache_get(cache, key, hit_key, miss_key):
+    item = cache.get(key)
+    if item is not None:
+        cache.move_to_end(key)
+        _CACHE_STATS[hit_key] += 1
+        return item
+    _CACHE_STATS[miss_key] += 1
+    return None
+
+
+def _cache_put(cache, key, value):
+    cache[key] = value
+    cache.move_to_end(key)
+    while len(cache) > _CACHE_LIMIT:
+        cache.popitem(last=False)
+
+
+def clear_compositor_caches() -> None:
+    _ASSET_CACHE.clear()
+    _GLOW_CACHE.clear()
+    for key in _CACHE_STATS:
+        _CACHE_STATS[key] = 0
+
+
+def compositor_cache_telemetry() -> dict:
+    out = {key: int(value) for key, value in _CACHE_STATS.items()}
+    out["asset_entries"] = len(_ASSET_CACHE)
+    out["glow_entries"] = len(_GLOW_CACHE)
+    return out
+
+def mix(a, b, t: float):
     t = max(0.0, min(1.0, float(t)))
     return tuple(int(a[i] * (1.0 - t) + b[i] * t) for i in range(3))
 
