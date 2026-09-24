@@ -762,3 +762,13 @@ Canonical specs:
 - `docs/Beastagotchi_Provider_Arbitration_v0.1.md`
 - `docs/Beastagotchi_Doctor_Explain_v0.1.md`
 
+Source/CI evidence for this milestone:
+- **382 tests passed in 7.45s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35968491138` (#267)
+
+No target-Pi package/service/provider/hardware mutation occurred. Provider
+preference is persistent policy only; automatic failover remains disabled.
+
