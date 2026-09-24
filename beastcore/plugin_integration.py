@@ -4,6 +4,7 @@ from typing import Any
 
 from .plugin_broker import DISPLAY_OWNERS, PROTECTED_PLUGINS
 from .theme_manager_interop import ThemeManagerProbe
+from .dependency_resolver import DependencyCapabilityResolver
 
 
 # These bindings describe where useful output from common Pwnagotchi plugins is
@@ -185,6 +186,7 @@ class PluginIntegrationEngine:
     def __init__(self, state) -> None:
         self.state = state
         self.theme_manager_probe = ThemeManagerProbe()
+        self.requirements = DependencyCapabilityResolver(state)
 
     @staticmethod
     def _binding(name: str) -> dict[str, Any]:
@@ -252,6 +254,16 @@ class PluginIntegrationEngine:
                     **({"interop": interop} if interop is not None else {}),
                 })
         rows.sort(key=lambda r: (not bool(r.get("enabled")), str(r.get("name", "")).lower()))
+        resolved = self.requirements.resolve_components(rows)
+        component_results = resolved.get("components") or {}
+        for row in rows:
+            status = component_results.get(str(row.get("name") or ""))
+            if isinstance(status, dict):
+                row.update(status)
+        used_by = resolved.get("used_by") or {}
+        for row in rows:
+            provider = f"component:{row.get('name')}"
+            row["used_by"] = list(used_by.get(provider) or [])
         return {
             "plugins.catalog": rows,
             "plugins.catalog_count": len(rows),
@@ -261,8 +273,11 @@ class PluginIntegrationEngine:
             "plugins.display_conflicts_enabled": enabled_display_conflicts,
             "plugins.display_conflict_count": len(enabled_display_conflicts),
             "plugins.integration_policy": "canonical_data_first",
-            "plugins.requirements_model": "dependency_capability_resolver_v0.1_catalog_only",
+            "plugins.requirements_model": "dependency_capability_resolver_v0.1_read_only",
             "plugins.requirements_executor_enabled": False,
+            "plugins.requirements_summary": dict(resolved.get("summary") or {}),
+            "plugins.requirements_providers": dict(resolved.get("providers") or {}),
+            "plugins.requirements_used_by": dict(used_by),
             "plugins.theme_manager.inspectable": bool(theme_manager_interop and theme_manager_interop.get("inspectable")),
             "plugins.theme_manager.version": theme_manager_interop.get("version") if theme_manager_interop else None,
             "plugins.theme_manager.capabilities": list(theme_manager_interop.get("capabilities") or []) if theme_manager_interop else [],
