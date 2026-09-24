@@ -402,3 +402,37 @@ def test_v019_beast_identity_changes_home_and_beast_render(tmp_path):
 
     assert rendered[("hex", "home")] != rendered[("orbit", "home")]
     assert rendered[("hex", "beast")] != rendered[("orbit", "beast")]
+
+
+def test_v019_widget_inspector_regions_follow_current_page_geometry(tmp_path):
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    ui = BeastUI(root=root, output=str(tmp_path / "zones.png"), theme_id="classic")
+
+    assert ui._widget_key_at("system", 40, 75) == "health.core.state"
+    assert ui._widget_key_at("system", 145, 75) == "system.temp.cpu_c"
+    assert ui._widget_key_at("system", 205, 75) == "system.cpu.total"
+    assert ui._widget_key_at("system", 260, 75) == "system.memory.used_pct"
+    assert ui._widget_key_at("system", 380, 75) == "governor.mode"
+
+    assert ui._widget_key_at("captures", 100, 75) == "captures.total"
+    assert ui._widget_key_at("captures", 280, 75) == "pwnagotchi.handshakes"
+    assert ui._widget_key_at("captures", 410, 75) == "wifi.handshake_ap_count"
+
+    assert ui._widget_key_at("spectrum", 60, 65) == "radio.primary.channel"
+    assert ui._widget_key_at("spectrum", 180, 65) == "radio.primary.band"
+    assert ui._widget_key_at("spectrum", 410, 65) == "wifi.ap_count"
+
+    assert ui._widget_key_at("expedition", 60, 135) == "expedition.distance_m"
+    assert ui._widget_key_at("expedition", 180, 135) == "expedition.route_points"
+    assert ui._widget_key_at("expedition", 300, 135) == "expedition.ap_unique"
+    assert ui._widget_key_at("expedition", 410, 135) == "expedition.captures_delta"
+
+    assert ui._widget_key_at("beast", 300, 80) == "progression.level"
+    assert ui._widget_key_at("beast", 270, 170) == "pwnagotchi.mood"
+    assert ui._widget_key_at("beast", 345, 170) == "progression.aura"
+    assert ui._widget_key_at("beast", 430, 170) == "context.mode.effective"
+    assert ui._widget_key_at("beast", 270, 225) == "progression.discovery.beast_unique_aps"
+    assert ui._widget_key_at("beast", 350, 225) == "progression.discovery.device_first_witnessed"
+    assert ui._widget_key_at("beast", 430, 225) == "progression.achievements.count"
