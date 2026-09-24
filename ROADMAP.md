@@ -13,6 +13,12 @@ an active design authority for contract consolidation, Scene/Visual Runtime work
 Experience compilation and incremental monolith decomposition; it does not erase
 the continuity ledger or completion matrix.
 
+The open-ecosystem expansion direction is preserved in
+`docs/Beastagotchi_External_Software_Integration_Strategy_2026-09-24.md` and
+`docs/Beastagotchi_Lightbulb_Review_Capability_Platform_2026-09-24.md`. External
+packages/services are treated as capability providers behind Beast contracts,
+not as reasons to duplicate mature Linux/Pi software or bloat every install.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
@@ -57,7 +63,8 @@ Recent progress:
 - the commit-pinned Pi artifact now carries a verified one-command staging wrapper + quickstart; staging verifies SHA/source provenance, preserves Beast Core config, backs up the existing Beast SQLite DB, installs Core/UI, starts Core only and leaves TFT ownership untouched until an explicit acceptance start.
 - physical evidence now records the staged source commit / CI-tested commit / source archive SHA so the real TFT session is traceable back to the exact GitHub artifact;
 - a layered Scene compositor proof has begun so creature/environment art, ambient motion and live HUD information can coexist without forcing every Experience into a card-grid composition;
-- the maturity architecture review preserves the direction toward versioned Signal, Action, Capability, Scene and Experience contracts rather than continuing one-off UI growth.
+- the maturity architecture review preserves the direction toward versioned Signal, Action, Capability, Scene and Experience contracts rather than continuing one-off UI growth;
+- Signal v1 metadata is now implemented over the existing canonical StateRegistry/Telemetry Catalog, and a read-only Integration Catalog now inventories optional Linux/Pi provider backends without auto-installing them.
 
 Still to finish:
 - return the active reconstruction head to a fully green source/CI gate;
