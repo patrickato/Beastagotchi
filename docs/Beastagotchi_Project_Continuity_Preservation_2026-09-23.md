@@ -357,7 +357,9 @@ When future chat-only decisions materially alter architecture, hardware truth, v
 
 The previously inaccessible tail of the final pinned Beastagotchi development
 conversation was reconstructed further from **78 readable screenshots in six
-ordered private recovery batches**.
+ordered private recovery batches**, plus two earlier preserved source images.
+The private recovery pass therefore currently contains **80 image artifacts**;
+the 78 ordered normal-resolution screenshots are the primary readable evidence.
 
 The raw screenshots remain private in ChatGPT Library under the Beastagotchi
 Preservation area. They are not public repository artifacts.
@@ -395,10 +397,12 @@ merge PR #9, and does not supersede current source/tests as the implementation
 authority. It materially improves provenance and design-intent preservation.
 
 The screenshot reconstruction now strongly overlaps repository/Library history.
-Earlier screenshots may still improve literal historical completeness, especially
-around the first v0.19 UX, Presentation Broker, Packs/Depot and GitHub-access
-discussions, but those areas are no longer considered dangerous engineering
-continuity gaps.
+The major engineering/design continuity gaps needed to continue Beastagotchi are
+considered closed. Earlier screenshots may still improve literal historical
+completeness, capture smaller idea sparks/rejected alternatives, or strengthen
+provenance around the first v0.19 UX, Presentation Broker, Packs/Depot and
+GitHub-access discussions. They are now treated as archival enrichment and
+contradiction checking rather than prerequisites for safe continuation.
 
 Literal word-for-word transcript completeness still requires a successful
 ChatGPT account export if one becomes available later.
