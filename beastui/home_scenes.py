@@ -4,6 +4,8 @@ import math
 from pathlib import Path
 from PIL import Image, ImageEnhance, ImageOps
 
+from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
+
 
 def _mix(a, b, t: float):
     t=max(0.0,min(1.0,float(t)))
@@ -158,48 +160,90 @@ def _instrument_rail(d, box, t, f, state, *, cyber=False):
 
 
 def _hero_scene(d,state,ui, *, variant='classic'):
+    """Layered Home scene: creature + atmosphere + live instruments.
+
+    This intentionally avoids the previous three-box dashboard composition.
+    Concept-derived art is allowed to own visual space; truthful live state is
+    overlaid as a compact HUD rather than forcing the artwork into a tile.
+    """
     t=ui.theme;f=ui.fonts
-    is_cyber=variant=='cyber';is_ice=variant=='ice';is_synth=variant=='synth'
-    left=(10,43,205,221); center=(215,47,355,220); rail=(365,47,470,220)
-    if is_synth:
-        left=(18,55,210,225);center=(220,54,350,222);rail=(360,54,468,222)
+    canvas=getattr(d,'_image',None)
+    if canvas is None:return False
+    is_cyber=variant=='cyber';is_ice=variant=='ice';is_synth=variant=='synth';is_tactical=variant=='tactical'
+
+    # Scene lighting is dynamic but decorative. It never encodes telemetry.
+    glow_col=t.c('secondary') if (is_cyber or is_synth) else t.c('primary')
+    ambient_glow(canvas,(156,148),150,glow_col,strength=.34 if is_cyber else .24)
+    ambient_glow(canvas,(395,92),94,t.c('accent'),strength=.17)
+    scene_particles(canvas,ui.phase,t.c('secondary'),count=18 if is_cyber else 10,alpha=62)
+    d=ImageDraw.Draw(canvas)
+
     asset=None
     if ui.theme.id=='classic':asset='classic_portrait.png'
     elif ui.theme.id=='cyberpunk':asset='cyberpunk_portrait.png'
     elif ui.theme.id=='blackice':asset='blackice_portrait.png'
-    used_asset=_asset_portrait(d,left,ui,asset,ui.phase,border_role='secondary' if is_cyber else 'primary') if asset else False
-    if not used_asset:
-        _portrait(d,left,t,state,ui.phase,variant='cyber' if is_cyber or is_synth else 'ice' if is_ice else 'classic')
+    asset_path=(Path(getattr(ui,'root','.'))/'assets'/'home'/asset) if asset else None
 
-    mode=str(_v(state,'context.mode.effective','pwn')).upper()
-    mood=str(_v(state,'beast.expression',_v(state,'pwnagotchi.mood','awake'))).replace('_',' ').upper()
-    active='RECON ACTIVE' if mode in {'PWN','FIELD','RECON'} else mode
-    d.text((center[0],54),active[:18],font=f['medium'],fill=t.c('accent'))
-    d.text((center[0],73),f"CH {_v(state,'radio.primary.channel','--')}  ·  {mood[:12]}",font=f['tiny'],fill=t.c('dim'))
-
-    rows=[('NETWORKS',_v(state,'wifi.ap_count',0)),('CLIENTS',_v(state,'wifi.client_count',0)),('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0)),('PMKIDS',_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0)))]
-    yy=101
-    for lab,val in rows:
-        d.text((center[0],yy),lab,font=f['tiny'],fill=t.c('text'))
-        _text_right(d,center[2],yy,str(val),f['small'],t.c('primary') if lab!='HANDSHAKES' else t.c('accent'))
-        yy+=24
-
-    _instrument_rail(d,rail,t,f,state,cyber=is_cyber or is_synth)
+    # The Beast is now a scene anchor, not a framed thumbnail. Art may bleed
+    # under HUD layers and fade into the information field.
+    used=False
+    if asset_path is not None:
+        used=paste_scene_asset(
+            canvas,asset_path,(6,38,278,269),phase=ui.phase,opacity=248,
+            brightness_pulse=.035,tint=glow_col,tint_strength=.04,
+            edge_fade=54,
+        )
+    d=ImageDraw.Draw(canvas)
+    if not used:
+        _portrait(d,(18,48,260,260),t,state,ui.phase,
+                  variant='cyber' if is_cyber or is_synth else 'ice' if is_ice else 'tactical' if is_tactical else 'classic')
 
     name=str(_v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
-    lvl=int(_v(state,'progression.level',1) or 1);stage=str(_v(state,'progression.stage','Hatchling')).upper()
+    lvl=int(_v(state,'progression.level',1) or 1)
+    stage=str(_v(state,'progression.stage','Hatchling')).upper()
+    mode=str(_v(state,'context.mode.effective','pwn')).upper()
+    mood=str(_v(state,'beast.expression',_v(state,'pwnagotchi.mood','awake'))).replace('_',' ').upper()
     status=str(_v(state,'pwnagotchi.status',_v(state,'beast.status_text','SCANNING THE FIELD'))).strip()
     if not status or status=='--':status='SCANNING THE FIELD'
-    if is_cyber:
-        d.polygon([(10,232),(27,224),(470,224),(470,267),(18,267),(10,258)],fill=_mix(t.c('panel'),t.c('secondary'),.08),outline=t.c('secondary'))
-    else:
-        d.rounded_rectangle((10,229,470,267),radius=6,fill=_mix(t.c('panel'),t.c('primary'),.05),outline=t.c('edge'))
-    d.text((20,236),f'{name[:16]}  ·  LV {lvl:02d} {stage[:12]}',font=f['tiny'],fill=t.c('secondary'))
-    d.text((20,250),status[:52],font=f['small'],fill=t.c('text'))
-    session=_v(state,'wifi.encounters.session_unique',0)
-    _text_right(d,460,250,f'{session} SIGNALS',f['tiny'],t.c('info'))
-    return True
 
+    # Identity floats over the visual scene, avoiding a hard portrait border.
+    d.text((18,205),name[:18],font=f['large'],fill=t.c('text'))
+    d.text((19,230),f'LV {lvl:02d}  {stage[:14]}',font=f['small'],fill=t.c('secondary'))
+    d.text((19,247),mood[:18],font=f['tiny'],fill=t.c('dim'))
+
+    # Compact glass HUD on the right. This is one information plane, not a wall
+    # of cards; large live values dominate and labels recede.
+    alpha_panel(canvas,(282,47,470,216),fill=t.c('panel'),outline=t.c('edge'),alpha=176,radius=12)
+    d=ImageDraw.Draw(canvas)
+    d.text((298,60),'FIELD LINK',font=f['tiny'],fill=t.c('dim'))
+    d.text((298,75),mode[:14],font=f['large'],fill=t.c('accent'))
+    d.text((299,101),f"CHANNEL {_v(state,'radio.primary.channel','--')}",font=f['small'],fill=t.c('text'))
+    d.line((298,122,454,122),fill=t.c('edge'))
+
+    rows=[
+        ('APS',_v(state,'wifi.ap_count',0),t.c('primary')),
+        ('CLIENTS',_v(state,'wifi.client_count',0),t.c('info')),
+        ('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0),t.c('accent')),
+        ('PMKIDS',_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0)),t.c('secondary')),
+    ]
+    for i,(lab,val,col) in enumerate(rows):
+        x=298+(i%2)*82;y=136+(i//2)*38
+        d.text((x,y),lab,font=f['micro'],fill=t.c('dim'))
+        d.text((x,y+11),str(val)[:8],font=f['medium'],fill=col)
+
+    # Bottom conversational/status ribbon stays visually connected to the scene.
+    alpha_panel(canvas,(10,272-39,470,269),fill=t.c('panel'),outline=t.c('edge'),alpha=150,radius=9)
+    d=ImageDraw.Draw(canvas)
+    d.text((20,239),status[:48],font=f['small'],fill=t.c('text'))
+    session=_v(state,'wifi.encounters.session_unique',0)
+    _text_right(d,458,254,f'{session} SIGNALS',f['tiny'],t.c('info'))
+
+    # Small live system chips remain visible without becoming the composition.
+    temp=_v(state,'system.temp.cpu_c','--');temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+    cpu=_v(state,'system.cpu.total','--');cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+    gps='GPS' if state.get('gps.fix') else 'NO GPS'
+    d.text((300,198),f'{gps}  ·  CPU {cpu}  ·  {temp}',font=f['micro'],fill=t.c('dim'))
+    return True
 
 def _wopr_scene(d,state,ui):
     t=ui.theme;f=ui.fonts
