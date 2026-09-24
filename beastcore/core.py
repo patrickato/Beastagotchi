@@ -27,6 +27,7 @@ from .plugin_integration import PluginIntegrationEngine
 from .dependency_resolver import DependencyCapabilityResolver
 from .template_tokens import TemplateTokenRegistry
 from .signals import SignalCatalog
+from .platform_profile import PlatformProfile
 from .integration_catalog import IntegrationCatalog
 from .records import RecordsEngine
 from .overview import OverviewEngine
@@ -70,6 +71,7 @@ class BeastCore:
         self.template_tokens = TemplateTokenRegistry(self.state)
         self.signals = SignalCatalog(self.state, telemetry=self.telemetry)
         self.integration_catalog = IntegrationCatalog(self.state, resolver=self.dependencies)
+        self.platform_profile = PlatformProfile(self.state)
         self.api = LocalAPI(self.state, self.events, self.store, host, port,
                             channel_history=self.channel_history, telemetry=self.telemetry)
         self.api.template_tokens = self.template_tokens
@@ -570,6 +572,21 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
             except asyncio.TimeoutError: pass
 
+    async def _platform_profile_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("platform_profile", self.platform_profile.state_patch(), priority=74)
+                if changed:
+                    self.events.publish("platform.profile.changed", "platform_profile", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("platform profile failed")
+                ev = self.events.publish("platform.profile.error", "platform_profile", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                pass
+
     async def _doctor_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -690,6 +707,7 @@ class BeastCore:
             asyncio.create_task(self._channel_history_loop(), name="channel-history"),
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
             asyncio.create_task(self._packs_loop(), name="packs"),
+            asyncio.create_task(self._platform_profile_loop(), name="platform-profile"),
             asyncio.create_task(self._doctor_loop(), name="doctor"),
             asyncio.create_task(self._updates_loop(), name="updates"),
             asyncio.create_task(self._update_automation_loop(), name="update-automation"),
