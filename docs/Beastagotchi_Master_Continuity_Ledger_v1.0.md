@@ -692,3 +692,48 @@ Physical acceptance still pending:
 The Capsule Share screen should be included in the next substantial physical
 v0.19 acceptance package.
 
+## Bounded physical acceptance as a product gate — 2026-09-24
+
+Durable decision:
+physical v0.19 acceptance should happen as one substantial, reversible session,
+not as a sequence of repeated tiny install/check/reinstall loops.
+
+The session now has first-class tooling:
+- `beast-v019-accept start`
+- `beast-v019-accept sample`
+- `beast-v019-accept capture`
+- `beast-v019-accept finish observe|pass|rollback`
+
+The acceptance package is not a replacement for the Presentation Broker. It is
+a validation harness that deliberately reuses the established display-handoff
+scripts and automatic rollback timer.
+
+Objective machine evidence and subjective physical acceptance remain separate.
+The machine can measure render/write timing, dirty-row efficiency, CPU,
+temperature, governor state, touch-event evidence and service health. It cannot
+decide whether the actual TFT is readable, touch feels good, a phone reliably
+scans the QR, glare is acceptable, animation looks smooth, or the product feels
+polished.
+
+Privacy rule:
+physical acceptance/support archives must minimize unrelated telemetry. Raw
+Pwnagotchi configuration, whole canonical state, full platform bundle and raw
+Pwnagotchi journal are not required for this gate and should not be collected by
+default. Framebuffer captures remain potentially sensitive because they preserve
+whatever the user was actually viewing.
+
+Durable dependency rule:
+the optional QR renderer should ultimately live in a Beast-owned dependency
+boundary rather than casually modifying Pwnagotchi's protected Python
+environment.
+
+Next physical gate:
+deploy the current v0.19 branch to the reference Pi, run one bounded acceptance
+session, use the TFT normally during a 60-second objective sample, exercise
+Capsule Share with a real phone camera, then return the generated evidence
+archive plus the user's physical impressions for review.
+
+This physical session still does not authorize promotion of Draft PR #9 to
+`main`; real Presentation Broker multi-owner switching and remaining release
+gates remain separate.
+
