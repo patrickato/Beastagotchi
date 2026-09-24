@@ -242,3 +242,86 @@ def test_studio_update_policy_store_is_private_and_validated(tmp_path):
         pass
     else:
         raise AssertionError("unsafe component id must be rejected")
+
+
+
+def test_v019_field_cockpit_pages_render_empty_and_live_states(tmp_path):
+    from PIL import Image
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    empty_state = {
+        "health.core.state": "healthy",
+        "context.mode.effective": "pwn",
+        "wifi.aps": [],
+        "wifi.ap_count": 0,
+        "radio.primary.channel": 1,
+        "radio.primary.band": "2.4GHz",
+        "gps.fix": False,
+        "gps.satellites_used": 0,
+        "gps.satellites_visible": 0,
+        "captures.total": 0,
+        "pwnagotchi.handshakes": 0,
+        "wifi.handshake_ap_count": 0,
+        "expedition.active": False,
+        "expedition.route_points": 0,
+        "expedition.ap_unique": 0,
+        "expedition.captures_delta": 0,
+    }
+    live_state = dict(empty_state)
+    live_state.update({
+        "wifi.aps": [
+            {"ssid": "field-one", "hostname": "field-one", "channel": 1, "rssi": -42, "encryption": "WPA2"},
+            {"ssid": "field-two", "hostname": "field-two", "channel": 6, "rssi": -58, "encryption": "WPA2"},
+            {"ssid": "field-three", "hostname": "field-three", "channel": 149, "rssi": -67, "encryption": "WPA3"},
+        ],
+        "wifi.ap_count": 3,
+        "radio.primary.channel": 6,
+        "gps.fix": True,
+        "gps.satellites_used": 7,
+        "gps.satellites_visible": 11,
+        "context.motion.speed_mph": 2.4,
+        "captures.total": 8,
+        "pwnagotchi.handshakes": 2,
+        "wifi.handshake_ap_count": 3,
+        "expedition.active": True,
+        "expedition.id": "field-test",
+        "expedition.duration_sec": 754,
+        "expedition.distance_m": 1420.0,
+        "expedition.route_points": 3,
+        "expedition.ap_unique": 17,
+        "expedition.captures_delta": 2,
+        "expedition.xp_delta": 51,
+        "expedition.max_temp_c": 57.4,
+        "expedition.max_cpu_pct": 44.0,
+        "expedition.min_battery_pct": 73.0,
+    })
+
+    for label, state in (("empty", empty_state), ("live", live_state)):
+        ui = BeastUI(root=root, output=str(tmp_path / "frame.png"), theme_id="classic")
+        ui.state = dict(state)
+        ui.histories = {"wifi.ap_count": [1, 2, 3], "system.cpu.total": [10, 20], "system.temp.cpu_c": [50, 52]}
+        ui.aux = {}
+        if label == "live":
+            ui.aux = {
+                "channel_history": [
+                    {"channels": [{"channel": 1, "ap_count": 1}, {"channel": 6, "ap_count": 2}]},
+                    {"channels": [{"channel": 1, "ap_count": 2}, {"channel": 6, "ap_count": 1}]},
+                ],
+                "expedition": {
+                    "points": [
+                        {"latitude": 42.0, "longitude": -83.0},
+                        {"latitude": 42.001, "longitude": -83.002},
+                        {"latitude": 42.003, "longitude": -83.001},
+                    ]
+                },
+            }
+        for page in ("recon", "spectrum", "captures", "map", "expedition"):
+            out = tmp_path / f"{label}-{page}.png"
+            ui.output = str(out)
+            ui.page = ui.pages.IDS.index(page)
+            ui.render()
+            assert out.is_file(), (label, page)
+            with Image.open(out) as im:
+                assert im.size == (480, 320)
+                assert im.getbbox() == (0, 0, 480, 320)
