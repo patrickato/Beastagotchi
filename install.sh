@@ -43,7 +43,7 @@ install -m 0644 "$SRC/docs/archive/validation/Beastagotchi_v094_Physical_Validat
 install -m 0644 "$SRC/docs/archive/validation/Beastagotchi_v095_Physical_Validation_Review.md" /usr/local/share/beastagotchi/Beastagotchi_v095_Physical_Validation_Review.md
 systemctl daemon-reload
 cat <<'EOF'
-Beast Core v0.18.1 Platform / Compatibility milestone installed but NOT enabled or started.
+Beast Core development build installed but NOT enabled or started.
 Existing Beast DB is preserved.
 
 Start validation:
