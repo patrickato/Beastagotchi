@@ -23,6 +23,17 @@ THEMES = (
 )
 
 PAGES = ("home", "overview", "recon", "networks", "spectrum", "captures", "map", "expedition", "beast", "system")
+PLATFORM_OVERLAYS = (
+    "operations",
+    "notifications",
+    "diagnostics",
+    "services",
+    "hardware",
+    "storage",
+    "incidents",
+    "connectivity",
+)
+INTERACTION_SURFACES = ("control_center", "apps")
 
 
 def _sha256(path: str | Path | None) -> str | None:
@@ -35,7 +46,7 @@ def _sha256(path: str | Path | None) -> str | None:
     return h.hexdigest()
 
 
-def render(root: Path, out: Path, theme: str, page: str, state: dict, *, histories=None, aux=None, events=None, physical=(480, 320)) -> None:
+def render(root: Path, out: Path, theme: str, page: str, state: dict, *, histories=None, aux=None, events=None, physical=(480, 320), surface: str | None = None) -> None:
     ui = BeastUI(
         root=root,
         output=str(out),
@@ -50,6 +61,15 @@ def render(root: Path, out: Path, theme: str, page: str, state: dict, *, histori
     if page not in ui.pages.IDS:
         raise ValueError(f"unknown page: {page}")
     ui.page = ui.pages.IDS.index(page)
+    if surface == "control_center":
+        ui.drawer = True
+    elif surface == "apps":
+        ui.app_launcher = True
+    elif surface in PLATFORM_OVERLAYS:
+        ui.platform_overlay = surface
+        ui.platform_offset = 0
+    elif surface is not None:
+        raise ValueError(f"unknown surface: {surface}")
     ui.render()
 
 
@@ -96,6 +116,8 @@ def main() -> int:
         "events_sha256": _sha256(args.events),
         "themes": list(themes),
         "pages": list(PAGES),
+        "platform_overlays": list(PLATFORM_OVERLAYS),
+        "interaction_surfaces": list(INTERACTION_SURFACES),
         "frames": [],
     }
 
@@ -103,7 +125,31 @@ def main() -> int:
         for page in PAGES:
             name = f"v019-{page}-{theme}.png"
             render(root, out / name, theme, page, state, histories=histories, aux=aux, events=events)
-            manifest["frames"].append({"theme": theme, "page": page, "file": name})
+            manifest["frames"].append({"theme": theme, "page": page, "surface": "page", "file": name})
+
+    # Operational and interaction surfaces are rendered once against the same
+    # captured state. They are deliberately not multiplied across every theme:
+    # this gallery is for hierarchy/touch review, while the page set carries
+    # the structural theme comparison.
+    for surface in INTERACTION_SURFACES + PLATFORM_OVERLAYS:
+        name = f"v019-surface-{surface}-classic.png"
+        render(
+            root,
+            out / name,
+            "classic",
+            "home",
+            state,
+            histories=histories,
+            aux=aux,
+            events=events,
+            surface=surface,
+        )
+        manifest["frames"].append({
+            "theme": "classic",
+            "page": "home",
+            "surface": surface,
+            "file": name,
+        })
 
     # One compatibility-scale proof remains useful during responsive work, but
     # this is not a native-responsive-layout claim.
