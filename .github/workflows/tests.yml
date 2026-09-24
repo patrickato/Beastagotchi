@@ -35,7 +35,7 @@ jobs:
         run: python -m compileall -q beastcore beastui beaststudio
 
       - name: Shell syntax
-        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
+        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh tools/v019_stage_from_artifact.sh
 
 
       - name: Render sanitized real-state UX gallery
@@ -66,6 +66,9 @@ jobs:
           (cd "$OUTDIR" && sha256sum "$NAME" > "${NAME}.sha256")
           printf '%s\n' "$SOURCE_SHA" > "$OUTDIR/SOURCE_COMMIT_SHA.txt"
           printf '%s\n' "$GITHUB_SHA" > "$OUTDIR/CI_TESTED_SHA.txt"
+          git show "$SOURCE_SHA:tools/v019_stage_from_artifact.sh" > "$OUTDIR/STAGE_ON_PI.sh"
+          chmod 0755 "$OUTDIR/STAGE_ON_PI.sh"
+          git show "$SOURCE_SHA:docs/Beastagotchi_v019_Physical_Acceptance_Quickstart.txt" > "$OUTDIR/PHYSICAL_TEST_QUICKSTART.txt"
 
       - name: Upload v0.19 Pi acceptance source bundle
         uses: actions/upload-artifact@v4
