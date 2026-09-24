@@ -14,6 +14,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 - `../ROADMAP.md` — current execution order.
 - `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX acceptance milestone.
 - `Beastagotchi_v019_Physical_Acceptance_Package.md` — bounded reversible reference-Pi/TFT acceptance session and evidence bundle.
+- `Beastagotchi_v019_Physical_Acceptance_Quickstart.txt` — one-page staging + TFT-session commands for the commit-pinned Pi artifact.
 - `GLOSSARY.md` — common terms used across the project.
 - `REPOSITORY_MAP.md` — where code and docs live.
 - `REPOSITORY_HYGIENE.md` — living cleanup/archive policy and unresolved consolidation candidates.
