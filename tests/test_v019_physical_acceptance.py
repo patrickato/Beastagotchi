@@ -138,6 +138,7 @@ def test_v019_qr_optional_dependency_is_beast_owned_and_provenanced():
     assert '"dependency_scope":"beast_owned_optional"' in script
     assert '"pwnagotchi_site_packages_modified":False' in script
     assert "prepare-qr" in script and "remove-qr" in script
+    assert '"$BEAST_SITE/bin/qr"' in script
     assert "/opt/beast-python/site-packages" in ui_service
     assert "/opt/beast-python/site-packages" in studio_service
     assert "/opt/beast-python/site-packages" in installer
