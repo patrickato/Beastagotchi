@@ -359,7 +359,7 @@ The previously inaccessible tail of the final pinned Beastagotchi development
 conversation was reconstructed further from **78 readable screenshots in six
 ordered private recovery batches**, plus two earlier preserved source images.
 The private recovery pass therefore currently contains **80 image artifacts**;
-the 93 ordered normal-resolution screenshots are the primary readable evidence.
+the 108 ordered normal-resolution screenshots are the primary readable evidence.
 
 The raw screenshots remain private in ChatGPT Library under the Beastagotchi
 Preservation area. They are not public repository artifacts.
@@ -407,3 +407,30 @@ contradiction checking rather than prerequisites for safe continuation.
 Literal word-for-word transcript completeness still requires a successful
 ChatGPT account export if one becomes available later.
 
+
+
+## Pinned-chat recovery completion — Batch 08
+
+Batch 08 reaches the true beginning of the supplied pinned Beastagotchi conversation
+and meets Batch 07 at the repository-creation boundary. The private recovery now
+contains **108 ordered readable screenshots across eight batches plus two earlier
+source images = 110 image artifacts**.
+
+The newly recovered pre-GitHub material preserves the origin/reasoning for:
+- accepting v0.18.1 past the target/off-screen gate while keeping physical validation separate;
+- treating Korrie71's UI criticism as a direct trigger for the v0.19 UX/Visual Cohesion gate;
+- Theme Manager / Beast / Native coexistence with one display owner at a time;
+- staged/verified/transactional Update Center semantics;
+- GitHub migration and collaborator/AI handoff;
+- physical visual-review cadence after substantial user-facing deltas;
+- Unified Experience Architecture framing;
+- stable core + downloadable Beast Packs/Depot ecosystem;
+- TFT cockpit versus WebUI workshop role separation;
+- Presentation Broker transactional ownership/rollback;
+- per-module resource attribution and optimize-before-throttle thermal policy;
+- GPLv3/free-open community licensing intent.
+
+Batches 08→01 now provide high-confidence chronological coverage of the supplied
+pinned conversation from its beginning to its end. Screenshot reconstruction is
+still not a guaranteed literal transcript; a successful ChatGPT account data
+export remains the required path for a word-for-word backup.
