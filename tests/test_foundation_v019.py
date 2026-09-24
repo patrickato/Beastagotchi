@@ -436,3 +436,85 @@ def test_v019_widget_inspector_regions_follow_current_page_geometry(tmp_path):
     assert ui._widget_key_at("beast", 270, 225) == "progression.discovery.beast_unique_aps"
     assert ui._widget_key_at("beast", 350, 225) == "progression.discovery.device_first_witnessed"
     assert ui._widget_key_at("beast", 430, 225) == "progression.achievements.count"
+
+
+def test_v019_platform_overlay_navigation_respects_touch_minimum():
+    from beastui.engine import BeastUI
+    from beastui.design import TOKENS
+
+    boxes = [
+        BeastUI.PLATFORM_NAV_PREV,
+        BeastUI.PLATFORM_NAV_CLOSE,
+        BeastUI.PLATFORM_NAV_NEXT,
+        BeastUI.PLATFORM_SPECIAL_CLOSE,
+    ]
+    assert BeastUI.PLATFORM_PAGE_SIZE == 3
+    for x1, y1, x2, y2 in boxes:
+        assert (x2 - x1) >= TOKENS.touch_min
+        assert (y2 - y1) >= TOKENS.touch_min
+    assert max(box[3] for box in boxes) <= TOKENS.footer_y
+
+
+def test_v019_operational_surfaces_render_empty_and_live_truth(tmp_path):
+    from PIL import Image
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    state = {
+        "progression.beast.name": "Hex",
+        "progression.level": 43,
+        "progression.stage": "Hunter",
+        "context.mode.effective": "pwn",
+        "overview.state": "ATTENTION",
+        "overview.attention_count": 2,
+        "health.core.state": "healthy",
+        "health.core.collector_count": 14,
+        "health.core.critical_count": 0,
+        "system.temp.cpu_c": 55.4,
+        "system.cpu.total": 23.0,
+        "governor.mode": "FULL",
+        "platform.services": [
+            {"unit": "pwnagotchi.service", "active": "active", "sub": "running", "pid": 123},
+            {"unit": "beast-core.service", "active": "active", "sub": "running", "pid": 456},
+        ],
+        "library.document_count": 4,
+        "library.text_indexed_count": 3,
+        "network.route.available": True,
+        "network.default.dev": "wlan0",
+        "network.default.gateway": "192.0.2.1",
+        "network.internet.state": "unknown",
+        "network.interfaces": [{"name": "wlan0", "operstate": "up", "addresses": ["192.0.2.20"]}],
+        "storage.root.used_pct": 31.0,
+        "storage.root.free_bytes": 10_000_000,
+        "storage.root.readonly": False,
+        "plugins.catalog_count": 0,
+        "plugins.integrated_count": 0,
+        "plugins.enabled_count": 0,
+    }
+    events = [
+        {"type": "governor.guarded", "source": "resource_governor", "severity": "warning", "ts": 1.0},
+        {"type": "gps.fix", "source": "gps", "severity": "info", "ts": 2.0},
+    ]
+    surfaces = (
+        "control_center", "apps", "operations", "notifications", "diagnostics",
+        "services", "hardware", "storage", "incidents", "connectivity",
+    )
+
+    for surface in surfaces:
+        out = tmp_path / f"{surface}.png"
+        ui = BeastUI(root=root, output=str(out), theme_id="classic")
+        ui.state = dict(state)
+        ui.events = list(events)
+        ui.aux = {"jobs": {"items": []}, "incidents": {"items": []}}
+        ui.page = ui.pages.IDS.index("home")
+        if surface == "control_center":
+            ui.drawer = True
+        elif surface == "apps":
+            ui.app_launcher = True
+        else:
+            ui.platform_overlay = surface
+        ui.render()
+        assert out.is_file(), surface
+        with Image.open(out) as im:
+            assert im.size == (480, 320)
+            assert im.getbbox() == (0, 0, 480, 320)
