@@ -223,3 +223,28 @@ Doctor can then show a coverage view such as:
 - Jayofelony 2.9.x compatibility: pack loaded
 
 This prevents a healthy-looking Doctor page from implying it checked things it could not observe.
+## 20. Patient Chart — what Doctor keeps permanently close
+
+The durable local Doctor memory should focus on **this exact patient**, not every possible ailment in the ecosystem.
+
+Patient Chart contents may include:
+- board/SBC identity and architecture
+- CPU/RAM/storage profile
+- display/touch hardware
+- radios/adapters and assigned roles
+- kernel/Nexmon/firmware/Pwnagotchi/Bettercap/pwngrid versions
+- enabled plugins/providers and their versions
+- known-good fingerprints/checkpoints
+- recurring/chronic incidents
+- remediation attempts and verified outcomes
+- device-specific quirks learned with evidence
+- backup/recovery freshness and available Recovery Vaults
+- current Doctor probe/coverage map
+
+The Patient Chart is bounded technical history, not an unlimited raw-log archive.
+
+This gives Doctor continuity after reboot/offline use while letting generic medical knowledge remain modular.
+
+Design sentence:
+
+**Doctor permanently remembers the patient; Doctor does not permanently carry every medical textbook.**
