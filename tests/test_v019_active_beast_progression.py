@@ -99,3 +99,12 @@ def test_roster_summary_published_without_changing_existing_progression_keys(tmp
     assert summary["total"] == 3
     assert summary["beasts"] == 3
     assert isinstance(state.get("progression.level"), int)
+
+
+def test_roster_summary_counts_hall_inductees_by_legend_marker(tmp_path: Path):
+    _, pstore, _, _, _ = make_runtime(tmp_path)
+    founder = pstore.roster.get("founder")
+    pstore.roster.update_progress(founder["id"], xp=xp_threshold(100))
+    pstore.roster.set_legend(founder["id"], True)
+    summary = pstore.roster_summary()
+    assert summary["legends"] == 1
