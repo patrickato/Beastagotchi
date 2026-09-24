@@ -276,3 +276,32 @@ Preservation Library.
 This is preservation/documentation work only. The current implementation source
 gate remains the previously established **332 tests + Python compile + shell
 syntax**; no new target/off-screen or physical TFT validation is implied.
+
+
+## Unified UX operational-surface milestone — 2026-09-23 evening
+
+The next visible v0.19 cleanup block is now source-green.
+
+Implemented:
+- Operations Center changed from four equal diagnostic cards to an attention-first
+  live-platform hierarchy;
+- operational list overlays use a three-row rhythm that leaves room for
+  **50px-high bottom navigation controls**, meeting the reference resistive-touch
+  minimum instead of the previous 36px visible buttons;
+- platform overlay paging/swipe logic now follows the same three-row page size;
+- empty operational surfaces explain that unavailable state remains unavailable
+  rather than filling the screen with demo values;
+- the captured-state gallery tool now renders Control Center, Apps and the major
+  operational overlays from the same captured real state used for page renders;
+- regression coverage now checks operational-surface rendering and platform
+  navigation target geometry.
+
+Current source/CI gate after this block: **339 tests passed + Python compile +
+shell syntax** in GitHub Actions run #124.
+
+This is still source/CI validation only. No new target/off-screen Pi run, physical
+TFT readability/touch acceptance, or sustained thermal validation is claimed.
+
+The next visible UX step is to use an actual captured Beast state with the expanded
+gallery, review clipping/hierarchy/theme regressions off-screen, and only then
+prepare a bounded Pi validation package when the visible delta is large enough.
