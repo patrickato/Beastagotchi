@@ -70,6 +70,20 @@ open issues or PRs, and use the Pack/compatibility contracts while the current
 stable baseline remains intact.
 
 
+## Timeout-safe development checkpoints
+
+Long Beastagotchi work must not depend on one uninterrupted ChatGPT response.
+
+Working rule:
+- save or commit each coherent development block before beginning the next;
+- prefer several durable checkpoints over one long uncommitted session;
+- after a substantial code/documentation change, update the active checkpoint before continuing into another major block when practical;
+- if a response/work session is becoming long enough to risk client timeout, stop at the next safe checkpoint and report progress rather than continuing unsaved;
+- a retry/new chat resumes from the latest repository/Library checkpoint, not from reconstructed intent alone;
+- source/CI, target/off-screen validation, and physical validation remain separately recorded at every checkpoint.
+
+This is a workflow/reliability rule, not a release cadence change. Small internal commits may still be batched when safe, but recoverability takes priority over avoiding commit count.
+
 ## Continuity preservation gate
 
 Before a long conversation/thread is abandoned or a major development context is
