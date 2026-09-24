@@ -359,7 +359,7 @@ The previously inaccessible tail of the final pinned Beastagotchi development
 conversation was reconstructed further from **78 readable screenshots in six
 ordered private recovery batches**, plus two earlier preserved source images.
 The private recovery pass therefore currently contains **80 image artifacts**;
-the 78 ordered normal-resolution screenshots are the primary readable evidence.
+the 93 ordered normal-resolution screenshots are the primary readable evidence.
 
 The raw screenshots remain private in ChatGPT Library under the Beastagotchi
 Preservation area. They are not public repository artifacts.
