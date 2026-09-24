@@ -39,10 +39,44 @@ therefore records the source SHA and CI-tested SHA separately instead of
 pretending they are always identical. The archive is always generated from the
 real PR/source head named in `SOURCE_COMMIT_SHA.txt`.
 
-The artifact does not auto-install or auto-claim the TFT. After verifying the
-archive hash, extract it and follow the normal staged Core/UI installation path.
-The physical handoff remains a separate explicit `beast-v019-accept start`
-action.
+The artifact now also includes:
+- `STAGE_ON_PI.sh` — a verified staging wrapper;
+- `PHYSICAL_TEST_QUICKSTART.txt` — the one-page session flow.
+
+`STAGE_ON_PI.sh`:
+- verifies the portable archive SHA-256;
+- verifies the source SHA against the archive filename/root;
+- records source-vs-CI provenance;
+- creates a local deployment record;
+- makes a private SQLite backup of an existing Beast database before starting
+  the new Core;
+- preserves an existing Beast Core configuration;
+- extracts the exact commit-pinned source;
+- reuses the project's normal Core/UI installers;
+- starts Beast Core only;
+- optionally prepares the Beast-owned QR dependency;
+- runs target preflight.
+
+It deliberately does **not** start Beast UI, claim the TFT, confirm display
+ownership or modify Pwnagotchi's own Python site-packages.
+
+The physical handoff therefore remains a second explicit decision:
+`beast-v019-accept start`.
+
+## Fast path from the GitHub artifact
+
+Keep the artifact files together, then on the Pi run:
+
+    sudo ./STAGE_ON_PI.sh --prepare-qr
+
+That stages the exact tested source and finishes with a preflight while leaving
+the Pwnagotchi display untouched.
+
+Then begin the bounded physical session separately:
+
+    sudo beast-v019-accept start 15
+
+This separation is intentional: **software staging is not display consent**.
 
 ## Installed command
 
