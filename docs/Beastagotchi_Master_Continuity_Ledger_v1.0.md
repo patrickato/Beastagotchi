@@ -382,3 +382,63 @@ Plugin & Capability Center/Doctor presentation, generated BOM exports, wider
 adoption by Experiences/Apps/Hardware Studio, generalized version resolution and
 only later transactional remediation.
 
+## Capability provider arbitration + Lightbulb review — 2026-09-24
+
+Provider arbitration has advanced from a roadmap item into a bounded read-only
+policy engine.
+
+Implemented:
+- new `beastcore/provider_arbitration.py` /
+  `CapabilityProviderArbitrator`;
+- every dependency graph now carries provider decisions;
+- decision states distinguish:
+  - active native/canonical provider;
+  - active explicit preference when a future preference is supplied;
+  - one unambiguous selected provider;
+  - fallback when a preferred provider is unavailable;
+  - choice required;
+  - ready but unselected;
+  - unavailable;
+- canonical/native state wins by default when already live, preventing a
+  compatibility plugin from silently displacing Beast's existing normalized
+  truth;
+- multiple selected non-native providers do not get silently collapsed into one;
+  Beast reports a choice requirement and a deterministic recommendation;
+- configured-but-disabled plugins can remain available alternates;
+- decisions include reasons, candidates, alternates and an ordered fallback
+  chain;
+- explicit owner preference is modeled but no provider-preference writer exists
+  yet;
+- provider selection mutation and automatic failover remain disabled;
+- `GET /dependencies` and the platform bundle expose provider decision/summary
+  information for future Studio/Doctor presentation.
+
+Durable design ideas recovered/added during this block:
+
+- **context-aware provider profiles**: Field/Dock/Home/Battery-critical contexts
+  may prefer different location/network/power providers while keeping decisions
+  visible and owner-overridable;
+- **graceful degradation**: losing an optional capability should degrade only the
+  dependent feature instead of collapsing the whole Expedition/Experience;
+- **hot-plug arrival UX**: new compatible hardware can be recognized as a new
+  provider and offered as keep-current / switch / fallback without reboot;
+- **failover rehearsal**: TEST FAILOVER can temporarily hand over, verify
+  canonical telemetry, restore and report before automatic failover is trusted;
+- **provider confidence**: future consumers may request any/high-confidence/
+  low-power/local-only providers instead of a Boolean capability;
+- **capability leasing**: scarce/exclusive resources such as framebuffer, SDR,
+  camera, microphone or radio modes can have explicit owner/lease/waiting state;
+- **dependency/update impact simulation**: USED BY can answer what becomes
+  degraded before removing/updating a provider;
+- **known-good build fingerprint**: BOM + dependency graph + provider choices +
+  customization state can support Doctor's "what changed since known-good?"
+  comparison.
+
+Canonical specification:
+`docs/Beastagotchi_Provider_Arbitration_v0.1.md`.
+
+The project must retain the conversational/lightbulb side of development: new
+architecture work should continue to ask what additional user-facing capability
+the same underlying data or mechanism can unlock, rather than treating roadmap
+implementation as a silent checklist exercise.
+
