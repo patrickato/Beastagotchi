@@ -150,7 +150,8 @@ function renderLayoutOverlay(){let ov=$('layoutOverlay');if(!ov)return;ov.innerH
 function startLayoutDrag(e,i,mode){e.preventDefault();e.stopPropagation();selectedWidget=i;push();let w=currentWidgetList()[i];dragState={i,mode,sx:e.clientX,sy:e.clientY,x:Number(w.x||0),y:Number(w.y||0),w:Number(w.w||4),h:Number(w.h||3)};e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.onpointermove=layoutDrag;e.currentTarget.onpointerup=endLayoutDrag;e.currentTarget.onpointercancel=endLayoutDrag;rebuildDashboard()}
 function layoutDrag(e){if(!dragState)return;let rect=$('layoutOverlay').getBoundingClientRect(),dx=Math.round((e.clientX-dragState.sx)/rect.width*12),dy=Math.round((e.clientY-dragState.sy)/rect.height*8),w=currentWidgetList()[dragState.i];if(dragState.mode==='move'){w.x=Math.max(0,Math.min(12-dragState.w,dragState.x+dx));w.y=Math.max(0,Math.min(8-dragState.h,dragState.y+dy))}else{w.w=Math.max(2,Math.min(12-dragState.x,dragState.w+dx));w.h=Math.max(2,Math.min(8-dragState.y,dragState.h+dy))}renderLayoutOverlay();queuePreview()}
 function endLayoutDrag(e){if(e.currentTarget){e.currentTarget.onpointermove=null;e.currentTarget.onpointerup=null;e.currentTarget.onpointercancel=null}dragState=null;rebuildDashboard();queuePreview()}
-$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=async()=>{await loadRoster();await loadHall()};$('hallRefresh').onclick=loadHall;$('synthPlan').onclick=previewSynthesis;$('synthCreate').onclick=createSynthesis;$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
+$('importLayout').onclick=importPackLayout;$('rosterRefresh').onclick=async()=>{await loadRoster();await loadHall()};$('hallRefresh').onclick=loadHall;$('synthPlan').onclick=previewSynthesis;$('synthCreate').onclick=createSynthesis;$('capsuleBuild').onclick=buildCapsulePreview;$('capsulePrev').onclick=()=>showCapsuleFrame(capsuleFrame-1);$('capsuleNext').onclick=()=>showCapsuleFrame(capsuleFrame+1);
+$('globalRefresh').onclick=loadGlobalProfile;$('globalSave').onclick=saveGlobalPolicy;$('globalScope').onchange=()=>drawGlobalRoster(globalPolicyFromForm());$('addWidget').onclick=()=>{let rows=currentWidgetList();if(rows.length>=schema.max_dashboard_widgets){$('status').textContent='Composition safety limit reached.';return}mutate(()=>{rows=currentWidgetList();rows.push(defaultWidget(rows.length));selectedWidget=rows.length-1;draft.page='dashboard';draft.preview_board_id=boardEditorId})};$('focusDashboard').onclick=()=>{draft.page='dashboard';draft.preview_board_id=boardEditorId;$('page').value='dashboard';queuePreview();renderLayoutOverlay()};$('newBoard').onclick=()=>{let name=prompt('Board name','My Board');if(!name)return;mutate(()=>{draft.custom_boards=draft.custom_boards||[];let baseId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)||'board';let id=baseId,n=2;while(draft.custom_boards.some(b=>b.id===id)){id=baseId+'_'+n++}let widgets=[defaultWidget(0),defaultWidget(1),defaultWidget(2)];draft.custom_boards.push({id,label:name.slice(0,22),widgets});boardEditorId=id;draft.preview_board_id=id;draft.page='dashboard';selectedWidget=0})};$('deleteBoard').onclick=()=>{let b=boardById(boardEditorId);if(!b||!confirm(`Delete board ${b.label||b.id}?`))return;mutate(()=>{draft.custom_boards=draft.custom_boards.filter(x=>x.id!==boardEditorId);(draft.context_decks||[]).forEach(d=>d.apps=(d.apps||[]).filter(x=>x!==`board:${boardEditorId}`));boardEditorId='';draft.preview_board_id='';selectedWidget=0})}
 
 async function preview(){try{$('conn').textContent='RENDERING';updatePreviewOutputChrome();let r=await fetch('/api/preview',{method:'POST',headers:{'content-type':'application/json','X-Beast-Studio-Token':TOKEN},body:JSON.stringify(draft)});if(!r.ok)throw Error(await r.text());let b=await r.blob();let old=$('screen').src;$('screen').src=URL.createObjectURL(b);if(old&&old.startsWith('blob:'))URL.revokeObjectURL(old);$('conn').textContent='LIVE';let po=previewOutputInfo();$('previewMeta').textContent=`${draft.theme} · ${draft.page}${boardEditorId?' · '+(boardById(boardEditorId)?.label||boardEditorId):''} · ${po.width}×${po.height}`;renderLayoutOverlay()}catch(e){$('conn').textContent='ERROR';$('status').textContent=e}}
 async function loadPlugins(){try{let x=await jfetch('/api/plugins');plugins=x.items||[];renderPlugins()}catch(e){$('pluginList').innerHTML='<div class="status">Plugin catalog unavailable: '+e+'</div>'}}
@@ -216,6 +217,46 @@ function fillGlobalPolicy(p){
   $('globalExperience').checked=!!p.publish_experience;$('globalTotals').checked=!!p.publish_roster_totals;$('globalAchievements').value=p.publish_achievements||'none';
   $('globalAchievementIds').value=(p.selected_achievement_ids||[]).join(', ');$('globalUnlocks').checked=!!p.publish_global_unlocks;$('globalUnlockIds').value=(p.selected_global_unlock_ids||[]).join(', ');
   drawGlobalRoster(p)
+}
+let capsuleExport=null,capsuleFrame=0,capsuleQrUrl='';
+async function loadCapsuleWorkshop(){try{
+  let x=await jfetch('/api/roster'),sel=$('capsuleBeast');sel.innerHTML='';
+  let rows=x.items||[];if(!rows.length){option(sel,'','NO CREATURES AVAILABLE');$('capsuleBuild').disabled=true;$('capsuleStatus').textContent='No persistent Beast roster is available.';return}
+  rows.forEach(r=>option(sel,r.id,(r.active?'★ ':'')+(r.name||r.id)+' · '+String(r.kind||'beast').toUpperCase()+' · LV '+(r.level||1)+' '+(r.stage||'')));
+  let active=rows.find(r=>r.active)||rows[0];sel.value=active.id;$('capsuleBuild').disabled=false;
+  if(!capsuleExport){$('capsuleStatus').textContent='Ready to build an exact read-only Lineage Capsule preview for '+(active.name||active.id)+'.'}
+}catch(e){$('capsuleStatus').textContent='Capsule Workshop unavailable: '+e}}
+function capsuleFrames(){return (((capsuleExport||{}).qr||{}).frames||[]).map(String)}
+async function showCapsuleFrame(idx){
+  let frames=capsuleFrames(),img=$('capsuleQr');if(!frames.length){img.style.display='none';$('capsuleFrameStatus').textContent='No QR frames are available.';return}
+  capsuleFrame=((Number(idx)||0)%frames.length+frames.length)%frames.length;
+  let frame=frames[capsuleFrame],stat=(capsuleExport||{}).studio_qr||{};
+  if(!stat.available){img.style.display='none';$('capsuleFrameStatus').textContent='QR renderer unavailable on this Beast runtime. Text frames remain valid.';return}
+  try{
+    let r=await fetch('/api/capsule-qr',{method:'POST',headers:{'content-type':'application/json','X-Beast-Studio-Token':TOKEN},body:JSON.stringify({frame:frame})});
+    if(!r.ok)throw Error(await r.text());let blob=await r.blob();if(capsuleQrUrl)URL.revokeObjectURL(capsuleQrUrl);capsuleQrUrl=URL.createObjectURL(blob);img.src=capsuleQrUrl;img.style.display='block';
+    $('capsuleFrameStatus').textContent='FRAME '+(capsuleFrame+1)+' / '+frames.length+' · '+frame.length+' characters · BCQ1 transport · scan/share only';
+  }catch(e){img.style.display='none';$('capsuleFrameStatus').textContent='QR render failed: '+e}
+}
+async function buildCapsulePreview(){
+  let beast=$('capsuleBeast').value;if(!beast){$('capsuleStatus').textContent='Choose a creature first.';return}
+  $('capsuleBuild').disabled=true;$('capsuleStatus').textContent='Building privacy-curated Capsule preview…';
+  try{
+    let x=await jfetch('/api/capsule-preview',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+      beast_id:beast,include_name:$('capsuleName').checked,include_appearance:$('capsuleAppearance').checked,
+      include_achievements:$('capsuleAchievements').checked,qr_chars:220
+    })});
+    capsuleExport=x;capsuleFrame=0;
+    if(!x.ok)throw Error(x.error||'Capsule export failed');
+    let env=x.envelope||{},payload=env.payload||{},privacy=env.privacy||{},integrity=env.integrity||{},frames=capsuleFrames();
+    $('capsulePreview').textContent=JSON.stringify(env,null,2);
+    $('capsuleStatus').textContent='EXACT PREVIEW · '+(payload.name||'NAME HIDDEN')+' · '+String(payload.kind||'beast').toUpperCase()+' · LV '+(payload.level??'--')+' '+(payload.stage||'')+
+      ' · '+frames.length+' QR frame(s) · '+(x.encoded_chars||0)+' encoded chars · '+(integrity.authenticated?'SIGNED/AUTHENTICATED':'UNSIGNED · INTEGRITY ONLY')+
+      '\nPrivacy: captures '+(privacy.captures_included?'INCLUDED':'NO')+' · credentials '+(privacy.credentials_included?'INCLUDED':'NO')+' · exact location '+(privacy.exact_location_included?'INCLUDED':'NO')+' · network history '+(privacy.network_history_included?'INCLUDED':'NO')+
+      '\nNo import or publication was performed.';
+    await showCapsuleFrame(0)
+  }catch(e){capsuleExport=null;$('capsulePreview').textContent='';$('capsuleQr').style.display='none';$('capsuleStatus').textContent='Capsule preview failed: '+e}
+  finally{$('capsuleBuild').disabled=false}
 }
 let rosterRows=[];
 async function loadRoster(){try{
