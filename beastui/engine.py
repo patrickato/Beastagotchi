@@ -2058,7 +2058,7 @@ class BeastUI:
         # No Beast header/footer/event reaction/scanline is painted in Native
         # Dark/Light: the untouched Jayofelony composition is the point.
         # Chroma only recolors/glows the exact native foreground mask.
-        self._drawer(d);self._apps_overlay(d);self._capsule_share_view(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
+        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
         # Monster reveals remain available above Native; Rare Moments still win final priority.
         im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         return render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
@@ -2108,6 +2108,11 @@ class BeastUI:
             # Protected scanline layer: always painted after normal/foreground
             # theme effects so Matrix rain can never segment it.
             col=self.theme.c('scanline',self.theme.c('edge'));d.rectangle((0,y,479,y+width-1),fill=col)
+        # Machine-readable transport must remain above theme scanlines/effects.
+        # A decorative sweep through a QR can make a mathematically valid code
+        # physically unscannable. Monster/Rare overlays intentionally retain
+        # higher precedence than ordinary transport UI.
+        self._capsule_share_view(d)
         # Monster reveals are celebratory, but Rare Moments remain the absolute top layer.
         im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         im=render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
