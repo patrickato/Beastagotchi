@@ -21,7 +21,7 @@ THEMES = (
     "retro_crt",
 )
 
-PAGES = ("home", "overview", "networks", "system", "beast")
+PAGES = ("home", "overview", "recon", "networks", "spectrum", "captures", "map", "expedition", "beast", "system")
 
 
 def render(root: Path, out: Path, theme: str, page: str, state: dict, *, physical=(480, 320)) -> None:
