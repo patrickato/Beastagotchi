@@ -5,6 +5,7 @@ import re
 import urllib.parse
 from pathlib import Path
 from typing import Any
+from .dependency_resolver import DependencyCapabilityResolver
 
 
 PACK_TYPES = (
@@ -104,8 +105,9 @@ class PackRegistryEngine:
     This engine never downloads, executes, enables, or removes code.
     """
 
-    def __init__(self, state, roots: dict[str, str | Path] | None = None) -> None:
+    def __init__(self, state, roots: dict[str, str | Path] | None = None, resolver: DependencyCapabilityResolver | None = None) -> None:
         self.state = state
+        self.requirements = resolver or DependencyCapabilityResolver(state)
         roots = roots or {
             "builtin": "/opt/beast-ui/packs",
             "installed": "/var/lib/beastagotchi/packs/installed",
@@ -192,6 +194,32 @@ class PackRegistryEngine:
             row["blockers"] = blockers
             row["version_compatibility_checked"] = False
 
+        components = []
+        for row in rows:
+            available = row.get("origin") != "staged" and row.get("lifecycle") in {"installed", "enabled", "disabled"}
+            components.append({
+                "id": str(row.get("id") or ""),
+                "available": bool(available),
+                "selected": bool(row.get("enabled")),
+                "provides": [f"pack:{row.get('id')}"] if available else [],
+                "requires": list(row.get("capabilities") or []) + [f"pack:{x}" for x in row.get("dependencies") or []],
+                "optional_requirements": [],
+                "conflicts": list(row.get("conflicts") or []),
+            })
+        resolved = self.requirements.resolve_components(components)
+        component_results = resolved.get("components") or {}
+        for row in rows:
+            rr = component_results.get(str(row.get("id") or ""))
+            if isinstance(rr, dict):
+                row["requirements_resolution"] = rr.get("requirements_resolution")
+                row["technical_blockers"] = list(rr.get("technical_blockers") or [])
+                row["policy_blockers"] = list(rr.get("policy_blockers") or [])
+                row["owner_override_available"] = bool(rr.get("owner_override_available"))
+                row["required_results"] = list(rr.get("required_results") or [])
+                row["conflict_results"] = list(rr.get("conflict_results") or [])
+                row["used_by"] = list((resolved.get("used_by") or {}).get(f"component:{row.get('id')}") or [])
+                row["requirements_met"] = bool(rr.get("requirements_ready"))
+
         resource_counts = {name: sum(1 for r in rows if r.get("resource_class") == name) for name in RESOURCE_CLASSES}
         thermal_counts = {name: sum(1 for r in rows if r.get("thermal_class") == name) for name in THERMAL_CLASSES}
         return {
@@ -204,6 +232,11 @@ class PackRegistryEngine:
             "packs.errors": errors,
             "packs.resource_counts": resource_counts,
             "packs.thermal_counts": thermal_counts,
+            "packs.requirements_model": "dependency_capability_resolver_v0.1_read_only",
+            "packs.requirements_executor_enabled": False,
+            "packs.requirements_summary": dict(resolved.get("summary") or {}),
+            "packs.requirements_providers": dict(resolved.get("providers") or {}),
+            "packs.requirements_used_by": dict(resolved.get("used_by") or {}),
             "packs.executor_enabled": True,
             "packs.executor_scope": "verified_registry_install_only",
             "packs.activation_enabled": False,
