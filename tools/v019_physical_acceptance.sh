@@ -73,10 +73,30 @@ write_preflight() {
   curl -fsS --max-time 4 'http://127.0.0.1:8090/health' > "$out/health-before.json" 2>/dev/null || true
   curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/types' > "$out/capsule-types.json" 2>/dev/null || true
   curl -fsS --max-time 5 'http://127.0.0.1:8090/capsule/export?type=lineage&name=0&achievements=0&appearance=0&qr_chars=220' > "$out/capsule-export.json" 2>/dev/null || true
+  if [[ -L /var/lib/beastagotchi/deployments/v019/current-staged ]]; then
+    staged="$(readlink -f /var/lib/beastagotchi/deployments/v019/current-staged 2>/dev/null || true)"
+    if [[ -n "$staged" && -f "$staged/provenance.json" ]]; then
+      cp -a "$staged/provenance.json" "$out/deployment-provenance.json"
+    fi
+  fi
 
-  PYTHONPATH="$CORE_ROOT:$UI_ROOT:$BEAST_SITE" "$PY" - <<'PY' > "$out/preflight.json"
+  PREFLIGHT_DEPLOYMENT="$out/deployment-provenance.json" PYTHONPATH="$CORE_ROOT:$UI_ROOT:$BEAST_SITE" "$PY" - <<'PY' > "$out/preflight.json"
 import hashlib, importlib.util, json, pathlib, time
 result={"ts":time.time()}
+deployment_path=pathlib.Path(os.environ.get("PREFLIGHT_DEPLOYMENT",""))
+if deployment_path.is_file():
+    try:
+        deployment=json.loads(deployment_path.read_text())
+        if isinstance(deployment,dict):
+            result["deployment"]={
+                "source_commit":deployment.get("source_commit"),
+                "ci_tested_commit":deployment.get("ci_tested_commit"),
+                "archive_sha256":deployment.get("archive_sha256"),
+                "staged_at_utc":deployment.get("staged_at_utc"),
+                "display_claimed":deployment.get("display_claimed"),
+            }
+    except Exception as exc:
+        result["deployment_error"]=type(exc).__name__
 try:
     import beastcore, beastui, beaststudio
     result["versions"]={
