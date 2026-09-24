@@ -4,7 +4,7 @@
 
 The project is not intended to be a single theme or a fixed dashboard. Its long-term goal is a modular operating environment that can act as a living digital creature, real-time system/RF monitor, field terminal, app platform, configurable instrument panel, and persistent progression/exploration system while keeping the underlying Pwnagotchi service isolated and recoverable.
 
-> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **343 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **351 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -18,6 +18,7 @@ The project is not intended to be a single theme or a fixed dashboard. Its long-
 - **No silent scope loss.** Approved ideas are implemented, deferred, experimental or explicitly retired with a reason; they are not simply forgotten.
 - **Local-first recovery.** Important logs, actions, backups, incidents, configuration snapshots and recovery evidence persist on the device rather than existing only in a browser.
 - **Modular growth.** Themes, face packs, apps, visualizers, integrations and optional capabilities are moving toward downloadable **Beast Packs** instead of permanently bloating the base image.
+- **Capability-driven dependencies.** Plugins/Packs/Hardware/Experiences increasingly declare what they provide and require; Beast catalogs the full known universe while keeping the installed/runtime footprint feature-driven rather than preinstalling everything.
 
 ## Current baseline: v0.18.1
 
