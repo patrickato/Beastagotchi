@@ -104,7 +104,7 @@ class ActiveBeastProgressionStore:
             """SELECT COUNT(*),
                       SUM(CASE WHEN kind='beast' THEN 1 ELSE 0 END),
                       SUM(CASE WHEN kind='monster' THEN 1 ELSE 0 END),
-                      SUM(CASE WHEN status='legend' THEN 1 ELSE 0 END)
+                      SUM(CASE WHEN legend_at IS NOT NULL THEN 1 ELSE 0 END)
                FROM beasts"""
         ).fetchone()
         return {
