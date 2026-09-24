@@ -57,6 +57,7 @@ The project intentionally preserves historical specifications and roadmaps becau
 ## Plugins/hardware/power
 
 - `Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
+- `Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md` — transport-neutral Capsule format, privacy-safe Lineage export and offline QR/file/NFC/USB ecosystem direction.
 - `Beastagotchi_Plugin_Operations_v0.2.md`
 - `Beastagotchi_Dependency_Capability_Resolver_v0.1.md` — shared requirements/provider/remediation architecture for Plugins/Packs/Hardware/Experiences/Apps.
 - `Beastagotchi_Provider_Arbitration_v0.1.md` — read-only active/alternate/provider-choice policy, fallback ordering, failover direction and owner-preference model.
