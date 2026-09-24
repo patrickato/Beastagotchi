@@ -640,3 +640,10 @@ Still deliberately disabled:
 This milestone is architectural/read-only and does not alter physical TFT
 presentation or install software on the reference Pi.
 
+Source/CI evidence:
+- **368 tests passed in 4.54s**
+- Python compile passed
+- shell syntax passed
+- sanitized real-state UX gallery render/upload passed
+- GitHub Actions run `35964795554` (#230)
+
