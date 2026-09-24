@@ -52,3 +52,43 @@ def divider(d, x1, y, x2, theme):
 def section_title(d, xy, title, fonts, theme, *, color=None):
     x,y=xy
     d.text((x,y),str(title).upper(),font=fonts['tiny'],fill=color or theme.c('dim'))
+
+
+def empty_state(d, box, title, detail, fonts, theme, *, accent=None, hint=None):
+    """Readable honest empty/unavailable state for the 480x320 cockpit."""
+    x1,y1,x2,y2=box
+    accent=accent or theme.c('dim')
+    card(d,box,theme,accent=accent)
+    title=str(title).upper()
+    detail=str(detail)
+    tb=d.textbbox((0,0),title,font=fonts['medium'])
+    tw=max(0,tb[2]-tb[0])
+    d.text((x1+max(10,((x2-x1)-tw)//2),y1+22),title,font=fonts['medium'],fill=theme.c('text'))
+    db=d.textbbox((0,0),detail,font=fonts['tiny'])
+    dw=max(0,db[2]-db[0])
+    d.text((x1+max(10,((x2-x1)-dw)//2),y1+48),detail,font=fonts['tiny'],fill=theme.c('dim'))
+    if hint:
+        hint=str(hint)
+        hb=d.textbbox((0,0),hint,font=fonts['micro'])
+        hw=max(0,hb[2]-hb[0])
+        d.text((x1+max(10,((x2-x1)-hw)//2),y2-20),hint,font=fonts['micro'],fill=accent)
+
+
+def summary_strip(d, box, items, fonts, theme, *, accent=None):
+    """One calm summary card with evenly divided label/value cells."""
+    rows=list(items or [])
+    if not rows:
+        return
+    x1,y1,x2,y2=box
+    card(d,box,theme,accent=accent or theme.c('edge'))
+    width=max(1,x2-x1)
+    cell=max(1,width//len(rows))
+    for i,row in enumerate(rows):
+        label=row[0] if len(row)>0 else ''
+        value=row[1] if len(row)>1 else '--'
+        color=row[2] if len(row)>2 else theme.c('text')
+        cx=x1+10+i*cell
+        label_value(d,(cx,y1+8),label,value,fonts,theme,color=color,value_font='small',max_chars=max(6,(cell-16)//6))
+        if i<len(rows)-1:
+            x=x1+(i+1)*cell
+            d.line((x,y1+7,x,y2-7),fill=theme.c('edge'))
