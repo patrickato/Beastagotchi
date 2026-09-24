@@ -593,3 +593,50 @@ request. The succeeding full gate is green.
 No package/service was installed on the target Pi, no physical display behavior
 changed and no new physical TFT acceptance is claimed.
 
+## Shared Dependency & Capability Resolver milestone — 2026-09-24
+
+The dependency model has advanced from stock-plugin catalog metadata into a shared
+read-only resolver used by both Plugins and Beast Packs.
+
+Implemented:
+- new `beastcore/dependency_resolver.py`;
+- common `RequirementResult` schema with explicit status/remediation/evidence;
+- shared `DependencyCapabilityResolver` instance in Beast Core;
+- PluginIntegrationEngine + PackRegistryEngine consume the same resolver;
+- bounded presence probes for abstract capabilities, services, OS packages,
+  executables, Python modules, paths/device nodes, configuration and credential
+  presence;
+- Python modules are located without importing/executing them;
+- package checks use read-only `dpkg-query -W`;
+- service checks consume the existing canonical service inventory rather than
+  starting a second systemd polling loop;
+- canonical/native providers are derived from existing Beast state;
+- component-provider index + reverse `used_by` graph;
+- provider availability is distinct from active selection;
+- enabled/selected dependency-health totals are distinct from whole-catalog
+  readiness;
+- known absent hardware capabilities become factual technical blockers;
+- unknown/unproven requirements remain policy blockers and therefore follow
+  Owner Sovereignty override semantics;
+- sensitive Pwnagotchi plugin config now records only whether a value exists,
+  never the secret value;
+- credential-required plugins consume that presence-only evidence;
+- Pack dependencies participate in the same graph, including installed-but-
+  disabled Packs remaining available as dependencies without being treated as
+  active;
+- Plugin and Pack rows now carry read-only requirement evidence,
+  technical/policy blockers, override availability and reverse usage;
+- `GET /dependencies` provides a bounded read-only summary;
+- the normal platform bundle includes dependency + owner-support summaries for
+  future Studio/Doctor presentation.
+
+Still deliberately disabled:
+- provider selection/arbitration;
+- dependency/package/service installation;
+- automatic remediation;
+- generalized arbitrary plugin installation;
+- any new target-Pi mutation.
+
+This milestone is architectural/read-only and does not alter physical TFT
+presentation or install software on the reference Pi.
+
