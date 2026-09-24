@@ -245,7 +245,7 @@ class DependencyCapabilityResolver:
 
         if kind in {"config", "credential"}:
             current = self.state.get(value)
-            present = current not in {None, "", False}
+            present = current is not None and current is not False and current != ""
             if present:
                 return self._result(requirement, kind, "satisfied", remediation="none", evidence={"present": True}, providers=[f"{kind}:{value}"], optional=optional)
             status = "credential_missing" if kind == "credential" else "configuration_missing"
