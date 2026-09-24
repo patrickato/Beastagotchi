@@ -296,7 +296,7 @@ Implemented:
 - regression coverage now checks operational-surface rendering and platform
   navigation target geometry.
 
-Current source/CI gate after this block: **339 tests passed + Python compile +
+Current source/CI gate after this block: **343 tests passed + Python compile +
 shell syntax** in GitHub Actions run #124.
 
 This is still source/CI validation only. No new target/off-screen Pi run, physical
@@ -359,3 +359,42 @@ Batch 08 meets Batch 07 at repository creation. Batches 08→01 now cover the
 supplied pinned conversation from its beginning through its end with no known
 major chronological gap. This is preservation/provenance only and does not alter
 source, target/off-screen or physical validation status.
+
+
+## Theme Manager 3.0 reintegration checkpoint
+
+Fresh source-level review of current `Korrie71/pwnagotchi-theme-manager` 3.0 identified
+several useful reintegration targets without changing Beast's architecture:
+
+- install-first Gallery/Depot workflow with preview/filter/phone handoff;
+- compact Doctor/Explain diagnostics;
+- structural theme metadata;
+- existing pwngrid peer transport as a candidate for a tiny privacy-safe Beast
+  descriptor rather than inventing a second nearby-presence protocol;
+- Wardrive route-summary presentation as an Expedition UX reference;
+- PWA installability for local WebUI/companion use;
+- changed-row framebuffer writes and lazy live-token providers;
+- clean unload/live install as compatibility evidence for future presentation handoff.
+
+Implemented now:
+- bounded read-only `ThemeManagerProbe` in `beastcore/theme_manager_interop.py`;
+- Theme Manager version/capability evidence is surfaced through plugin canonical state;
+- PresentationBroker consumes that evidence while keeping physical execution locked;
+- explicit managed release/acquire support is **not** assumed merely because clean
+  unload/live-install behavior exists.
+
+Code-bearing checkpoint:
+`574c7e48144cb2cc088a2260ed57d80015b617d4`
+
+Source gate:
+- **343 tests passed**
+- Python compile passed
+- shell syntax passed
+- GitHub Actions `35952293274`
+
+No new target/off-screen or physical TFT validation is claimed.
+
+Development priority remains user-visible v0.19 UX/gallery -> bounded physical TFT
+acceptance before real Presentation Broker ownership switching. Safe interop work such
+as token registry/semantic-layer metadata may proceed in bounded blocks without
+displacing that visible milestone.
