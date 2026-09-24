@@ -156,9 +156,13 @@ The repository now includes an **optional** Beast UI QR rendering adapter:
 `beastui/qr_render.py`
 
 It uses the lightweight Python `qrcode` backend when that module is available.
-The dependency is currently present in the **development/CI** requirement set so
-the 480×320 gallery can validate a real machine-readable matrix. It is **not yet
-silently installed into the protected Pwnagotchi runtime by `install_ui.sh`**.
+The dependency is present in the **development/CI** requirement set so the
+480×320 gallery can validate a real machine-readable matrix. Production keeps it
+optional: the UI installer creates a Beast-owned package root, while
+`beast-v019-accept prepare-qr` explicitly installs the CI-tested
+`qrcode==8.2` wheel into `/opt/beast-python/site-packages` with recorded
+wheel SHA-256 provenance. Pwnagotchi's protected `/opt/.pwn` site-packages are
+not modified.
 
 Production behavior is truthful:
 - real Capsule + QR backend available -> render a real black/white QR;
@@ -192,7 +196,6 @@ decoded back to its exact `BCQ1...` frame text. This is useful evidence, but it
 is **not** a physical TFT/phone-camera acceptance result.
 
 Still pending:
-- target-Pi dependency packaging decision;
 - physical TFT brightness/contrast/camera scan reliability;
 - automatic frame cycling/timing;
 - receiver progress/missing-frame UX;
@@ -423,15 +426,13 @@ Do not bolt signatures on casually.
 
 ## Implementation next steps
 
-1. Decide/package the optional `qrcode` runtime cleanly without turning the
-   protected Pwnagotchi environment into Beast's dependency dumping ground.
-2. Physically validate the Capsule Share surface on the 480×320 TFT with a real
+1. Physically validate the Capsule Share surface on the 480×320 TFT with a real
    phone/camera: readability, brightness, 3px-class modules and repeated scans.
-3. Tune manual vs automatic frame cycling from physical scan evidence.
-4. Add Capsule Workshop / exact-share preview in Beast Studio.
-5. Add scan/import preview without roster mutation.
-6. Define signed Capsule identity/authenticity v2.
-7. Add PeerDex Beast Card Capsule.
-8. Add Challenge Capsule.
-9. Define remote-lineage storage separately from local owned Beasts.
-10. Only then allow confirmed lineage import/synthesis semantics.
+2. Tune manual vs automatic frame cycling from physical scan evidence.
+3. Add Capsule Workshop / exact-share preview in Beast Studio.
+4. Add scan/import preview without roster mutation.
+5. Define signed Capsule identity/authenticity v2.
+6. Add PeerDex Beast Card Capsule.
+7. Add Challenge Capsule.
+8. Define remote-lineage storage separately from local owned Beasts.
+9. Only then allow confirmed lineage import/synthesis semantics.
