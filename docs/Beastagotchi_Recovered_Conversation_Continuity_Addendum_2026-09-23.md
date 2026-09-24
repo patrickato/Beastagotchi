@@ -495,15 +495,26 @@ Private Library preservation now contains:
 - Batch 04: 15 readable screenshots;
 - Batch 05: 15 readable screenshots;
 - Batch 06: 9 readable screenshots;
+- Batch 07: 15 readable screenshots;
+- Batch 08: 15 readable screenshots;
 - two earlier preserved source images outside the ordered batches.
 
-Total image evidence for this pass: **80 preserved images**, of which **78** are the ordered normal-resolution reconstruction set. Each ordered batch has a text index and the private Library has a master coverage map. The long-scroll source is retained for provenance but is superseded by readable normal-resolution screenshots wherever they overlap.
+Total image evidence for this pass: **110 preserved images**, of which **108** are
+the ordered normal-resolution reconstruction set. Each ordered batch has a text
+index and the private Library has a master coverage map. The long-scroll source is
+retained for provenance but is superseded by readable normal-resolution screenshots
+wherever they overlap.
+
+Batches 08 through 01 now cover the supplied pinned conversation from its true
+beginning through its end at high confidence. Screenshot reconstruction remains a
+recovery record, not a guaranteed word-for-word transcript; literal transcript
+completeness still requires a successful ChatGPT account data export.
 
 As of this reconciliation:
 
 - major Beastagotchi engineering/design gaps from the inaccessible tail of the pinned conversation are closed;
 - no known major subsystem, architectural decision, validation boundary, or protected-scope decision from the recovered tail is currently missing from durable project state;
-- remaining older screenshots may still improve literal historical wording, reveal smaller idea sparks/rejected alternatives, or provide provenance around the earliest Unified UX, Presentation Broker, Packs/Depot and GitHub-access/setup discussions;
+- additional same-conversation screenshots, if any surface, are expected mainly to improve literal wording, fill small omitted turn fragments, or preserve rejected alternatives/idea sparks;
 - those older screenshots should be treated as **archival enrichment and contradiction checking**, not as permission to regress newer code/tests or later physical decisions;
 - word-for-word transcript completeness still requires a successful ChatGPT account export if one becomes available later.
 
