@@ -19,6 +19,12 @@ The open-ecosystem expansion direction is preserved in
 packages/services are treated as capability providers behind Beast contracts,
 not as reasons to duplicate mature Linux/Pi software or bloat every install.
 
+Cohesion/help/recovery/BenchLink decisions are preserved in
+`docs/Beastagotchi_Cohesion_Guidance_Backup_BenchLink_2026-09-24.md`, including
+spoiler-safe Choreography integration, Doctor + Runbook Registry + optional AI
+Guide, contextual “Explain This” help, tiered backup/recovery, Exact Remote
+Mirror, a future local BenchLink/AI tool bridge and Cohesion Graph/Lint.
+
 ## Release state
 
 ### Stable baseline — v0.18.1 on `main`
@@ -431,6 +437,10 @@ Next:
 - peer-Beast encounters and other retained delight systems.
 
 ### Gate 9 — Recovery / self-maintenance
+- tiered backup model: transaction snapshot → Critical State → Rebuild Bundle → bare-metal/full-system backup → Emergency Rescue;
+- Doctor-integrated backup freshness and storage-risk response, with small critical rescue before stressing suspected failing media;
+- verified Runbook Registry + contextual assistance path for diagnosis/recovery;
+- future BenchLink for local laptop/device diagnostics, Exact Remote Mirror and explicit support/recovery operations;
 - live restore transaction with rescue backup;
 - service quiesce/apply/verify/rollback;
 - self-healing actions with explicit limits;
