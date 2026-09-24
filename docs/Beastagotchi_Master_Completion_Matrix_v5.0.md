@@ -392,11 +392,20 @@ approved scope.
 - [x] native canonical source is preferred by default while owner preference remains modeled
 - [x] deterministic recommendation + fallback-chain explanation without automatic switching
 - [x] configured-but-disabled plugins may remain available alternates
-- [ ] persistent owner provider preference store + audited set/clear action
-- [ ] provider freshness/confidence + anti-flap hysteresis
+- [x] persistent owner provider preference store + audited set/clear action
+- [x] provider preference is policy-only; no silent provider/plugin/service switching
+- [x] generic provider evidence health/confidence + canonical freshness metadata
+- [ ] provider-specific runtime health adapters
+- [ ] anti-flap hysteresis / minimum dwell / cooldown
 - [ ] automatic failover after provider-specific handoff validation
 - [ ] Plugin & Capability Center requirement/remediation/provider UX
-- [ ] Beast Doctor/Explain integration with dependency graph
+- [x] first Beast Doctor/Explain integration with dependency/provider graph
+- [x] Doctor explains active provider, reason, alternates, preference issue and downstream USED BY impact
+- [x] read-only Doctor/provider-preference Local API + structured Operator tools
+- [x] Doctor/provider-policy summary included in sanitized support evidence
+- [ ] causal-chain explanations across nested requirements
+- [ ] known-good build fingerprint + what-changed comparison
+- [ ] pre-action blast-radius simulation
 - [ ] build-specific BOM generator/export: full / installed / missing / unused / conflicts
 - [ ] transactional dependency remediation with dry-run/provenance/rollback
 - [x] Owner Sovereignty / Unrestricted Mode architecture approved and specified
