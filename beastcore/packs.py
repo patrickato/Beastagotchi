@@ -15,6 +15,7 @@ PACK_TYPES = (
 )
 RESOURCE_CLASSES = ("none", "low", "medium", "high")
 THERMAL_CLASSES = ("static", "animated", "compute", "heavy")
+EXTENSION_CLASSES = ("pack", "companion")
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
@@ -60,6 +61,10 @@ def clean_manifest(obj: dict[str, Any], *, source_path: str = "") -> dict[str, A
         raise PackManifestError("invalid resource_class")
     if thermal not in THERMAL_CLASSES:
         raise PackManifestError("invalid thermal_class")
+    extension_class = str(obj.get("extension_class") or "pack").strip().lower()
+    if extension_class not in EXTENSION_CLASSES:
+        raise PackManifestError("invalid extension_class")
+    companion = obj.get("companion") if isinstance(obj.get("companion"), dict) else {}
 
     compatibility = obj.get("compatibility") if isinstance(obj.get("compatibility"), dict) else {}
     source = obj.get("source") if isinstance(obj.get("source"), dict) else {}
@@ -83,6 +88,17 @@ def clean_manifest(obj: dict[str, Any], *, source_path: str = "") -> dict[str, A
         "enabled_by_default": bool(obj.get("enabled_by_default", False)),
         "resource_class": resource,
         "thermal_class": thermal,
+        "extension_class": extension_class,
+        "content_roles": _string_list(obj.get("content_roles")),
+        "signals_provides": _string_list(obj.get("signals_provides"), limit=128),
+        "signals_consumes": _string_list(obj.get("signals_consumes"), limit=128),
+        "offline_transports": _string_list(obj.get("offline_transports"), limit=32),
+        "capsule_types": _string_list(obj.get("capsule_types"), limit=64),
+        "companion": {
+            "pwnagotchi_plugins": _string_list(companion.get("pwnagotchi_plugins"), limit=64),
+            "beast_apps": _string_list(companion.get("beast_apps"), limit=64),
+            "beast_packs": _string_list(companion.get("beast_packs"), limit=64),
+        },
         "compatibility": {
             "beast_min": str(compatibility.get("beast_min") or "")[:48],
             "beast_max": str(compatibility.get("beast_max") or "")[:48],
