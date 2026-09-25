@@ -84,6 +84,13 @@ class BeastAPI:
         except Exception as exc:
             self.last_error=type(exc).__name__;return {}
 
+    def experiences(self) -> dict[str, Any]:
+        try:
+            obj=self._get("/experiences")
+            return obj if isinstance(obj,dict) else {}
+        except Exception as exc:
+            self.last_error=type(exc).__name__;return {}
+
     def library(self, query: str = "", limit: int = 50) -> dict[str, Any]:
         try:
             q=urllib.parse.urlencode({"q":query,"limit":int(limit)})
