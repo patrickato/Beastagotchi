@@ -79,6 +79,73 @@ class DoctorPatientChart:
             self._persist()
         return changed
 
+    @staticmethod
+    def _incident_recurrence(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        severity_rank = {"critical": 3, "warning": 2, "warn": 2, "info": 1}
+        grouped: dict[str, dict[str, Any]] = {}
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            kind = str(row.get("kind") or "").strip()
+            if not kind:
+                continue
+            opened = float(row.get("opened_at") or 0.0)
+            last_seen = float(row.get("last_seen") or opened or 0.0)
+            resolved = row.get("resolved_at")
+            status = str(row.get("status") or "unknown")
+            severity = str(row.get("severity") or "warning").lower()
+            item = grouped.setdefault(kind, {
+                "episodes": 0,
+                "active": False,
+                "first_seen": opened or None,
+                "last_seen": last_seen or None,
+                "last_resolved": None,
+                "severity": severity,
+                "latest_summary": str(row.get("summary") or kind),
+            })
+            item["episodes"] += 1
+            item["active"] = bool(item["active"] or status == "open")
+            if opened and (item["first_seen"] is None or opened < item["first_seen"]):
+                item["first_seen"] = opened
+            if last_seen and (item["last_seen"] is None or last_seen > item["last_seen"]):
+                item["last_seen"] = last_seen
+                item["latest_summary"] = str(row.get("summary") or kind)
+            try:
+                resolved_f = float(resolved) if resolved is not None else None
+            except (TypeError, ValueError):
+                resolved_f = None
+            if resolved_f is not None and (
+                item["last_resolved"] is None or resolved_f > item["last_resolved"]
+            ):
+                item["last_resolved"] = resolved_f
+            if severity_rank.get(severity, 0) > severity_rank.get(str(item["severity"]).lower(), 0):
+                item["severity"] = severity
+        ordered = sorted(
+            grouped.items(),
+            key=lambda pair: float(pair[1].get("last_seen") or 0.0),
+            reverse=True,
+        )[:64]
+        out: dict[str, Any] = {}
+        for kind, item in ordered:
+            item["recurrent"] = int(item.get("episodes", 0) or 0) >= 2
+            out[kind] = item
+        return out
+
+    def refresh_recurrence(self) -> bool:
+        if self.store is None or not hasattr(self.store, "recent_incidents"):
+            return False
+        try:
+            recurrence = self._incident_recurrence(self.store.recent_incidents(200))
+        except Exception as exc:
+            self.load_error = repr(exc)
+            return False
+        if recurrence == self.data.get("recurrence"):
+            return False
+        self.data["recurrence"] = recurrence
+        self.data["updated_at"] = float(self.clock())
+        self._persist()
+        return True
+
     def summary(self) -> dict[str, Any]:
         return copy.deepcopy({
             "schema": self.data.get("schema", self.SCHEMA),
