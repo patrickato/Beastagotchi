@@ -36,6 +36,64 @@ class BeastDoctor:
             "pwnagotchi_version": self.state.get("pwnagotchi.version"),
         }
 
+    @staticmethod
+    def _safe_plugin_fingerprint(rows: Any) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("name") or row.get("id") or "").strip()
+            if not name:
+                continue
+            out.append({
+                "name": name,
+                "enabled": bool(row.get("enabled")),
+                "configured": bool(row.get("configured")),
+                "installed_custom": bool(row.get("installed_custom")),
+            })
+        return sorted(out, key=lambda row: row["name"].lower())
+
+    @staticmethod
+    def _safe_pack_fingerprint(rows: Any) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            pack_id = str(row.get("id") or "").strip()
+            if not pack_id:
+                continue
+            out.append({
+                "id": pack_id,
+                "version": str(row.get("version") or ""),
+                "origin": str(row.get("origin") or ""),
+                "enabled": bool(row.get("enabled")),
+                "requirements_met": bool(row.get("requirements_met")),
+            })
+        return sorted(out, key=lambda row: row["id"].lower())
+
+    def known_good_fingerprint(self) -> dict[str, Any]:
+        """Deterministic privacy-light configuration/build fingerprint."""
+        prefs = self.state.get("providers.preferences", {}) or {}
+        if not isinstance(prefs, dict):
+            prefs = {}
+        return {
+            "identity": self.patient_identity(),
+            "beast_version": self.state.get("system.beast_version"),
+            "display_backend": self.state.get("display.backend.current"),
+            "plugins": self._safe_plugin_fingerprint(self.state.get("platform.plugins", []) or []),
+            "packs": self._safe_pack_fingerprint(self.state.get("packs.items", []) or []),
+            "provider_preferences": {
+                str(k): str(v) for k, v in sorted(prefs.items())
+                if str(k).strip() and str(v).strip()
+            },
+        }
+
+    def save_known_good(self, label: str = "owner") -> dict[str, Any]:
+        return self.patient.save_known_good(self.known_good_fingerprint(), label=label)
+
+    def known_good_diff(self) -> dict[str, Any]:
+        return self.patient.diff_known_good(self.known_good_fingerprint())
+
     def diagnostic_coverage(self) -> dict[str, Any]:
         """Report what Doctor can currently observe without implying health."""
         rows: list[dict[str, Any]] = []
@@ -288,6 +346,7 @@ class BeastDoctor:
         self.patient.observe_identity_coverage(identity, coverage)
         self.patient.refresh_recurrence()
         patient_memory = self.patient.summary()
+        known_good_diff = self.known_good_diff()
         return {
             "schema": self.schema,
             "state": "attention" if items else "ok",
@@ -302,6 +361,10 @@ class BeastDoctor:
                 "coverage": coverage,
                 "privacy_class": "technical_identity_only",
                 "memory": patient_memory,
+                "known_good": {
+                    "history": self.patient.known_good_history(),
+                    "drift": known_good_diff,
+                },
             },
         }
 
@@ -318,6 +381,14 @@ class BeastDoctor:
             "doctor.patient.memory": patient.get("memory", {}) if isinstance(patient, dict) else {},
             "doctor.patient.updated_at": ((patient.get("memory") or {}).get("updated_at")
                                           if isinstance(patient, dict) else None),
+            "doctor.patient.known_good_count": int(
+                ((patient.get("memory") or {}).get("known_good_count", 0)
+                 if isinstance(patient, dict) else 0) or 0
+            ),
+            "doctor.patient.known_good_drift": (
+                ((patient.get("known_good") or {}).get("drift") or {})
+                if isinstance(patient, dict) else {}
+            ),
             "doctor.coverage": coverage,
             "doctor.coverage.covered_count": int((coverage.get("counts") or {}).get("covered", 0) or 0),
             "doctor.coverage.unavailable_count": int((coverage.get("counts") or {}).get("unavailable", 0) or 0),
