@@ -71,19 +71,72 @@ def _draw_habitat(draw, phase):
 
 
 def _draw_creature(draw, meta):
-    cx, cy = 240, 150
-    # Deliberately enormous creature footprint.
-    draw.ellipse((135, 65, 345, 255), fill=(46, 48, 39), outline=_WARM, width=3)
-    draw.polygon([(158,92),(183,40),(205,94)], fill=(46,48,39), outline=_WARM)
-    draw.polygon([(275,94),(299,40),(323,92)], fill=(46,48,39), outline=_WARM)
-    draw.ellipse((190, 130, 205, 145), fill=_INK)
-    draw.ellipse((275, 130, 290, 145), fill=_INK)
-    if meta["mood"].lower() in {"awake","happy","excited"}:
-        draw.arc((203,142,278,196), 18, 162, fill=_LEAF_2, width=3)
+    """Organic companion portrait with layered facial structure, not a circle mascot."""
+    cx = 240
+    coat = (46, 48, 39)
+    coat_2 = (54, 58, 45)
+    shadow = (37, 40, 34)
+
+    # Body/shoulders sit behind the head so the Beast feels present in a habitat,
+    # not pasted as a floating icon.
+    draw.ellipse((166, 190, 314, 292), fill=shadow, outline=_SOIL, width=2)
+    draw.arc((150, 184, 330, 300), 198, 342, fill=_LEAF, width=2)
+
+    # Asymmetric leafy halo is decorative habitat language.
+    for x, y, r in ((151,105,10),(326,118,8),(142,168,7),(334,176,11),(167,61,6),(312,70,7)):
+        draw.ellipse((x-r,y-r,x+r,y+r), outline=_LEAF, width=2)
+
+    # Head silhouette: broad cheek structure, tapered chin, tall ears.
+    head = [
+        (158, 115), (166, 82), (182, 88), (191, 54), (213, 84),
+        (240, 75),
+        (267, 84), (289, 54), (298, 90), (314, 83), (322, 116),
+        (326, 161), (312, 205), (284, 235), (240, 252),
+        (196, 235), (168, 205), (154, 161),
+    ]
+    draw.polygon(head, fill=coat, outline=_WARM)
+    draw.line(head + [head[0]], fill=_WARM, width=3, joint="curve")
+
+    # Inner ears and cheek planes.
+    draw.polygon([(174,91),(191,61),(207,91),(192,108)], fill=coat_2, outline=_LEAF)
+    draw.polygon([(273,91),(289,61),(306,93),(289,108)], fill=coat_2, outline=_LEAF)
+    draw.polygon([(166,151),(193,138),(208,177),(190,211),(167,190)], fill=coat_2, outline=_SOIL)
+    draw.polygon([(314,151),(287,138),(272,177),(290,211),(313,190)], fill=coat_2, outline=_SOIL)
+
+    # Brow/eye shapes convey mood more expressively than dot eyes.
+    eye_y = 141
+    alert = meta["mood"].lower() in {"angry","intense","focused","hunting"}
+    left_eye = [(188,eye_y),(222,eye_y+3),(214,eye_y+17),(194,eye_y+16)]
+    right_eye = [(258,eye_y+3),(292,eye_y),(286,eye_y+16),(266,eye_y+17)]
+    eye_col = _WARM if alert else _INK
+    draw.polygon(left_eye, fill=(34,37,31), outline=eye_col)
+    draw.polygon(right_eye, fill=(34,37,31), outline=eye_col)
+    draw.ellipse((202,147,208,153), fill=_LEAF_2)
+    draw.ellipse((272,147,278,153), fill=_LEAF_2)
+    draw.line((184,132,220,128), fill=_LEAF if not alert else _WARM, width=2)
+    draw.line((260,128,296,132), fill=_LEAF if not alert else _WARM, width=2)
+
+    # Muzzle/nose and mood-driven mouth.
+    draw.polygon([(232,171),(248,171),(240,180)], fill=_WARM)
+    draw.line((240,180,240,187), fill=_MUTED)
+    mood = meta["mood"].lower()
+    if mood in {"awake","happy","excited"}:
+        draw.arc((207,176,241,205), 5, 100, fill=_LEAF_2, width=2)
+        draw.arc((239,176,273,205), 80, 175, fill=_LEAF_2, width=2)
+    elif mood in {"sad","bored"}:
+        draw.arc((214,188,266,214), 200, 340, fill=_LEAF_2, width=2)
     else:
-        draw.line((212,177,268,177), fill=_LEAF_2, width=3)
-    draw.text((195, 211), meta["stage"].upper(), fill=_INK, font=_font(14))
-    draw.text((219, 232), f"LV {meta['level']}", fill=_WARM, font=_font(11))
+        draw.line((216,197,264,197), fill=_LEAF_2, width=2)
+
+    # Identity is a small collar/tag beneath the face rather than text across it.
+    draw.line((207,224,240,239,273,224), fill=_LEAF, width=2)
+    draw.ellipse((229,232,251,254), fill=_SOIL, outline=_WARM)
+    level = str(meta["level"])
+    bbox = draw.textbbox((0,0), level, font=_font(9))
+    draw.text((240-(bbox[2]-bbox[0])//2,237), level, fill=_INK, font=_font(9))
+    label = meta["stage"].upper()
+    tw = draw.textbbox((0,0), label, font=_font(9))[2]
+    draw.text((240-tw//2, 258), label, fill=_INK, font=_font(9))
 
 
 def render_habitat_home(state: dict[str, Any], *, phase: float = 0.0,
