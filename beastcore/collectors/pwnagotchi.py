@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import Collector
+from ..util import run
 
 
 _SECRET_WORDS = ("password", "passwd", "secret", "token", "api_key", "apikey", "private", "credential", "key")
@@ -33,7 +34,13 @@ def _safe_field_rows(opts: dict[str, Any] | None) -> list[dict[str, Any]]:
         preview: Any = None
         if not sensitive and isinstance(value, (bool, int, float, str)):
             preview = value
-        rows.append({"key": str(key), "type": typ, "sensitive": sensitive, "preview": preview})
+        rows.append({
+            "key": str(key),
+            "type": typ,
+            "sensitive": sensitive,
+            "present": value not in {None, ""} if not isinstance(value, (list, dict)) else bool(value),
+            "preview": preview,
+        })
     return rows
 
 
@@ -57,6 +64,22 @@ class PwnagotchiCollector(Collector):
         self._cache_summary_at = 0.0
         self._session_cache: dict[str, Any] = {}
         self._session_sig: tuple[str, int, int] | None = None
+        self._version_value: str | None = None
+        self._version_at = 0.0
+
+    def _version(self, *, max_age: float = 300.0) -> str | None:
+        now = time.monotonic()
+        if self._version_value is not None and now - self._version_at < max_age:
+            return self._version_value
+        rc, out, _ = run(["pwnagotchi", "--version"], timeout=2.0)
+        self._version_at = now
+        if rc == 0:
+            raw = str(out or "").strip().splitlines()[0] if str(out or "").strip() else ""
+            if raw:
+                # Accept either a bare semantic version or the common
+                # "pwnagotchi X.Y.Z" form without inventing a version.
+                self._version_value = raw.split()[-1]
+        return self._version_value
 
     def _config(self) -> dict[str, Any]:
         try:
@@ -162,6 +185,9 @@ class PwnagotchiCollector(Collector):
     def collect(self) -> dict[str, Any]:
         values: dict[str, Any] = {}
         cfg = self._config()
+        version = self._version()
+        if version:
+            values["pwnagotchi.version"] = version
         main = cfg.get("main", {}) if isinstance(cfg, dict) else {}
         bc = cfg.get("bettercap", {}) if isinstance(cfg, dict) else {}
         if bc.get("handshakes"):

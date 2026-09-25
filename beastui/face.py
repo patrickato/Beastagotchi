@@ -1,6 +1,10 @@
 from __future__ import annotations
 import math
+from pathlib import Path
 from PIL import ImageFont
+
+from .facepacks import discover_enabled_face_profiles
+from .animationpacks import discover_enabled_animation_profiles
 
 PWN_CLASSIC_FACES={
     "look_r":"( ⚆_⚆)", "look_l":"(☉_☉ )", "look_r_happy":"( ◕‿◕)", "look_l_happy":"(◕‿◕ )",
@@ -15,6 +19,46 @@ PWN_CLASSIC_FACES={
 
 class FaceEngine:
     EXPRESSIONS=set(PWN_CLASSIC_FACES)
+
+    def __init__(self, profile_id: str = "builtin", animation_profile_id: str = "none", *, installed_root: str | Path = "/var/lib/beastagotchi/packs/installed"):
+        self.installed_root=Path(installed_root)
+        self.profiles={};self.animation_profiles={}
+        self.profile_id="builtin";self.animation_profile_id="none"
+        self.refresh_profiles();self.refresh_animation_profiles()
+        self.set_profile(profile_id);self.set_animation_profile(animation_profile_id)
+
+    def refresh_profiles(self):
+        self.profiles=discover_enabled_face_profiles(self.installed_root)
+        if self.profile_id!="builtin" and self.profile_id not in self.profiles:self.profile_id="builtin"
+        return self.profiles
+
+    def refresh_animation_profiles(self):
+        self.animation_profiles=discover_enabled_animation_profiles(self.installed_root)
+        if self.animation_profile_id!="none" and self.animation_profile_id not in self.animation_profiles:self.animation_profile_id="none"
+        return self.animation_profiles
+
+    def set_animation_profile(self, profile_id: str):
+        profile_id=str(profile_id or "none")
+        self.animation_profile_id=profile_id if profile_id=="none" or profile_id in self.animation_profiles else "none"
+        return self.animation_profile_id
+
+    def animation_profile_options(self):
+        rows=[{"id":"none","label":"None · static face motion","source_pack":None,"target":"face"}]
+        for pid,row in sorted(self.animation_profiles.items(),key=lambda x:(str(x[1].get("label") or x[0]).lower(),x[0])):
+            rows.append({"id":pid,"local_id":row.get("local_id"),"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"target":row.get("target")})
+        return rows
+
+    def set_profile(self, profile_id: str):
+        profile_id=str(profile_id or "builtin")
+        self.profile_id=profile_id if profile_id=="builtin" or profile_id in self.profiles else "builtin"
+        return self.profile_id
+
+    def profile_options(self):
+        rows=[{"id":"builtin","label":"Built-in · follows theme","source_pack":None,"renderer":"builtin"}]
+        for pid,row in sorted(self.profiles.items(),key=lambda x:(str(x[1].get("label") or x[0]).lower(),x[0])):
+            rows.append({"id":pid,"local_id":row.get("local_id"),"label":str(row.get("label") or pid),"source_pack":row.get("source_pack"),"renderer":row.get("renderer")})
+        return rows
+
     def resolve(self,state:dict)->dict:
         beast=str(state.get('beast.expression') or '').lower()
         mapping={
@@ -32,10 +76,103 @@ class FaceEngine:
         elif thermal in {'hot','critical'}:mood='alert'
         return {"mood":mood,"beast_expression":beast or None,"context":str(state.get('context.mode.effective') or 'pwn'),"tags":list(state.get('context.visual.tags') or [])}
 
+    @staticmethod
+    def _color(theme,role,default='primary'):
+        try:return theme.c(str(role or default))
+        except Exception:return theme.c(default)
+
+    @staticmethod
+    def _pt(box,p):
+        x1,y1,x2,y2=box;w=x2-x1;h=y2-y1
+        return (int(x1+w*float(p[0])/1000.0),int(y1+h*float(p[1])/1000.0))
+
+    @classmethod
+    def _box(cls,box,b):
+        p1=cls._pt(box,(b[0],b[1]));p2=cls._pt(box,(b[2],b[3]))
+        return (min(p1[0],p2[0]),min(p1[1],p2[1]),max(p1[0],p2[0]),max(p1[1],p2[1]))
+
+    def _draw_pack_overlays(self,d,box,theme,face,phase):
+        x1,y1,x2,y2=box;cx=(x1+x2)//2;w=x2-x1;h=y2-y1
+        if 'goggles' in face['tags']:
+            ew=max(20,int(w*.23));eh=max(14,int(h*.18));gap=max(8,int(w*.05));gy=y1+max(8,int(h*.26))
+            d.rounded_rectangle((cx-gap-ew,gy,cx-gap,gy+eh),radius=5,outline=theme.c('accent'),width=2)
+            d.rounded_rectangle((cx+gap,gy,cx+gap+ew,gy+eh),radius=5,outline=theme.c('accent'),width=2)
+            d.line((cx-gap,gy+eh//2,cx+gap,gy+eh//2),fill=theme.c('accent'),width=2)
+        if 'wind' in face['tags']:
+            for i in range(3):
+                yy=y1+15+i*18+int(math.sin(phase*3+i)*3);d.line((x1+5,yy,x1+28+i*6,yy),fill=theme.c('dim'))
+
+    def _draw_pack_profile(self,d,box,theme,state,phase,profile):
+        face=self.resolve(state);mood=face['mood']
+        expressions=profile.get('expressions') or {}
+        expression=expressions.get(mood) or expressions.get(profile.get('fallback')) or next(iter(expressions.values()),None)
+        if expression is None:return False
+        if profile.get('background')=='panel':d.rectangle(box,fill=theme.c('panel'))
+        if profile.get('renderer')=='glyph':
+            glyph=str(expression)
+            x1,y1,x2,y2=box;target=max(12,min(64,int((y2-y1)*float(profile.get('font_size_ratio') or .30))))
+            try:font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",target)
+            except Exception:font=ImageFont.load_default()
+            try:
+                bb=d.textbbox((0,0),glyph,font=font);tw=bb[2]-bb[0];th=bb[3]-bb[1]
+            except Exception:
+                tw=float(d.textlength(glyph,font=font));th=target
+            d.text((int(x1+(x2-x1-tw)/2),int(y1+(y2-y1-th)/2)-2),glyph,font=font,fill=self._color(theme,profile.get('color_role'),'primary'))
+        elif profile.get('renderer')=='vector':
+            for primitive in expression:
+                kind=primitive.get('type');stroke=self._color(theme,primitive.get('stroke'),'primary') if primitive.get('stroke') else None
+                fill=self._color(theme,primitive.get('fill'),'primary') if primitive.get('fill') else None;width=max(1,int(primitive.get('width') or 1))
+                if kind=='line':
+                    pts=[self._pt(box,p) for p in primitive.get('points') or []]
+                    if len(pts)>=2:d.line(pts,fill=stroke,width=width,joint='curve')
+                elif kind=='polygon':
+                    pts=[self._pt(box,p) for p in primitive.get('points') or []]
+                    if len(pts)>=3:d.polygon(pts,fill=fill,outline=stroke)
+                elif kind=='ellipse':
+                    d.ellipse(self._box(box,primitive.get('box')),fill=fill,outline=stroke,width=width)
+                elif kind=='rectangle':
+                    d.rectangle(self._box(box,primitive.get('box')),fill=fill,outline=stroke,width=width)
+                elif kind=='rounded_rectangle':
+                    radius=max(0,int(min(box[2]-box[0],box[3]-box[1])*float(primitive.get('radius') or 0)/1000.0))
+                    d.rounded_rectangle(self._box(box,primitive.get('box')),radius=radius,fill=fill,outline=stroke,width=width)
+                elif kind=='arc':
+                    d.arc(self._box(box,primitive.get('box')),float(primitive.get('start',0)),float(primitive.get('end',180)),fill=stroke,width=width)
+        else:return False
+        self._draw_pack_overlays(d,box,theme,face,phase)
+        return True
+
+    def _animation_state(self,box,state,phase):
+        profile=self.animation_profiles.get(self.animation_profile_id)
+        if not profile:return box,None
+        face=self.resolve(state);mul=float((profile.get("reactive") or {}).get(face["mood"],1.0));p=float(phase)*mul
+        motion=profile.get("motion") or {};x1,y1,x2,y2=box
+        bob=float(motion.get("bob_px") or 0)*math.sin((2*math.pi*p)/max(.8,float(motion.get("bob_period_s") or 4)))
+        sway=float(motion.get("sway_px") or 0)*math.sin((2*math.pi*p)/max(.8,float(motion.get("sway_period_s") or 6)))
+        breath=float(motion.get("breath_px") or 0)*math.sin((2*math.pi*p)/max(1.0,float(motion.get("breath_period_s") or 5)))
+        moved=(int(round(x1+sway-breath)),int(round(y1+bob-breath)),int(round(x2+sway+breath)),int(round(y2+bob+breath)))
+        return moved,profile
+
+    def _draw_animation_overlay(self,d,box,theme,phase,profile,state):
+        if not profile:return
+        orbit=profile.get("orbit") or {};count=int(orbit.get("count") or 0)
+        if count<=0:return
+        face=self.resolve(state);mul=float((profile.get("reactive") or {}).get(face["mood"],1.0));p=float(phase)*mul
+        x1,y1,x2,y2=box;cx=(x1+x2)/2;cy=(y1+y2)/2;r=min(x2-x1,y2-y1)*float(orbit.get("radius_pct") or 48)/100.0
+        speed=float(orbit.get("speed_rps") or .06);dot=max(1,int(orbit.get("dot_radius_px") or 2));col=self._color(theme,orbit.get("color_role"),"accent")
+        for i in range(count):
+            a=2*math.pi*(p*speed+i/count);x=int(cx+math.cos(a)*r);y=int(cy+math.sin(a)*r)
+            d.ellipse((x-dot,y-dot,x+dot,y+dot),fill=col)
+
     def draw(self,d,box,theme,state,phase):
+        moved,anim=self._animation_state(box,state,phase)
+        profile=self.profiles.get(self.profile_id)
+        if profile:
+            if self._draw_pack_profile(d,moved,theme,state,phase,profile):
+                self._draw_animation_overlay(d,moved,theme,phase,anim,state);return
         style=getattr(theme,'face_style','classic')
         fn=getattr(self,f'draw_{style}',self.draw_classic)
-        fn(d,box,theme,state,phase)
+        fn(d,moved,theme,state,phase)
+        self._draw_animation_overlay(d,moved,theme,phase,anim,state)
 
     def _features(self,d,box,theme,state,phase,eye_shape='rect',mouth=True):
         x1,y1,x2,y2=box; w=x2-x1; h=y2-y1; face=self.resolve(state); mood=face['mood']
@@ -71,18 +208,14 @@ class FaceEngine:
 
     def draw_pwnclassic(self,d,box,theme,state,phase):
         x1,y1,x2,y2=box
-        # The original Pwnagotchi face floats directly on the display rather
-        # than living inside a Beast HUD panel. Preserve that visual language.
         d.rectangle(box,fill=theme.c("panel"))
         face=self.resolve(state); mood=face["mood"]
         glyph=PWN_CLASSIC_FACES.get(mood,PWN_CLASSIC_FACES["awake"])
         mood_colors=getattr(theme,"mood_colors",None) or {}
         color=mood_colors.get(mood,theme.c("primary"))
         target=max(18,min(42,int((y2-y1)*0.29)))
-        try:
-            font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",target)
-        except Exception:
-            font=ImageFont.load_default()
+        try:font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",target)
+        except Exception:font=ImageFont.load_default()
         try:
             bb=d.textbbox((0,0),glyph,font=font); tw=bb[2]-bb[0]; th=bb[3]-bb[1]
         except Exception:
@@ -103,7 +236,6 @@ class FaceEngine:
         d.rectangle(box,fill=theme.c('panel'),outline=theme.c('edge')); self._features(d,box,theme,state,phase)
     def draw_matrix(self,d,box,theme,state,phase):
         d.rectangle(box,fill=theme.c('panel'),outline=theme.c('primary'))
-        # digital ears
         x1,y1,x2,y2=box; d.line((x1+18,y1+35,x1+35,y1+8,x1+55,y1+34),fill=theme.c('primary'),width=2); d.line((x2-55,y1+34,x2-35,y1+8,x2-18,y1+35),fill=theme.c('primary'),width=2)
         self._features(d,box,theme,state,phase,eye_shape='rect')
     def draw_starcore(self,d,box,theme,state,phase):

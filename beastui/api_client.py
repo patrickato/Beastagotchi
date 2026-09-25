@@ -84,6 +84,13 @@ class BeastAPI:
         except Exception as exc:
             self.last_error=type(exc).__name__;return {}
 
+    def experiences(self) -> dict[str, Any]:
+        try:
+            obj=self._get("/experiences")
+            return obj if isinstance(obj,dict) else {}
+        except Exception as exc:
+            self.last_error=type(exc).__name__;return {}
+
     def library(self, query: str = "", limit: int = 50) -> dict[str, Any]:
         try:
             q=urllib.parse.urlencode({"q":query,"limit":int(limit)})
@@ -118,4 +125,30 @@ class BeastAPI:
             obj = self._get("/plugins")
             return obj if isinstance(obj, dict) else {}
         except Exception:
+            return {}
+
+    def capsule_export(
+        self,
+        *,
+        capsule_type: str = "lineage",
+        beast_id: str | None = None,
+        include_name: bool = True,
+        include_achievements: bool = False,
+        include_appearance: bool = True,
+        qr_chars: int = 220,
+    ) -> dict[str, Any]:
+        try:
+            q = {
+                "type": str(capsule_type or "lineage"),
+                "name": "1" if include_name else "0",
+                "achievements": "1" if include_achievements else "0",
+                "appearance": "1" if include_appearance else "0",
+                "qr_chars": max(128, min(2400, int(qr_chars))),
+            }
+            if beast_id:
+                q["beast_id"] = str(beast_id)
+            obj = self._get("/capsule/export?" + urllib.parse.urlencode(q))
+            return obj if isinstance(obj, dict) else {}
+        except Exception as exc:
+            self.last_error = type(exc).__name__
             return {}

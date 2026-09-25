@@ -72,6 +72,38 @@ sudo ./validate_v018.sh
 
 Review the returned validation archive before using the reversible display handoff tools in `display_handoff/`.
 
+For the active v0.19 branch, the UI installer also installs the bounded physical-acceptance harness and creates the Beast-owned optional Python package root at `/opt/beast-python/site-packages`.
+
+For a complete Capsule QR physical sub-gate, explicitly prepare the CI-tested QR renderer first:
+
+```bash
+sudo beast-v019-accept prepare-qr
+```
+
+That installs `qrcode==8.2` into the Beast-owned target path with wheel SHA-256 provenance. It does not install the package into Pwnagotchi's `/opt/.pwn` site-packages. Removal is explicit with `sudo beast-v019-accept remove-qr`.
+
+After off-screen/source checks are green, the reference-TFT session starts with:
+
+```bash
+sudo beast-v019-accept start 15
+```
+
+During the physical session, collect a one-minute objective sample while using the TFT:
+
+```bash
+sudo beast-v019-accept sample 60
+```
+
+Finish with an explicit ownership decision:
+
+```bash
+sudo beast-v019-accept finish observe
+sudo beast-v019-accept finish pass
+sudo beast-v019-accept finish rollback
+```
+
+`observe` only bundles evidence; `pass` calls the existing display confirmation path; `rollback` captures evidence then restores Pwnagotchi display ownership. See `Beastagotchi_v019_Physical_Acceptance_Package.md` for the complete gate and evidence boundary.
+
 ## Upgrades
 
 Until Update Manager/migrations are finalized, treat upgrades as explicit versioned deployments. Do not use an unattended `git pull && restart` workflow on a field device.

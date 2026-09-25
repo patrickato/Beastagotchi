@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .experience_dna import experience_dna_from_dict
+
 BUILTINS=(
     {'id':'field-survey','label':'Field Survey','description':'Portable RF/GPS observation session','deck':'field','theme':'classic','apps':['overview','recon','spectrum','map','expedition','capture_vault'],'capabilities':['display'],'checklist':['Confirm storage health','Confirm GPS state','Start or resume Expedition','Review captures before ending session']},
     {'id':'road-trip','label':'Road Trip','description':'Navigation, Expedition and low-distraction status','deck':'field','theme':'ghost_minimal','apps':['overview','map','expedition','system'],'capabilities':['gps'],'checklist':['Confirm GPS receiver','Check available storage','Use low-distraction layout']},
@@ -12,8 +14,8 @@ BUILTINS=(
 )
 
 class MissionPackEngine:
-    def __init__(self,state,root: str='/var/lib/beastagotchi/missions') -> None:
-        self.state=state;self.root=Path(root)
+    def __init__(self,state,root: str='/var/lib/beastagotchi/missions',pack_root: str='/var/lib/beastagotchi/packs/installed') -> None:
+        self.state=state;self.root=Path(root);self.pack_root=Path(pack_root)
 
     @staticmethod
     def _clean(obj: dict[str,Any])->dict[str,Any] | None:
@@ -23,21 +25,122 @@ class MissionPackEngine:
         def sl(name,limit=32):
             raw=obj.get(name) or []
             return [str(x)[:96] for x in raw[:limit] if str(x).strip()] if isinstance(raw,list) else []
-        return {'id':mid[:48],'label':label[:64],'description':str(obj.get('description') or '')[:180],'deck':str(obj.get('deck') or '')[:32],'theme':str(obj.get('theme') or '')[:32],'apps':sl('apps'),'capabilities':sl('capabilities'),'checklist':sl('checklist'),'source':str(obj.get('source') or 'user')}
+        face_profile=str(obj.get('face_profile') or '')[:96]
+        animation_profile=str(obj.get('animation_profile') or '')[:96]
+        board=str(obj.get('board') or '')[:96]
+        layout=str(obj.get('layout') or '')[:96]
+        theme=str(obj.get('theme') or '')[:64]
+        raw_dna=dict(obj.get('experience_dna') or {}) if isinstance(obj.get('experience_dna'),dict) else {}
+        raw_policy=dict(obj.get('experience_policy') or {}) if isinstance(obj.get('experience_policy'),dict) else {}
+        def sv(value,limit=32):
+            return [str(x).strip()[:128] for x in value[:limit] if str(x).strip()] if isinstance(value,list) else []
+        policy={
+            'requires':sv(raw_policy.get('requires')),
+            'optional_requirements':sv(raw_policy.get('optional_requirements')),
+            'preferred_pages':[str(x).strip().lower()[:48] for x in sv(raw_policy.get('preferred_pages'))],
+            'presentation_engine':str(raw_policy.get('presentation_engine') or 'beast_scene').strip()[:64],
+            'fallback_policy':str(raw_policy.get('fallback_policy') or 'identity_preserving').strip()[:64],
+        }
+        renderer=str(obj.get('experience_renderer') or raw_policy.get('renderer') or '').strip().lower()[:64]
+        experience=bool(theme or face_profile or animation_profile or board or layout or raw_dna)
+        return {
+            'id':mid[:64],'label':label[:64],'description':str(obj.get('description') or '')[:180],
+            'deck':str(obj.get('deck') or '')[:32],'theme':theme,'face_profile':face_profile,
+            'animation_profile':animation_profile,'board':board,'layout':layout,
+            'apps':sl('apps'),'capabilities':sl('capabilities'),'checklist':sl('checklist'),
+            'experience_dna':raw_dna,'experience_policy':policy,'experience_renderer':renderer,
+            'source':str(obj.get('source') or 'user')[:128],
+            'readonly':bool(obj.get('readonly',False)),'experience':experience,
+        }
+
+    @staticmethod
+    def _finalize_experience(row: dict[str, Any]) -> dict[str, Any]:
+        raw = row.get("experience_dna")
+        if not isinstance(raw, dict) or not raw:
+            row["experience_dna_valid"] = False
+            row["experience_dna_error"] = ""
+            return row
+        try:
+            dna = experience_dna_from_dict(
+                raw,
+                experience_id=str(row.get("id") or ""),
+                label=str(row.get("label") or row.get("id") or "Experience"),
+            )
+            row["experience_dna"] = dna.as_dict()
+            row["experience_dna_valid"] = True
+            row["experience_dna_error"] = ""
+        except ValueError as exc:
+            row["experience_dna_valid"] = False
+            row["experience_dna_error"] = str(exc)[:320]
+        row["experience"] = True
+        return row
+
+    @staticmethod
+    def _runtime_id(pack_id: str, mission_id: str)->str:
+        def clean(v):
+            return ''.join(c if c.isalnum() or c in '_-' else '_' for c in str(v).lower()).strip('_')
+        return ('pack_'+clean(pack_id)+'_'+clean(mission_id))[:64]
+
+    def _pack_missions(self)->list[dict[str,Any]]:
+        out=[]
+        try:packs=sorted(self.pack_root.iterdir())
+        except OSError:return out
+        for pack in packs:
+            if not pack.is_dir():continue
+            try:
+                state=json.loads((pack/'state.json').read_text());manifest=json.loads((pack/'manifest.json').read_text())
+                if not bool(state.get('enabled')):continue
+                if str(manifest.get('pack_type') or manifest.get('type') or '').lower()!='mission':continue
+                pack_id=str(manifest.get('id') or pack.name)
+                for fp in sorted((pack/'missions').glob('*.json'))[:64]:
+                    obj=json.loads(fp.read_text())
+                    rows=obj.get('missions') if isinstance(obj,dict) and isinstance(obj.get('missions'),list) else [obj]
+                    for raw in rows[:64]:
+                        if not isinstance(raw,dict):continue
+                        raw=dict(raw,source='pack:'+pack_id,readonly=True)
+                        row=self._clean(raw)
+                        if not row:continue
+                        local_id=row['id'];row['local_id']=local_id;row['id']=self._runtime_id(pack_id,local_id)
+                        row['source_pack']=pack_id;row['source_file']=str(fp)
+                        self._finalize_experience(row)
+                        out.append(row)
+            except Exception:continue
+        return out
 
     def catalog(self)->list[dict[str,Any]]:
-        merged={x['id']:dict(x,source='builtin') for x in BUILTINS}
+        merged={x['id']:dict(x,source='builtin',readonly=True,experience=bool(x.get('theme'))) for x in BUILTINS}
         self.root.mkdir(parents=True,exist_ok=True)
         for fp in sorted(self.root.glob('*.json')):
             try:obj=json.loads(fp.read_text())
             except Exception:continue
             if not isinstance(obj,dict):continue
             obj=dict(obj,source='user');row=self._clean(obj)
-            if row:merged[row['id']]=row
+            if row:
+                self._finalize_experience(row)
+                merged[row['id']]=row
+        for row in self._pack_missions():
+            merged[row['id']]=row
         return list(merged.values())
 
     def tick(self)->dict[str,Any]:
         rows=self.catalog();caps=set(self.state.get('capabilities.present',[]) or [])
+        pack_rows=[x for x in (self.state.get('packs.items',[]) or []) if isinstance(x,dict)]
+        pack_by_id={str(x.get('id') or ''):x for x in pack_rows if x.get('origin')!='staged'}
         for r in rows:
-            req=set(r.get('capabilities') or []);r['requirements_met']=req.issubset(caps);r['missing_capabilities']=sorted(req-caps)
-        return {'missions.count':len(rows),'missions.items':rows,'missions.available_count':sum(1 for r in rows if r.get('requirements_met')),'missions.root':str(self.root)}
+            req=set(r.get('capabilities') or []);r['missing_capabilities']=sorted(req-caps)
+            pack_ok=True
+            if r.get('source_pack'):
+                prow=pack_by_id.get(str(r['source_pack']))
+                pack_ok=bool(prow and prow.get('requirements_met') and prow.get('enabled'))
+            r['pack_requirements_met']=pack_ok
+            r['requirements_met']=not r['missing_capabilities'] and pack_ok
+            r['preview_only']=bool(r.get('experience'))
+        return {
+            'missions.count':len(rows),'missions.items':rows,
+            'missions.available_count':sum(1 for r in rows if r.get('requirements_met')),
+            'missions.experience_count':sum(1 for r in rows if r.get('experience')),
+            'missions.pack_count':sum(1 for r in rows if r.get('source_pack')),
+            'missions.root':str(self.root),'missions.pack_root':str(self.pack_root),
+            'missions.experience_apply_enabled':False,
+            'missions.experience_apply_reason':'v0.19 exposes validated composition profiles for preview/review; transactional preference application is the next gate',
+        }

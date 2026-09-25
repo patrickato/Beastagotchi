@@ -4,7 +4,7 @@
 
 The project is not intended to be a single theme or a fixed dashboard. Its long-term goal is a modular operating environment that can act as a living digital creature, real-time system/RF monitor, field terminal, app platform, configurable instrument panel, and persistent progression/exploration system while keeping the underlying Pwnagotchi service isolated and recoverable.
 
-> **Current status:** pre-1.0 development. The current runtime baseline is **v0.18.1**. Core/data/operations architecture is substantially ahead of final UX polish; **v0.19 is the dedicated Unified Experience / UX & Visual Cohesion milestone.**
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `v0.19-unified-experience` in Draft PR #9. The current preserved v0.19 source gate is **415 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -18,6 +18,11 @@ The project is not intended to be a single theme or a fixed dashboard. Its long-
 - **No silent scope loss.** Approved ideas are implemented, deferred, experimental or explicitly retired with a reason; they are not simply forgotten.
 - **Local-first recovery.** Important logs, actions, backups, incidents, configuration snapshots and recovery evidence persist on the device rather than existing only in a browser.
 - **Modular growth.** Themes, face packs, apps, visualizers, integrations and optional capabilities are moving toward downloadable **Beast Packs** instead of permanently bloating the base image.
+- **Capability-driven dependencies.** Plugins/Packs/Hardware/Experiences increasingly declare what they provide and require; Beast catalogs the full known universe while keeping the installed/runtime footprint feature-driven rather than preinstalling everything.
+- **Owner-controlled, not appliance-locked.** Managed paths favor compatibility, snapshots and rollback, but authenticated owners retain an explicit unsupported/manual escape path for technically possible customizations.
+- **Extensions live where they belong.** Pwnagotchi Plugins handle real Pwnagotchi lifecycle/hooks; Beast Packs carry modular content; Beast Apps provide deeper interaction; Companion Expansions can bundle those layers into one coherent feature.
+- **Offline exchange is first-class.** Beast Capsules provide a transport-neutral path for Lineage, Beast Cards, challenges and other privacy-curated data over QR, file, USB/SD, NFC or future direct Beast-to-Beast transfer without requiring cloud connectivity.
+- **Share before you send.** Beast Studio now includes a Capsule Workshop that shows the exact privacy-curated Lineage Capsule envelope and QR frames before sharing; the current path is export-only and performs no import or publication.
 
 ## Current baseline: v0.18.1
 
@@ -44,19 +49,14 @@ The attached v0.18.1 target validation returned **473/473 live state keys, 0 sta
 
 ## Where the project is going
 
-The immediate development milestone is **v0.19 — Unified Experience Architecture**:
+The immediate development milestone is **v0.19 — Unified Experience**. It now includes substantial implementation beyond the original planning baseline: shared UX primitives, Beast Packs/Depot foundations, Face/Animation Pack consumers, Experience draft/preview composition, update staging/orchestration foundations, persistent multi-Beast roster/progression, deterministic lineage/heritage, Monster synthesis, Hall of Legends/ancestry foundations, Global privacy-preview foundations, and the procedural Monster reveal ceremony.
 
-- cohesive visual hierarchy and typography
-- polished touch navigation and interaction patterns
-- stronger Beast/Home identity
-- clearer page/app/board relationships
-- Presentation Broker for **Stock Pwnagotchi / Theme Manager / Beast UI** ownership handoff
-- responsive multi-display architecture beyond the 480×320 reference target
-- WebUI-first customization and package management
-- Beast Packs / Beast Depot foundations
-- Update Manager staging, compatibility checks, health observation and rollback
-- phone/tablet/local companion architecture
-- continued heat reduction through efficient architecture rather than normal-operation feature shedding
+The major unfinished v0.19 gates are:
+
+- complete the visible hierarchy/interaction cleanup and produce another real-state comparison gallery;
+- execute the implemented bounded 480×320 physical-acceptance package for readability/touch/thermal/framebuffer evidence, including real Capsule QR phone scanning;
+- keep the new read-only Theme Manager capability probe as the interop foundation, then implement and physically validate real Presentation Broker adapters for **Native Pwnagotchi / Korrie71 Theme Manager / Beast UI**;
+- continue responsive-display, performance, recovery, hardware and companion work without weakening the reference TFT experience.
 
 See [`ROADMAP.md`](ROADMAP.md) and [`docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`](docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md).
 
@@ -91,10 +91,15 @@ New readers should start here:
 1. [`docs/README.md`](docs/README.md) — documentation index
 2. [`docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`](docs/Beastagotchi_Design_Architecture_Bible_v1.0.md) — architectural intent
 3. [`docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`](docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md) — anti-forgetting ledger
-4. [`docs/Beastagotchi_Master_Completion_Matrix_v4.7.md`](docs/Beastagotchi_Master_Completion_Matrix_v4.7.md) — implementation status
-5. [`docs/Beastagotchi_Foundation_Roadmap_v2.9.md`](docs/Beastagotchi_Foundation_Roadmap_v2.9.md) — current detailed roadmap
-6. [`docs/UX_POLISH_MILESTONE_v0.19.md`](docs/UX_POLISH_MILESTONE_v0.19.md) — next UX milestone
-7. [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — common project vocabulary
+4. [`docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`](docs/Beastagotchi_Master_Completion_Matrix_v5.0.md) — current implementation/deferred status
+5. [`docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`](docs/Beastagotchi_v019_Active_Checkpoint_Delta.md) — active v0.19 milestone delta
+6. [`docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`](docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md) — recovered project/history/validation continuity snapshot
+7. [`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`](docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md) — sanitized recovered design/provenance decisions
+8. [`docs/Beastagotchi_Preservation_Recovery_Workflow.md`](docs/Beastagotchi_Preservation_Recovery_Workflow.md) — required long-term backup/continuity process
+9. [`ROADMAP.md`](ROADMAP.md) — current execution order
+10. [`docs/UX_POLISH_MILESTONE_v0.19.md`](docs/UX_POLISH_MILESTONE_v0.19.md) — UX acceptance milestone
+11. [`docs/Beastagotchi_v019_Physical_Acceptance_Package.md`](docs/Beastagotchi_v019_Physical_Acceptance_Package.md) — bounded physical TFT acceptance workflow
+12. [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — common project vocabulary
 
 For another developer or AI reviewer, see [`docs/COLLABORATOR_AI_HANDOFF.md`](docs/COLLABORATOR_AI_HANDOFF.md).
 
@@ -106,10 +111,10 @@ On a development machine:
 python3 -m pip install -r requirements-dev.txt
 PYTHONPATH=. pytest -q
 python3 -m compileall -q beastcore beastui beaststudio
-bash -n install.sh install_ui.sh install_bridge.sh uninstall.sh validate_v018.sh
+bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
 ```
 
-Current repository validation target: **195 source tests passing**.
+Current preserved v0.19 source gate: **400 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
 
 See [`docs/TESTING.md`](docs/TESTING.md) for the difference between source validation, off-screen Pi validation and physical hardware gates.
 
@@ -127,7 +132,7 @@ Beastagotchi is planning explicit interoperability with [`Korrie71/pwnagotchi-th
 - Pwnagotchi + Theme Manager
 - Beastagotchi
 
-See [`docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`](docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md).
+See [`docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md`](docs/KORRIE71_THEME_MANAGER_INTEGRATION_SPEC_v0.1.md) and the fresh [`docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`](docs/KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md).
 
 ## Privacy and responsible testing
 

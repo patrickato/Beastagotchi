@@ -21,15 +21,33 @@ Responsive local WebUI, action client and local library-file access surface.
 - `ui_systemd/` — Beast UI and Beast Studio services.
 - `display_handoff/` — physical display ownership claim/release/rollback validation.
 - `tools/` — diagnostics, render galleries, touch/calibration, display-conflict and support utilities.
+  - `v019_stage_from_artifact.sh` — verifies/stages the commit-pinned Pi artifact without claiming the TFT.
+  - `v019_physical_acceptance.sh` — bounded physical session, sampling, evidence and explicit pass/rollback decision.
+  - `v019_acceptance_report.py` — objective physical-session evidence summary; never substitutes for user physical judgment.
 
 ## Validation
 
 - `tests/` — source/unit/regression tests.
 - `validate_v*.sh` — target validation collectors for specific development milestones.
-- `docs/Beastagotchi_v*_Validation_*` — human-readable validation history.
+- `docs/archive/validation/` — historical human-readable source/target/physical validation evidence.
 
 ## Documentation
 
-The project currently keeps many versioned specifications directly in `docs/` because installers and historical packages reference exact names. Do not reorganize them casually without updating installers and reference-audit tests.
+Current/authoritative specifications and milestone documents stay directly in `docs/`.
+Clearly superseded roadmaps, matrices, checkpoints, drafts and validation reports
+belong under `docs/archive/` so the active documentation root stays readable.
 
-Use `docs/README.md` as the navigation layer rather than assuming every old roadmap is current.
+Do not archive a file merely because its version number is old: if current runtime,
+installers, tests or active documentation still depend on its exact path, keep it
+active until those references are migrated safely. Use `docs/README.md` as the
+navigation/source-of-truth layer. See `docs/REPOSITORY_HYGIENE.md` for the living cleanup/archive policy and unresolved consolidation candidates.
+
+
+## Extension / Capsule additions
+
+- `beastcore/capsules.py` — transport-neutral Beast Capsule codec, privacy-curated
+  Lineage export and bounded QR-ready frame/reassembly primitives.
+- `docs/Beastagotchi_Plugin_Extension_Architecture_v0.1.md` — Pwnagotchi Plugin /
+  Beast Pack / Beast App / Companion Expansion boundaries.
+- `docs/Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md` — offline
+  QR/file/USB/SD/NFC/direct-transfer ecosystem and Capsule trust/import roadmap.

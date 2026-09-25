@@ -19,6 +19,12 @@ class LocalAPI:
         self.operator_policy = None
         self.operator_tools = None
         self.backup_manager = None
+        self.template_tokens = None
+        self.integration_catalog = None
+        self.experience_plans = None
+        self.signals = None
+        self.doctor = None
+        self.capsules = None
 
     async def start(self) -> None:
         self.server = await asyncio.start_server(self._handle, self.host, self.port)
@@ -36,6 +42,221 @@ class LocalAPI:
             if ":" in line:
                 k,v = line.split(":",1); headers[k.strip().lower()] = v.strip()
         return method, target, headers
+
+    def template_token_bundle(self, names: list[str] | None = None) -> dict[str, Any]:
+        """Resolve allow-listed presentation tokens from canonical state only."""
+        if self.template_tokens is None:
+            return {"schema": 1, "count": 0, "known_count": 0, "live_count": 0, "items": []}
+        return self.template_tokens.snapshot(names)
+
+    def experience_bundle(self) -> dict[str, Any]:
+        """Return the Core-owned read-only Experience Compiler publication."""
+        published = self.state.get("experience.compiler.plan", {}) or {}
+        if isinstance(published, dict) and published.get("schema"):
+            return published
+        if self.experience_plans is not None:
+            return self.experience_plans.snapshot()
+        return {
+            "schema": 1,
+            "mode": "unavailable",
+            "count": 0,
+            "preview_ready_count": 0,
+            "production_navigation_ready_count": 0,
+            "items": [],
+            "writes_preferences": False,
+            "installs_dependencies": False,
+            "selects_providers": False,
+            "tft_activation_enabled": False,
+        }
+
+    def platform_bundle(self) -> dict[str, Any]:
+        """Return the high-value whole-platform snapshot used by Beast Studio.
+
+        This bundle is intentionally curated. It exposes enough live state to
+        understand health, heat/resource cost, presentation ownership, recovery,
+        and service topology without forcing the browser to download every
+        canonical state key.
+        """
+        performance = {
+            "processes": self.state.get("performance.processes", []) or [],
+            "beast_cpu_pct": self.state.get("performance.beast.cpu_pct"),
+            "platform_services_cpu_pct": self.state.get("performance.platform_services.cpu_pct"),
+            "tracked_rss_mb": self.state.get("performance.tracked.rss_mb"),
+            "process_count": int(self.state.get("performance.process_count", 0) or 0),
+            "ui": {
+                "avg_render_ms": self.state.get("performance.ui.avg_render_ms"),
+                "avg_compose_ms": self.state.get("performance.ui.avg_compose_ms"),
+                "avg_fb_write_ms": self.state.get("performance.ui.avg_fb_write_ms"),
+                "target_fps": self.state.get("performance.ui.target_fps"),
+                "lifetime_fps": self.state.get("performance.ui.lifetime_fps"),
+                "theme": self.state.get("performance.ui.theme"),
+                "page": self.state.get("performance.ui.page"),
+            },
+            "framebuffer": {
+                "changed_rows": self.state.get("performance.fb.changed_rows"),
+                "bytes_written": self.state.get("performance.fb.bytes_written"),
+                "frame_bytes": self.state.get("performance.fb.frame_bytes"),
+                "full_write": self.state.get("performance.fb.full_write"),
+                "write_ratio_pct": self.state.get("performance.fb.write_ratio_pct"),
+                "saved_bytes": self.state.get("performance.fb.saved_bytes"),
+                "total_frames": self.state.get("performance.fb.total_frames"),
+                "total_bytes_written": self.state.get("performance.fb.total_bytes_written"),
+                "total_full_writes": self.state.get("performance.fb.total_full_writes"),
+                "total_saved_bytes": self.state.get("performance.fb.total_saved_bytes"),
+            },
+        }
+        thermal = {
+            "cpu_temp_c": self.state.get("system.temp.cpu_c"),
+            "cpu_total_pct": self.state.get("system.cpu.total"),
+            "memory_used_pct": self.state.get("system.memory.used_pct"),
+            "load_1m": self.state.get("system.load.1m"),
+            "load_5m": self.state.get("system.load.5m"),
+            "load_15m": self.state.get("system.load.15m"),
+            "throttle_flags": self.state.get("system.throttle.flags"),
+            "arm_clock_mhz": self.state.get("system.clock.arm_mhz"),
+            "core_clock_mhz": self.state.get("system.clock.core_mhz"),
+            "gpu_mem_mb": self.state.get("system.gpu.mem_mb"),
+        }
+        governor = {
+            "mode": self.state.get("governor.mode"),
+            "level": self.state.get("governor.level"),
+            "reason": self.state.get("governor.reason"),
+            "reasons": self.state.get("governor.reasons", []) or [],
+            "budget_pct": self.state.get("governor.budget_pct"),
+            "fps_cap": self.state.get("governor.ui.fps_cap"),
+            "detail": self.state.get("governor.ui.detail"),
+            "ambient_allowed": self.state.get("governor.ui.ambient_allowed"),
+            "foreground_allowed": self.state.get("governor.ui.foreground_allowed"),
+            "rare_cinematic_allowed": self.state.get("governor.rare.cinematic_allowed"),
+            "recovery_pending": self.state.get("governor.recovery_pending"),
+            "recovery_target": self.state.get("governor.recovery_target"),
+            "throttle_current": self.state.get("governor.throttle_current"),
+            "throttle_history_seen": self.state.get("governor.throttle_history_seen"),
+        }
+        presentation = {
+            "desired_owner": self.state.get("presentation.desired_owner"),
+            "active_owner": self.state.get("presentation.active_owner"),
+            "status": self.state.get("presentation.status"),
+            "available_owners": self.state.get("presentation.available_owners", []) or [],
+            "conflicts": self.state.get("presentation.conflicts", []) or [],
+            "conflict_count": int(self.state.get("presentation.conflict_count", 0) or 0),
+            "executor_enabled": bool(self.state.get("presentation.executor_enabled", False)),
+            "executor_reason": self.state.get("presentation.executor_reason"),
+            "native_available": bool(self.state.get("presentation.native.available", False)),
+            "beast_available": bool(self.state.get("presentation.beast.available", True)),
+            "beast_service_active": bool(self.state.get("presentation.beast.service_active", False)),
+            "theme_manager_installed": bool(self.state.get("presentation.theme_manager.installed", False)),
+            "theme_manager_enabled": bool(self.state.get("presentation.theme_manager.enabled", False)),
+            "theme_manager_managed_handoff_supported": bool(self.state.get("presentation.theme_manager.managed_handoff_supported", False)),
+            "last_error": self.state.get("presentation.last_error"),
+        }
+        experiences = self.experience_bundle()
+        return {
+            "library": self.store.library_summary(12),
+            "jobs": {"items": self.store.recent_jobs(20)},
+            "incidents": {
+                "items": self.store.recent_incidents(20),
+                "open_count": int(self.state.get("incidents.open_count",0) or 0),
+            },
+            "overview": {
+                "state": self.state.get("overview.state"),
+                "attention": self.state.get("overview.attention", []) or [],
+                "cards": self.state.get("overview.cards", []) or [],
+            },
+            "topology": {
+                "nodes": self.state.get("topology.nodes", []) or [],
+                "edges": self.state.get("topology.edges", []) or [],
+                "failures": self.state.get("topology.failures", []) or [],
+            },
+            "services": self.state.get("platform.services", []) or [],
+            "displays": {
+                "framebuffers": self.state.get("display.framebuffers", []) or [],
+                "outputs": self.state.get("display.outputs", []) or [],
+            },
+            "containers": {
+                "available": bool(self.state.get("containers.runtime.available")),
+                "runtime": self.state.get("containers.runtime"),
+                "items": self.state.get("containers.items", []) or [],
+            },
+            "backups": {
+                "count": int(self.state.get("backups.count",0) or 0),
+                "items": self.state.get("backups.items", []) or [],
+                "last": self.state.get("backups.last"),
+            },
+            "performance": performance,
+            "thermal": thermal,
+            "governor": governor,
+            "presentation": presentation,
+            "experiences": {
+                "schema": experiences.get("schema", 1),
+                "mode": experiences.get("mode", "unavailable"),
+                "count": int(experiences.get("count", 0) or 0),
+                "preview_ready_count": int(experiences.get("preview_ready_count", 0) or 0),
+                "production_navigation_ready_count": int(experiences.get("production_navigation_ready_count", 0) or 0),
+                "tft_activation_enabled": bool(experiences.get("tft_activation_enabled", False)),
+            },
+            "integrations": self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]},
+            "dependencies": {
+                "execution_enabled": False,
+                "provider_selection_enabled": False,
+                "plugins": self.state.get("plugins.requirements_summary", {}) or {},
+                "packs": self.state.get("packs.requirements_summary", {}) or {},
+                "plugin_providers": self.state.get("plugins.requirements_providers", {}) or {},
+                "pack_providers": self.state.get("packs.requirements_providers", {}) or {},
+                "provider_summary": self.state.get("plugins.provider_summary", {}) or {},
+                "provider_decisions": self.state.get("plugins.provider_decisions", {}) or {},
+                "provider_selection_enabled": bool(self.state.get("plugins.provider_selection_enabled", False)),
+                "automatic_failover_enabled": bool(self.state.get("plugins.automatic_failover_enabled", False)),
+            },
+            "owner": {
+                "expert_mode_enabled": bool(self.state.get("owner.expert_mode.enabled", False)),
+                "customized": bool(self.state.get("owner.customized", False)),
+                "override_count": int(self.state.get("owner.override_count", 0) or 0),
+                "support_state": self.state.get("owner.support_state", "managed"),
+            },
+            "doctor": self.doctor.snapshot() if self.doctor is not None else {},
+            "provider_preferences": {
+                "count": int(self.state.get("providers.preference_count", 0) or 0),
+                "values": self.state.get("providers.preferences", {}) or {},
+            },
+            "packs": {
+                "count": int(self.state.get("packs.count", 0) or 0),
+                "enabled_count": int(self.state.get("packs.enabled_count", 0) or 0),
+                "staged_count": int(self.state.get("packs.staged_count", 0) or 0),
+                "compatible_count": int(self.state.get("packs.compatible_count", 0) or 0),
+                "error_count": int(self.state.get("packs.error_count", 0) or 0),
+                "items": self.state.get("packs.items", []) or [],
+                "errors": self.state.get("packs.errors", []) or [],
+                "resource_counts": self.state.get("packs.resource_counts", {}) or {},
+                "thermal_counts": self.state.get("packs.thermal_counts", {}) or {},
+                "executor_enabled": bool(self.state.get("packs.executor_enabled", False)),
+                "executor_reason": self.state.get("packs.executor_reason"),
+                "content_activation_enabled": bool(self.state.get("packs.content_activation_enabled", False)),
+                "content_activation_scope": self.state.get("packs.content_activation_scope"),
+                "content_activation_types": self.state.get("packs.content_activation_types", []) or [],
+            },
+            "missions": {
+                "count": int(self.state.get("missions.count",0) or 0),
+                "available_count": int(self.state.get("missions.available_count",0) or 0),
+                "experience_count": int(self.state.get("missions.experience_count",0) or 0),
+                "pack_count": int(self.state.get("missions.pack_count",0) or 0),
+                "items": self.state.get("missions.items",[]) or [],
+                "experience_apply_enabled": bool(self.state.get("missions.experience_apply_enabled",False)),
+                "experience_apply_reason": self.state.get("missions.experience_apply_reason"),
+            },
+            "updates": {
+                "components": self.state.get("updates.components", []) or [],
+                "component_count": int(self.state.get("updates.component_count", 0) or 0),
+                "policy_counts": self.state.get("updates.policy_counts", {}) or {},
+                "allowed_policies": self.state.get("updates.allowed_policies", []) or [],
+                "dock_ready": bool(self.state.get("updates.dock_ready", False)),
+                "internet_state": self.state.get("updates.internet_state"),
+                "auto_trigger_ready": bool(self.state.get("updates.auto_trigger_ready", False)),
+                "check_state": self.state.get("updates.check_state"),
+                "executor_enabled": bool(self.state.get("updates.executor_enabled", False)),
+                "executor_reason": self.state.get("updates.executor_reason"),
+            },
+        }
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -100,36 +321,7 @@ class LocalAPI:
                 items = self.store.recent_actions(limit)
                 body = {"count": len(items), "items": items}
             elif parsed.path == "/platform-bundle":
-                body = {
-                    "library": self.store.library_summary(12),
-                    "jobs": {"items": self.store.recent_jobs(20)},
-                    "incidents": {"items": self.store.recent_incidents(20), "open_count": int(self.state.get("incidents.open_count",0) or 0)},
-                    "overview": {
-                        "state": self.state.get("overview.state"),
-                        "attention": self.state.get("overview.attention", []) or [],
-                        "cards": self.state.get("overview.cards", []) or [],
-                    },
-                    "topology": {
-                        "nodes": self.state.get("topology.nodes", []) or [],
-                        "edges": self.state.get("topology.edges", []) or [],
-                        "failures": self.state.get("topology.failures", []) or [],
-                    },
-                    "services": self.state.get("platform.services", []) or [],
-                    "displays": {
-                        "framebuffers": self.state.get("display.framebuffers", []) or [],
-                        "outputs": self.state.get("display.outputs", []) or [],
-                    },
-                    "containers": {
-                        "available": bool(self.state.get("containers.runtime.available")),
-                        "runtime": self.state.get("containers.runtime"),
-                        "items": self.state.get("containers.items", []) or [],
-                    },
-                    "backups": {
-                        "count": int(self.state.get("backups.count",0) or 0),
-                        "items": self.state.get("backups.items", []) or [],
-                        "last": self.state.get("backups.last"),
-                    },
-                }
+                body = self.platform_bundle()
             elif parsed.path == "/library-item":
                 q = urllib.parse.parse_qs(parsed.query)
                 doc_id = str(q.get("id", [""])[0])
@@ -179,6 +371,126 @@ class LocalAPI:
             elif parsed.path == "/operator-policy":
                 level = str(self.state.get("operator.policy.level") or "observer")
                 body = self.operator_policy.snapshot(level) if self.operator_policy is not None else {}
+            elif parsed.path == "/owner-mode":
+                keys = [
+                    "owner.expert_mode.enabled",
+                    "owner.expert_mode.set_at",
+                    "owner.expert_mode.set_by",
+                    "owner.customized",
+                    "owner.customized_at",
+                    "owner.override_count",
+                    "owner.last_override.at",
+                    "owner.last_override.action",
+                    "owner.last_override.target",
+                    "owner.support_state",
+                    "owner.managed_defaults_active",
+                ]
+                body = self.state.snapshot_keys(keys, include_meta=False)
+            elif parsed.path == "/provider-preferences":
+                keys = [
+                    "providers.preferences",
+                    "providers.preference_count",
+                    "providers.preferences.updated_at",
+                    "providers.preferences.updated_by",
+                    "providers.preferences.entries",
+                ]
+                body = self.state.snapshot_keys(keys, include_meta=False)
+            elif parsed.path == "/doctor":
+                body = self.doctor.snapshot() if self.doctor is not None else {
+                    "schema": 1, "state": "unavailable", "attention_count": 0,
+                    "explainable_capability_count": 0, "items": [],
+                }
+            elif parsed.path == "/explain":
+                q = urllib.parse.parse_qs(parsed.query)
+                capability = str(q.get("capability", [""])[0]).strip()
+                provider = str(q.get("provider", [""])[0]).strip()
+                if self.doctor is None:
+                    body = {"schema":1,"found":False,"error":"doctor unavailable"}
+                elif capability:
+                    body = self.doctor.explain_capability(capability)
+                elif provider:
+                    body = self.doctor.explain_provider(provider)
+                else:
+                    return await self._reply(writer, 400, {"error":"missing capability or provider"})
+            elif parsed.path == "/capsule/export":
+                if self.capsules is None:
+                    body = {"ok":False,"error":"capsule engine unavailable"}
+                else:
+                    q = urllib.parse.parse_qs(parsed.query)
+                    ctype = str(q.get("type", ["lineage"])[0]).strip().lower()
+                    if ctype != "lineage":
+                        return await self._reply(writer, 400, {"error":"only lineage export is implemented"})
+                    beast_id = str(q.get("beast_id", [""])[0]).strip() or None
+                    include_name = q.get("name", ["1"])[0] != "0"
+                    include_achievements = q.get("achievements", ["0"])[0] == "1"
+                    include_appearance = q.get("appearance", ["1"])[0] != "0"
+                    try: qr_max = int(q.get("qr_chars", ["700"])[0])
+                    except Exception: qr_max = 700
+                    body = self.capsules.export_lineage(
+                        beast_id,
+                        include_name=include_name,
+                        include_achievements=include_achievements,
+                        include_appearance=include_appearance,
+                        qr_max_chars=qr_max,
+                    )
+            elif parsed.path == "/capsule/types":
+                body = {
+                    "schema":1,
+                    "implemented":["lineage"],
+                    "transports":["encoded_text","animated_qr_text_frames"],
+                    "qr_renderer_bundled":False,
+                    "import_supported":False,
+                    "integrity":"sha256",
+                    "authentication":"not_yet_signed",
+                }
+            elif parsed.path == "/template-tokens":
+                q = urllib.parse.parse_qs(parsed.query)
+                raw_names = str(q.get("names", [""])[0])
+                names = [x.strip() for x in raw_names.split(",") if x.strip()][:64] or None
+                body = self.template_token_bundle(names)
+                if q.get("catalog", ["0"])[0] == "1" and self.template_tokens is not None:
+                    body["catalog"] = self.template_tokens.catalog()
+            elif parsed.path == "/platform-profile":
+                body = self.state.get("platform.profile", {}) or {}
+            elif parsed.path == "/experiences":
+                body = self.experience_bundle()
+            elif parsed.path == "/signals":
+                q = urllib.parse.parse_qs(parsed.query)
+                raw = str(q.get("names", [""])[0])
+                names = [x.strip() for x in raw.split(",") if x.strip()][:128] or None
+                body = self.signals.snapshot(names) if self.signals is not None else {"schema":1,"count":0,"available_count":0,"history_capable_count":0,"items":[]}
+            elif parsed.path == "/integrations":
+                body = self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]}
+            elif parsed.path == "/dependencies":
+                body = {
+                    "schema": 1,
+                    "execution_enabled": False,
+                    "provider_selection_enabled": False,
+                    "owner": {
+                        "expert_mode_enabled": bool(self.state.get("owner.expert_mode.enabled", False)),
+                        "customized": bool(self.state.get("owner.customized", False)),
+                        "support_state": self.state.get("owner.support_state", "managed"),
+                    },
+                    "provider_preferences": {
+                        "count": int(self.state.get("providers.preference_count", 0) or 0),
+                        "values": self.state.get("providers.preferences", {}) or {},
+                    },
+                    "doctor": self.doctor.snapshot() if self.doctor is not None else {},
+                    "plugins": {
+                        "summary": self.state.get("plugins.requirements_summary", {}) or {},
+                        "providers": self.state.get("plugins.requirements_providers", {}) or {},
+                        "used_by": self.state.get("plugins.requirements_used_by", {}) or {},
+                        "provider_summary": self.state.get("plugins.provider_summary", {}) or {},
+                        "provider_decisions": self.state.get("plugins.provider_decisions", {}) or {},
+                        "provider_selection_enabled": bool(self.state.get("plugins.provider_selection_enabled", False)),
+                        "automatic_failover_enabled": bool(self.state.get("plugins.automatic_failover_enabled", False)),
+                    },
+                    "packs": {
+                        "summary": self.state.get("packs.requirements_summary", {}) or {},
+                        "providers": self.state.get("packs.requirements_providers", {}) or {},
+                        "used_by": self.state.get("packs.requirements_used_by", {}) or {},
+                    },
+                }
             elif parsed.path == "/plugins":
                 items = list(self.state.get("plugins.catalog", []) or [])
                 body = {
@@ -251,7 +563,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/capsule/export","/capsule/types","/template-tokens","/experiences","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})

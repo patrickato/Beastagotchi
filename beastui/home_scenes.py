@@ -1,0 +1,613 @@
+from __future__ import annotations
+
+from contextlib import nullcontext
+import math
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageEnhance, ImageOps
+
+from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
+from .concept_creatures import concept_creature, concept_creature_scene
+
+
+def _scene_layer(ui, layer_id, kind, bounds, **kwargs):
+    runtime=getattr(ui,'scene_runtime',None)
+    if runtime is None:return nullcontext()
+    return runtime.layer(layer_id,kind,bounds,**kwargs)
+
+def _paste_concept_creature(
+    canvas, name, box, phase: float, *, opacity=255, scale_pulse=.018,
+    allow_upscale=True, edge_feather=10,
+):
+    """Composite cached scene-scale concept art with only cheap per-frame work."""
+    art=concept_creature(name)
+    if art is None:return False
+    x1,y1,x2,y2=[int(v) for v in box]
+    max_w=max(1,x2-x1);max_h=max(1,y2-y1)
+
+    if allow_upscale:
+        prepared=concept_creature_scene(name,max_w,max_h,edge_feather)
+    else:
+        prepared=concept_creature_scene(
+            name,min(max_w,art.width),min(max_h,art.height),edge_feather
+        )
+    if prepared is None:return False
+    img=prepared.copy()
+
+    pulse=1.0+float(scale_pulse)*math.sin(float(phase)*1.37)
+    if abs(pulse-1.0)>.001:
+        img=ImageEnhance.Brightness(img).enhance(max(.75,pulse))
+
+    if opacity<255:
+        alpha=img.getchannel('A').point(
+            lambda v:int(v*max(0,min(255,int(opacity)))/255)
+        )
+        img.putalpha(alpha)
+
+    px=x1+(max_w-img.width)//2;py=y1+(max_h-img.height)//2
+    base=canvas.convert('RGBA');base.alpha_composite(img,(px,py));canvas.paste(base.convert('RGB'))
+    return True
+
+def _metric(d,x,y,label,value,font_label,font_value,label_col,value_col,*,right=None):
+    d.text((x,y),str(label),font=font_label,fill=label_col)
+    if right is None:d.text((x,y+11),str(value),font=font_value,fill=value_col)
+    else:_text_right(d,right,y+3,str(value),font_value,value_col)
+
+
+def _mix(a, b, t: float):
+    t=max(0.0,min(1.0,float(t)))
+    return tuple(int(a[i]*(1.0-t)+b[i]*t) for i in range(3))
+
+
+def _v(state, key, default='--'):
+    value=state.get(key, default)
+    return default if value is None else value
+
+
+def _text_right(d, x, y, text, font, fill):
+    text=str(text)
+    try:w=d.textbbox((0,0),text,font=font)[2]
+    except Exception:w=int(d.textlength(text,font=font))
+    d.text((x-w,y),text,font=font,fill=fill)
+
+
+def _glow_line(d, points, color, *, width=1, glow=None):
+    if glow:
+        d.line(points,fill=glow,width=max(width+2,3),joint='curve')
+    d.line(points,fill=color,width=width,joint='curve')
+
+
+def _asset_portrait(d, box, ui, asset_name: str, phase: float, *, border_role='primary') -> bool:
+    path=getattr(ui,'root',None)
+    if path is None:return False
+    path=Path(path)/'assets'/'home'/asset_name
+    if not path.is_file():return False
+    try:
+        with Image.open(path) as src:
+            src=src.convert('RGB')
+            x1,y1,x2,y2=box;size=(max(1,x2-x1),max(1,y2-y1))
+            img=ImageOps.fit(src,size,method=Image.Resampling.LANCZOS,centering=(0.5,0.5))
+            # A very small live luminance pulse keeps concept-derived art from
+            # behaving like a dead wallpaper tile while remaining inexpensive.
+            pulse=0.98 + 0.035*(0.5+0.5*math.sin(float(phase)*1.8))
+            img=ImageEnhance.Brightness(img).enhance(pulse)
+            canvas=getattr(d,'_image',None)
+            if canvas is None:return False
+            canvas.paste(img,(x1,y1))
+        t=ui.theme
+        col=t.c(border_role)
+        d.rectangle((x1,y1,x2-1,y2-1),outline=col,width=1)
+        scan_y=y1+int((float(phase)*23.0) % max(1,(y2-y1)))
+        d.line((x1+2,scan_y,x2-3,scan_y),fill=_mix(t.c('bg'),col,.45),width=1)
+        return True
+    except Exception:
+        return False
+
+
+def _portrait(d, box, t, state, phase: float, *, variant='classic'):
+    """Procedural mascot portrait intended to read as a creature, not a UI glyph.
+
+    This remains asset-free so the base install stays lightweight. Future Visual
+    Asset Interop can replace this layer with Pack-provided art without changing
+    the surrounding scene contract.
+    """
+    x1,y1,x2,y2=box;w=x2-x1;h=y2-y1;cx=(x1+x2)//2
+    primary=t.c('primary');secondary=t.c('secondary');accent=t.c('accent')
+    dim=t.c('dim');edge=t.c('edge');panel=t.c('panel');bg=t.c('bg')
+    mood=str(_v(state,'pwnagotchi.mood','awake')).lower()
+    expr=str(_v(state,'beast.expression',mood)).lower()
+    alert=expr in {'hunting','focused','alert','warning','overheated'} or mood in {'angry','intense'}
+
+    if variant in {'cyber','ice'}:
+        for i in range(5):
+            yy=y1+12+i*max(9,h//7)
+            ln=13+(i*11)%31
+            col=secondary if (i%2) else edge
+            d.line((x1+2,yy,x1+2+ln,yy),fill=col,width=1)
+            d.line((x2-ln-2,yy+5,x2-2,yy+5),fill=col,width=1)
+    elif variant=='tactical':
+        d.arc((x1+2,y1+3,x2-2,y2+8),195,345,fill=edge,width=1)
+        d.line((cx,y1+4,cx,y1+17),fill=accent,width=1)
+
+    ear_y=y1+int(h*.05); brow_y=y1+int(h*.31); chin_y=y1+int(h*.91)
+    left=[(cx-int(w*.42),brow_y),(cx-int(w*.36),ear_y),(cx-int(w*.19),y1+int(h*.19)),(cx-int(w*.12),y1+int(h*.15))]
+    right=[(2*cx-x, y) for x,y in reversed(left)]
+    head=[left[0],left[1],left[2],(cx,y1+int(h*.10)),right[1],right[0],(cx+int(w*.39),y1+int(h*.57)),(cx+int(w*.27),chin_y),(cx, y2-int(h*.01)),(cx-int(w*.27),chin_y),(cx-int(w*.39),y1+int(h*.57))]
+    shadow=_mix(bg,primary,.09 if variant!='cyber' else .13)
+    d.polygon(head,fill=shadow)
+    if variant=='cyber':
+        d.line(head+[head[0]],fill=_mix(primary,secondary,.38),width=4,joint='curve')
+        d.line(head+[head[0]],fill=primary,width=1,joint='curve')
+    elif variant=='ice':
+        d.line(head+[head[0]],fill=_mix(primary,(255,255,255),.35),width=2,joint='curve')
+    else:
+        d.line(head+[head[0]],fill=primary,width=2,joint='curve')
+
+    d.polygon([left[1],left[2],(cx-int(w*.31),y1+int(h*.28))],fill=_mix(panel,secondary,.24),outline=secondary)
+    d.polygon([right[1],right[2],(cx+int(w*.31),y1+int(h*.28))],fill=_mix(panel,secondary,.24),outline=secondary)
+    cheek_col=_mix(panel,primary,.18)
+    d.polygon([(cx-int(w*.37),y1+int(h*.54)),(cx-int(w*.17),y1+int(h*.62)),(cx-int(w*.25),y1+int(h*.80)),(cx-int(w*.34),y1+int(h*.69))],fill=cheek_col,outline=edge)
+    d.polygon([(cx+int(w*.37),y1+int(h*.54)),(cx+int(w*.17),y1+int(h*.62)),(cx+int(w*.25),y1+int(h*.80)),(cx+int(w*.34),y1+int(h*.69))],fill=cheek_col,outline=edge)
+
+    eye_y=y1+int(h*.43); eye_w=max(20,int(w*.19)); eye_h=max(10,int(h*.10)); gap=int(w*.07)
+    for side in (-1,1):
+        ex=cx + side*(gap+eye_w//2)
+        if side<0:
+            poly=[(ex-eye_w//2,eye_y),(ex+eye_w//2,eye_y+4),(ex+eye_w//3,eye_y+eye_h),(ex-eye_w//3,eye_y+eye_h-1)]
+        else:
+            poly=[(ex-eye_w//2,eye_y+4),(ex+eye_w//2,eye_y),(ex+eye_w//3,eye_y+eye_h-1),(ex-eye_w//3,eye_y+eye_h)]
+        eye_fill=accent if alert else primary
+        d.polygon(poly,fill=_mix(bg,eye_fill,.18),outline=eye_fill)
+        px=ex + (2 if side<0 else -2);py=eye_y+eye_h//2
+        d.ellipse((px-3,py-3,px+3,py+3),fill=_mix(eye_fill,(255,255,255),.45))
+        brow=[(ex-eye_w//2-3,eye_y-8+(-2 if side<0 else 2)),(ex+eye_w//2+3,eye_y-3+(2 if side<0 else -2))]
+        _glow_line(d,brow,secondary,width=2,glow=_mix(bg,secondary,.12) if variant=='cyber' else None)
+
+    nose_y=y1+int(h*.64)
+    d.polygon([(cx-7,nose_y),(cx+7,nose_y),(cx,nose_y+6)],fill=secondary)
+    mouth_y=y1+int(h*.72)
+    if mood in {'sad','bored'}:
+        d.arc((cx-24,mouth_y,cx+24,mouth_y+20),200,340,fill=primary,width=2)
+    elif alert:
+        d.line((cx-25,mouth_y,cx-9,mouth_y+5,cx,mouth_y+2,cx+9,mouth_y+5,cx+25,mouth_y),fill=accent,width=2)
+    else:
+        d.line((cx-24,mouth_y,cx-9,mouth_y+6,cx+9,mouth_y+6,cx+24,mouth_y),fill=primary,width=2)
+
+    tick=int(phase*2.0)
+    if variant=='cyber':
+        for i in range(5):
+            sx=x1+8+i*17;sy=y2-18-(i%2)*7
+            d.line((sx,sy,sx+8,sy,sx+12,sy-5),fill=secondary if (i+tick)%3 else accent,width=1)
+        d.arc((x1+8,y1+8,x2-8,y2-5),205+(tick%18),334+(tick%18),fill=_mix(primary,secondary,.5),width=1)
+    elif variant=='ice':
+        for i in range(6):
+            sx=x1+9+i*max(12,w//7);sy=y1+12+((i*19)%max(24,h-30))
+            d.line((sx,sy,sx+7,sy+9,sx+2,sy+18),fill=edge,width=1)
+    elif variant=='tactical':
+        r=max(22,int(min(w,h)*.42));cy=y1+int(h*.54)
+        d.arc((cx-r,cy-r,cx+r,cy+r),15+(tick%22),145+(tick%22),fill=edge,width=1)
+
+
+def _instrument_rail(d, box, t, f, state, *, cyber=False):
+    x1,y1,x2,y2=box
+    gps='LOCK' if state.get('gps.fix') else '--'
+    temp=_v(state,'system.temp.cpu_c','--'); temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+    cpu=_v(state,'system.cpu.total','--'); cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+    batt=state.get('power.battery.percent_estimate'); batt=f'{batt:.0f}%' if isinstance(batt,(int,float)) else ('DOCK' if state.get('dock.docked') else '--')
+    items=[('GPS',gps,t.c('accent') if state.get('gps.fix') else t.c('dim')),('CPU',cpu,t.c('info')),('TEMP',temp,t.c('warn')),('POWER',batt,t.c('secondary'))]
+    h=max(1,(y2-y1)//len(items))
+    for i,(lab,val,col) in enumerate(items):
+        ya=y1+i*h;yb=y1+(i+1)*h-3
+        if cyber:
+            d.polygon([(x1+5,ya),(x2,ya),(x2,yb),(x1,yb),(x1,ya+7)],fill=_mix(t.c('panel'),col,.09),outline=_mix(t.c('edge'),col,.35))
+        else:
+            d.rounded_rectangle((x1,ya,x2,yb),radius=5,fill=t.c('panel'),outline=t.c('edge'))
+        d.text((x1+8,ya+7),lab,font=f['micro'],fill=t.c('dim'))
+        _text_right(d,x2-8,ya+15,val,f['small'],col)
+
+
+def _concept_hero_scene(d,state,ui, *, style='classic'):
+    """Concept-fidelity Home composition for the three flagship visual worlds.
+
+    Decorative world art is visually dominant; every numeric/status value is
+    still drawn live from StateRegistry data rather than baked into artwork.
+    """
+    t=ui.theme;f=ui.fonts
+    canvas=getattr(d,'_image',None)
+    if canvas is None:return False
+    style=str(style).lower()
+    d=ImageDraw.Draw(canvas)
+
+    aps=_v(state,'wifi.ap_count',0);clients=_v(state,'wifi.client_count',0)
+    hs=_v(state,'pwnagotchi.handshakes',0)
+    pmkid=_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0))
+    ch=_v(state,'radio.primary.channel','--')
+    mode=str(_v(state,'context.mode.effective','pwn')).upper()
+    cpu=_v(state,'system.cpu.total','--');mem=_v(state,'system.memory.used_pct','--')
+    temp=_v(state,'system.temp.cpu_c','--')
+    cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+    mem=f'{mem:.0f}%' if isinstance(mem,(int,float)) else '--'
+    temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+    gps='GPS FIX' if state.get('gps.fix') else 'GPS SEARCH'
+    name=str(_v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
+    lvl=int(_v(state,'progression.level',1) or 1)
+    stage=str(_v(state,'progression.stage','Hatchling')).upper()
+    mood=str(_v(state,'beast.expression',_v(state,'pwnagotchi.mood','awake'))).replace('_',' ').upper()
+    status=str(_v(state,'pwnagotchi.status',_v(state,'beast.status_text','SCANNING THE FIELD'))).strip()
+    if not status or status=='--':status='SCANNING THE FIELD'
+
+    opts=ui.render_options_for_theme(ui.theme.id) if hasattr(ui,'render_options_for_theme') else {}
+    with _scene_layer(
+        ui,'home.environment','environment',(0,34,480,278),z=10,
+        update_class='ambient',resource_class='moderate',
+        reduced_motion='static_world',decorative=True,
+    ):
+        d.rectangle((0,34,480,278),fill=t.c('bg'))
+        if style=='cyberpunk':
+            # Neon city + perspective deck: decorative atmosphere, not data.
+            ambient_glow(canvas,(126,126),145,t.c('secondary'),strength=.34)
+            ambient_glow(canvas,(350,122),125,t.c('primary'),strength=.20)
+            d=ImageDraw.Draw(canvas)
+            horizon=190
+            skyline=[(0,145,28,190),(30,121,55,190),(58,153,82,190),(84,108,116,190),
+                     (120,138,145,190),(149,96,183,190),(187,128,212,190),(216,113,248,190),
+                     (252,147,276,190),(280,104,316,190),(320,134,345,190),(350,91,388,190),
+                     (393,123,420,190),(425,101,461,190),(464,145,480,190)]
+            for i,box in enumerate(skyline):
+                col=_mix(t.c('bg'),t.c('secondary' if i%3==0 else 'primary'),.17)
+                d.rectangle(box,fill=col)
+                if i%2==0:
+                    d.line((box[0]+5,box[1]+7,box[0]+5,box[3]-5),fill=_mix(col,t.c('accent'),.45))
+            d.line((0,horizon,480,horizon),fill=t.c('secondary'),width=1)
+            van=(240,horizon)
+            for x in range(-80,561,48):d.line((van[0],van[1],x,274),fill=t.c('grid'))
+            for y in (202,218,239,264):d.line((0,y,480,y),fill=t.c('grid'))
+            for i in range(20):
+                x=(19+i*53)%468+6;y=52+(i*37)%120
+                col=t.c('secondary') if (i+int(ui.phase*2))%3==0 else t.c('primary')
+                d.rectangle((x,y,x+2,y+4),fill=_mix(t.c('bg'),col,.65))
+        elif style=='blackice':
+            ambient_glow(canvas,(205,128),162,t.c('primary'),strength=.27)
+            d=ImageDraw.Draw(canvas)
+            for x in range(8,480,34):d.line((x,42,x,270),fill=t.c('grid'))
+            for y in range(46,271,27):d.line((6,y,474,y),fill=t.c('grid'))
+            shards=[
+                [(5,232),(55,121),(84,248)],[(46,260),(108,154),(134,270)],
+                [(284,270),(331,135),(360,260)],[(343,267),(405,111),(432,263)],
+                [(400,273),(457,164),(480,266)],
+            ]
+            for i,poly in enumerate(shards):
+                edge=t.c('secondary') if i%2 else t.c('primary')
+                d.polygon(poly,fill=_mix(t.c('bg'),edge,.09),outline=_mix(t.c('bg'),edge,.62))
+            for i in range(18):
+                x=(17+i*59)%470;y=48+(i*43+int(ui.phase*5))%177
+                r=1+(i%3==0);d.ellipse((x-r,y-r,x+r,y+r),fill=_mix(t.c('bg'),t.c('text'),.7))
+        else:
+            # Classic evolved: restrained instrumentation behind a real creature,
+            # closer to the approved concept than the old framed pixel portrait.
+            pulse_mode=str(opts.get('pulse_level','subtle')).lower()
+            glow_strength={'off':.14,'subtle':.24,'active':.34}.get(pulse_mode,.24)
+            ambient_glow(canvas,(150,137),160,t.c('primary'),strength=glow_strength)
+            d=ImageDraw.Draw(canvas)
+            grid_mode=str(opts.get('grid_density','normal')).lower()
+            grid_step={'off':0,'light':32,'normal':18,'dense':10}.get(grid_mode,18)
+            if grid_step:
+                for y in range(46,270,grid_step):
+                    d.line((12,y,468,y),fill=_mix(t.c('bg'),t.c('grid'),.72))
+            if str(opts.get('scanline','on')).lower() not in {'off','false','0'}:
+                scan_y=46+int((float(ui.phase)*31.0)%216)
+                d.line((12,scan_y,468,scan_y),fill=_mix(t.c('bg'),t.c('primary'),.34))
+            d.line((14,46,14,268),fill=t.c('primary'),width=2)
+            for y in range(56,258,20):d.line((7,y,20,y),fill=t.c('secondary'))
+            for x in (266,348,468):d.line((x,48,x,226),fill=t.c('edge'))
+            # subtle arc/range marks around the creature
+            for r in (74,102,132):
+                d.arc((142-r,142-r,142+r,142+r),205,335,fill=_mix(t.c('bg'),t.c('primary'),.55),width=1)
+
+    creature_box=(8,48,258,230) if style=='classic' else (10,47,256,228) if style=='cyberpunk' else (58,47,326,229)
+    with _scene_layer(
+        ui,'home.creature.art','creature',creature_box,z=20,
+        signals=('pwnagotchi.mood','beast.expression'),update_class='ambient',
+        cacheable=True,resource_class='moderate',reduced_motion='static_art',
+    ):
+        used=_paste_concept_creature(canvas,style,creature_box,ui.phase,opacity=252)
+        d=ImageDraw.Draw(canvas)
+        if not used:
+            _portrait(d,creature_box,t,state,ui.phase,
+                      variant='cyber' if style=='cyberpunk' else 'ice' if style=='blackice' else 'classic')
+
+    with _scene_layer(
+        ui,'home.live_field','instrument',(18,48,470,232),z=35,
+        signals=('context.mode.effective','radio.primary.channel','wifi.ap_count',
+                 'wifi.client_count','pwnagotchi.handshakes','pwnagotchi.pmkids',
+                 'captures.pmkid_count','system.cpu.total','system.memory.used_pct',
+                 'system.temp.cpu_c','gps.fix'),update_class='live',resource_class='light',
+    ):
+        d=ImageDraw.Draw(canvas)
+        if style=='blackice':
+            d.text((18,54),f'APS {aps}',font=f['small'],fill=t.c('primary'))
+            d.text((18,76),f'CH  {ch}',font=f['small'],fill=t.c('info'))
+            d.text((18,98),mode[:12],font=f['tiny'],fill=t.c('dim'))
+            d.line((18,118,64,118),fill=t.c('edge'))
+            d.text((18,128),f'HS  {hs}',font=f['small'],fill=t.c('secondary'))
+            d.text((18,150),f'PM  {pmkid}',font=f['small'],fill=t.c('accent'))
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('info')),('TEMP',temp,t.c('secondary')))):
+                yy=72+i*39
+                d.text((365,yy),lab,font=f['micro'],fill=t.c('dim'))
+                _text_right(d,462,yy+7,val,f['medium'],col)
+            d.text((350,194),gps,font=f['tiny'],fill=t.c('dim'))
+        elif style=='cyberpunk':
+            d.text((262,55),'NEON RECON',font=f['medium'],fill=t.c('secondary'))
+            d.text((263,77),f'{mode}  //  CH {ch}',font=f['tiny'],fill=t.c('info'))
+            rows=(('NETWORKS',aps,t.c('primary')),('CLIENTS',clients,t.c('info')),
+                  ('HANDSHAKES',hs,t.c('accent')),('PMKIDS',pmkid,t.c('secondary')))
+            yy=103
+            for lab,val,col in rows:
+                d.text((264,yy),lab,font=f['tiny'],fill=t.c('dim'))
+                _text_right(d,392,yy-2,val,f['medium'],col);yy+=27
+            d.line((404,56,404,205),fill=t.c('edge'))
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('secondary')),('TEMP',temp,t.c('accent')))):
+                yy=67+i*44;d.text((415,yy),lab,font=f['micro'],fill=t.c('dim'));d.text((415,yy+12),val,font=f['small'],fill=col)
+            d.text((413,199),gps,font=f['micro'],fill=t.c('dim'))
+        else:
+            d.text((267,55),'RECON ACTIVE',font=f['medium'],fill=t.c('secondary'))
+            d.text((268,78),f'{mode}  ·  CH {ch}',font=f['tiny'],fill=t.c('dim'))
+            rows=(('APS',aps),('CLIENTS',clients),('HANDSHAKES',hs),('PMKIDS',pmkid))
+            yy=103
+            for lab,val in rows:
+                d.text((270,yy),lab,font=f['tiny'],fill=t.c('dim'))
+                _text_right(d,337,yy-2,val,f['medium'],t.c('text'));yy+=26
+            for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('info')),('TEMP',temp,t.c('accent')))):
+                yy=67+i*48
+                d.text((365,yy),lab,font=f['micro'],fill=t.c('dim'))
+                _text_right(d,460,yy+6,val,f['medium'],col)
+            d.text((365,211),gps,font=f['micro'],fill=t.c('dim'))
+
+    with _scene_layer(
+        ui,'home.identity_status','text',(16,218,468,269),z=50,
+        signals=('progression.beast.name','progression.level','progression.stage',
+                 'beast.expression','pwnagotchi.mood','pwnagotchi.status','beast.status_text'),
+        update_class='live',resource_class='tiny',
+    ):
+        d=ImageDraw.Draw(canvas)
+        if style=='cyberpunk':
+            d.line((18,226,462,226),fill=t.c('secondary'))
+            d.text((20,232),f'{name[:12]} // LV {lvl:02d} {stage[:10]}',font=f['tiny'],fill=t.c('primary'))
+            _text_right(d,460,232,mood[:15],f['tiny'],t.c('secondary'))
+            d.text((20,249),status[:52],font=f['small'],fill=t.c('text'))
+        elif style=='blackice':
+            d.line((18,227,462,227),fill=t.c('primary'))
+            d.text((20,233),f'{name[:12]}  LV {lvl:02d}  {stage[:10]}',font=f['tiny'],fill=t.c('info'))
+            _text_right(d,460,233,mood[:15],f['tiny'],t.c('dim'))
+            d.text((20,250),status[:52],font=f['small'],fill=t.c('text'))
+        else:
+            d.line((18,227,462,227),fill=t.c('edge'))
+            d.text((20,233),f'{name[:12]}  LV {lvl:02d}  {stage[:10]}',font=f['tiny'],fill=t.c('primary'))
+            _text_right(d,460,233,mood[:15],f['tiny'],t.c('dim'))
+            d.text((20,250),f'“{status[:48]}”',font=f['small'],fill=t.c('text'))
+    return True
+
+
+def _hero_scene(d,state,ui, *, variant='classic'):
+    """Layered Home scene: creature + atmosphere + live instruments.
+
+    This intentionally avoids the previous three-box dashboard composition.
+    Concept-derived art is allowed to own visual space; truthful live state is
+    overlaid as a compact HUD rather than forcing the artwork into a tile.
+    """
+    t=ui.theme;f=ui.fonts
+    canvas=getattr(d,'_image',None)
+    if canvas is None:return False
+    is_cyber=variant=='cyber';is_ice=variant=='ice';is_synth=variant=='synth';is_tactical=variant=='tactical'
+
+    # Scene lighting is dynamic but decorative. It never encodes telemetry.
+    glow_col=t.c('secondary') if (is_cyber or is_synth) else t.c('primary')
+    with _scene_layer(ui,'home.environment','environment',(0,34,480,278),z=10,
+                      update_class='ambient',resource_class='moderate',
+                      reduced_motion='static_glow',decorative=True):
+        ambient_glow(canvas,(156,148),150,glow_col,strength=.34 if is_cyber else .24)
+        ambient_glow(canvas,(395,92),94,t.c('accent'),strength=.17)
+        scene_particles(canvas,ui.phase,t.c('secondary'),count=18 if is_cyber else 10,alpha=62)
+    d=ImageDraw.Draw(canvas)
+
+    asset=None
+    if ui.theme.id=='classic':asset='classic_portrait.png'
+    elif ui.theme.id=='cyberpunk':asset='cyberpunk_portrait.png'
+    elif ui.theme.id=='blackice':asset='blackice_portrait.png'
+    asset_path=(Path(getattr(ui,'root','.'))/'assets'/'home'/asset) if asset else None
+
+    # The Beast is now a scene anchor, not a framed thumbnail. Art may bleed
+    # under HUD layers and fade into the information field.
+    with _scene_layer(
+        ui,'home.creature.art','creature',(6,38,278,269),z=20,
+        signals=('pwnagotchi.mood','beast.expression'),
+        update_class='ambient',cacheable=True,resource_class='moderate',
+        reduced_motion='static_art',
+    ):
+        used=False
+        if asset_path is not None:
+            used=paste_scene_asset(
+                canvas,asset_path,(6,38,278,269),phase=ui.phase,opacity=248,
+                brightness_pulse=.035,tint=glow_col,tint_strength=.04,
+                edge_fade=54,
+            )
+        d=ImageDraw.Draw(canvas)
+        if not used:
+            _portrait(d,(18,48,260,260),t,state,ui.phase,
+                      variant='cyber' if is_cyber or is_synth else 'ice' if is_ice else 'tactical' if is_tactical else 'classic')
+
+    name=str(_v(state,'progression.beast.name','BEAST')).strip() or 'BEAST'
+    lvl=int(_v(state,'progression.level',1) or 1)
+    stage=str(_v(state,'progression.stage','Hatchling')).upper()
+    mode=str(_v(state,'context.mode.effective','pwn')).upper()
+    mood=str(_v(state,'beast.expression',_v(state,'pwnagotchi.mood','awake'))).replace('_',' ').upper()
+    status=str(_v(state,'pwnagotchi.status',_v(state,'beast.status_text','SCANNING THE FIELD'))).strip()
+    if not status or status=='--':status='SCANNING THE FIELD'
+
+    # Identity floats over the visual scene, avoiding a hard portrait border.
+    with _scene_layer(
+        ui,'home.creature.identity','text',(14,198,270,262),z=30,
+        signals=('progression.beast.name','progression.level','progression.stage',
+                 'beast.expression','pwnagotchi.mood'),
+        update_class='live',resource_class='tiny',
+    ):
+        d.text((18,205),name[:18],font=f['large'],fill=t.c('text'))
+        d.text((19,230),f'LV {lvl:02d}  {stage[:14]}',font=f['small'],fill=t.c('secondary'))
+        d.text((19,247),mood[:18],font=f['tiny'],fill=t.c('dim'))
+
+    # Compact glass HUD on the right. This is one information plane, not a wall
+    # of cards; large live values dominate and labels recede.
+    with _scene_layer(
+        ui,'home.field_hud','instrument',(282,47,470,216),z=40,
+        signals=('context.mode.effective','radio.primary.channel','wifi.ap_count',
+                 'wifi.client_count','pwnagotchi.handshakes','pwnagotchi.pmkids',
+                 'captures.pmkid_count'),
+        update_class='live',resource_class='light',
+    ):
+        alpha_panel(canvas,(282,47,470,216),fill=t.c('panel'),outline=t.c('edge'),alpha=176,radius=12)
+        d=ImageDraw.Draw(canvas)
+        d.text((298,60),'FIELD LINK',font=f['tiny'],fill=t.c('dim'))
+        d.text((298,75),mode[:14],font=f['large'],fill=t.c('accent'))
+        d.text((299,101),f"CHANNEL {_v(state,'radio.primary.channel','--')}",font=f['small'],fill=t.c('text'))
+        d.line((298,122,454,122),fill=t.c('edge'))
+
+        rows=[
+            ('APS',_v(state,'wifi.ap_count',0),t.c('primary')),
+            ('CLIENTS',_v(state,'wifi.client_count',0),t.c('info')),
+            ('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0),t.c('accent')),
+            ('PMKIDS',_v(state,'pwnagotchi.pmkids',_v(state,'captures.pmkid_count',0)),t.c('secondary')),
+        ]
+        for i,(lab,val,col) in enumerate(rows):
+            x=298+(i%2)*82;y=136+(i//2)*38
+            d.text((x,y),lab,font=f['micro'],fill=t.c('dim'))
+            d.text((x,y+11),str(val)[:8],font=f['medium'],fill=col)
+
+    # Bottom conversational/status ribbon stays visually connected to the scene.
+    with _scene_layer(
+        ui,'home.status_ribbon','text',(10,233,470,269),z=50,
+        signals=('pwnagotchi.status','beast.status_text','wifi.encounters.session_unique'),
+        update_class='live',resource_class='tiny',
+    ):
+        alpha_panel(canvas,(10,272-39,470,269),fill=t.c('panel'),outline=t.c('edge'),alpha=150,radius=9)
+        d=ImageDraw.Draw(canvas)
+        d.text((20,239),status[:48],font=f['small'],fill=t.c('text'))
+        session=_v(state,'wifi.encounters.session_unique',0)
+        _text_right(d,458,254,f'{session} SIGNALS',f['tiny'],t.c('info'))
+
+    # Small live system chips remain visible without becoming the composition.
+    with _scene_layer(
+        ui,'home.system_chips','instrument',(294,192,462,214),z=55,
+        signals=('gps.fix','system.cpu.total','system.temp.cpu_c'),
+        update_class='live',resource_class='tiny',
+    ):
+        temp=_v(state,'system.temp.cpu_c','--');temp=f'{temp:.0f}C' if isinstance(temp,(int,float)) else '--'
+        cpu=_v(state,'system.cpu.total','--');cpu=f'{cpu:.0f}%' if isinstance(cpu,(int,float)) else '--'
+        gps='GPS' if state.get('gps.fix') else 'NO GPS'
+        d.text((300,198),f'{gps}  ·  CPU {cpu}  ·  {temp}',font=f['micro'],fill=t.c('dim'))
+    return True
+
+def _wopr_scene(d,state,ui):
+    t=ui.theme;f=ui.fonts
+    d.rectangle((0,34,480,278),fill=t.c('bg'))
+    for x in range(8,473,32):d.line((x,43,x,268),fill=t.c('grid'))
+    for y in range(43,269,24):d.line((8,y,472,y),fill=t.c('grid'))
+    d.rectangle((8,43,472,268),outline=t.c('primary'),width=1)
+    d.line((13,69,467,69),fill=t.c('edge'))
+    d.text((18,50),'GREETINGS, OPERATOR.',font=f['small'],fill=t.c('secondary'))
+    d.text((18,76),'SYSTEM STATUS',font=f['tiny'],fill=t.c('dim'))
+    health=str(_v(state,'health.core.state','STARTING')).upper()
+    rows=[
+        ('RECON STATUS',str(_v(state,'context.mode.effective','PWN')).upper(),t.c('accent')),
+        ('NETWORKS',_v(state,'wifi.ap_count',0),t.c('text')),
+        ('CLIENTS',_v(state,'wifi.client_count',0),t.c('text')),
+        ('HANDSHAKES',_v(state,'pwnagotchi.handshakes',0),t.c('secondary')),
+        ('CHANNEL',_v(state,'radio.primary.channel','--'),t.c('info')),
+        ('CORE',health,t.c('accent') if health=='HEALTHY' else t.c('warn')),
+    ]
+    yy=94
+    for lab,val,col in rows:
+        d.text((20,yy),lab,font=f['tiny'],fill=t.c('primary'))
+        d.text((132,yy),'►',font=f['tiny'],fill=t.c('secondary'))
+        d.text((151,yy),str(val)[:16],font=f['small'],fill=col)
+        yy+=23
+
+    cx,cy=362,151;r=72
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=t.c('secondary'),width=2)
+    for frac in (.36,.68):
+        rr=int(r*frac);d.ellipse((cx-rr,cy-r,cx+rr,cy+r),outline=t.c('edge'))
+    d.line((cx-r,cy,cx+r,cy),fill=t.c('edge'));d.line((cx,cy-r,cx,cy+r),fill=t.c('edge'))
+    for dy in (-34,34):
+        span=int(math.sqrt(max(0,r*r-dy*dy)));d.line((cx-span,cy+dy,cx+span,cy+dy),fill=t.c('edge'))
+    sweep=(ui.phase*.52)%(math.pi*2);sx=cx+int(math.cos(sweep)*r);sy=cy+int(math.sin(sweep)*r)
+    d.line((cx,cy,sx,sy),fill=t.c('accent'),width=1)
+    for i,(dx,dy) in enumerate(((-34,-19),(24,-28),(40,17),(-18,37),(5,8))):
+        col=t.c('danger') if i==0 and health!='HEALTHY' else t.c('secondary')
+        d.rectangle((cx+dx-2,cy+dy-2,cx+dx+2,cy+dy+2),fill=col)
+    d.text((294,229),'NORAD FIELD DISPLAY',font=f['micro'],fill=t.c('dim'))
+    d.text((18,248),'AWAITING NEXT SIGNAL...',font=f['small'],fill=t.c('secondary'))
+    return True
+
+
+def _lcars_scene(d,state,ui):
+    t=ui.theme;f=ui.fonts
+    d.rounded_rectangle((8,43,86,267),radius=13,fill=t.c('secondary'))
+    d.rectangle((52,76,86,235),fill=t.c('bg'))
+    d.rounded_rectangle((94,43,314,267),radius=10,fill=_mix(t.c('panel'),t.c('primary'),.06),outline=t.c('primary'))
+    _portrait(d,(108,60,300,211),t,state,ui.phase,variant='classic')
+    name=str(_v(state,'progression.beast.name','BEAST')).upper();lvl=int(_v(state,'progression.level',1) or 1)
+    d.text((112,220),name[:16],font=f['small'],fill=t.c('accent'))
+    d.text((112,238),f'LEVEL {lvl:02d} · {_v(state,"progression.stage","HATCHLING")}',font=f['tiny'],fill=t.c('dim'))
+    labels=[('MODE',str(_v(state,'context.mode.effective','PWN')).upper()),('APS',_v(state,'wifi.ap_count',0)),('CH',_v(state,'radio.primary.channel','--')),('CPU',f"{_v(state,'system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--'),('TEMP',f"{_v(state,'system.temp.cpu_c',0):.0f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--')]
+    cols=[t.c('primary'),t.c('accent'),t.c('info'),t.c('secondary'),t.c('warn')]
+    yy=50
+    for i,(lab,val) in enumerate(labels):
+        d.rounded_rectangle((323,yy,470,yy+37),radius=8,fill=_mix(t.c('panel'),cols[i],.07),outline=cols[i])
+        d.text((334,yy+6),lab,font=f['micro'],fill=t.c('dim'))
+        _text_right(d,459,yy+14,str(val),f['small'],cols[i]);yy+=43
+    return True
+
+
+def _terminal_scene(d,state,ui):
+    t=ui.theme;f=ui.fonts
+    d.rectangle((8,43,472,268),fill=_mix(t.c('bg'),t.c('primary'),.025),outline=t.c('primary'))
+    d.text((18,50),'beast@field:~$ status --live',font=f['small'],fill=t.c('primary'))
+    _portrait(d,(18,78,200,229),t,state,ui.phase,variant='classic')
+    rows=[('mode',str(_v(state,'context.mode.effective','pwn')).lower()),('channel',_v(state,'radio.primary.channel','--')),('aps',_v(state,'wifi.ap_count',0)),('clients',_v(state,'wifi.client_count',0)),('handshakes',_v(state,'pwnagotchi.handshakes',0)),('cpu',f"{_v(state,'system.cpu.total',0):.0f}%" if isinstance(state.get('system.cpu.total'),(int,float)) else '--'),('temp',f"{_v(state,'system.temp.cpu_c',0):.0f}C" if isinstance(state.get('system.temp.cpu_c'),(int,float)) else '--')]
+    yy=82
+    for lab,val in rows:
+        d.text((220,yy),f'{lab:>10}:',font=f['tiny'],fill=t.c('dim'));d.text((302,yy),str(val),font=f['small'],fill=t.c('text'));yy+=23
+    d.text((18,244),'> observing real state..._',font=f['small'],fill=t.c('accent'))
+    return True
+
+
+def render_home_scene(d, state, ui) -> bool:
+    """Render a theme-selected structural Home scene.
+
+    Theme.home_scene is deliberately semantic. Built-ins and future Theme Packs
+    can select a composition family independently of palette/background. Unknown
+    scene ids fail closed to the legacy page renderer.
+    """
+    scene=str(getattr(ui.theme,'home_scene',None) or '').strip().lower()
+    if not scene:return False
+    renderers={
+        'hero':lambda:_concept_hero_scene(d,state,ui,style='classic'),
+        'hero_cyber':lambda:_concept_hero_scene(d,state,ui,style='cyberpunk'),
+        'hero_ice':lambda:_concept_hero_scene(d,state,ui,style='blackice'),
+        'hero_synth':lambda:_hero_scene(d,state,ui,variant='synth'),
+        'hero_tactical':lambda:_hero_scene(d,state,ui,variant='tactical'),
+        'wopr':lambda:_wopr_scene(d,state,ui),
+        'lcars':lambda:_lcars_scene(d,state,ui),
+        'terminal':lambda:_terminal_scene(d,state,ui),
+    }
+    renderer=renderers.get(scene)
+    if renderer is None:return False
+    runtime=getattr(ui,'scene_runtime',None)
+    if runtime is not None:runtime.set_scene('home:'+scene)
+    if scene.startswith('hero'):return renderer()
+    with _scene_layer(
+        ui,'home.scene_structure','scene',(0,34,480,278),z=20,
+        signals=('context.mode.effective','wifi.ap_count','wifi.client_count',
+                 'pwnagotchi.handshakes','radio.primary.channel','system.cpu.total',
+                 'system.temp.cpu_c','health.core.state'),
+        update_class='live',resource_class='moderate',
+    ):
+        return renderer()

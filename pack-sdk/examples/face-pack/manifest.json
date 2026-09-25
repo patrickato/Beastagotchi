@@ -1,0 +1,11 @@
+{
+  "id": "example-orbit-faces",
+  "label": "Example Orbit Faces",
+  "version": "1.0.0",
+  "pack_type": "face",
+  "description": "Declarative no-code vector face example.",
+  "author": "Beastagotchi SDK",
+  "license": "MIT",
+  "resource_class": "none",
+  "thermal_class": "static"
+}

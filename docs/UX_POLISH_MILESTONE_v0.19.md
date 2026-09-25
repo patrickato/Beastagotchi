@@ -30,3 +30,36 @@ This milestone deliberately pauses broad surface-area growth long enough to make
 
 ## Acceptance criteria
 A first-time tester should be able to identify the device state, move between primary areas, open/close an app, understand a warning, and return Home without instructions. Core status must be readable at arm's length; advanced detail can remain one tap deeper.
+
+
+## Primary-page glance contract
+
+A high-frequency physical page should answer three questions quickly:
+
+1. **What state am I in?**
+2. **What matters right now?**
+3. **Where do I go for depth?**
+
+This does not require every page to share the same geometry. It requires a
+shared interaction/information grammar while allowing each Experience/theme to
+remain structurally distinct.
+
+### Current field-cockpit pass
+
+The v0.19 primary-page cleanup now extends beyond Home/Overview/Networks/System
+to:
+
+- Recon — summary truth + live observation field + recent/strongest context;
+- Spectrum — current/band/busiest/AP summary + truthful observed-activity view;
+- Captures — stored history as the primary fact + honest empty state;
+- Field Map — recorded-fix route trace explicitly labeled as not a basemap;
+- Expedition — active/idle field-session state + glance metrics + recovery state.
+
+Shared empty/unavailable presentation now makes absence of live data intentional
+instead of substituting demo telemetry.
+
+The Apps launcher is also moving from desktop-like density toward a 2×2
+resistive-touch-safe page with >=48px visible interaction targets.
+
+These are source/CI changes only until the next captured-state gallery and
+physical 480×320 acceptance pass.

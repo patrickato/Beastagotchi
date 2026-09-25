@@ -10,7 +10,7 @@ Runs on a normal development machine and proves imports, deterministic logic, pa
 python3 -m pip install -r requirements-dev.txt
 PYTHONPATH=. pytest -q
 python3 -m compileall -q beastcore beastui beaststudio
-bash -n install.sh install_ui.sh install_bridge.sh uninstall.sh validate_v018.sh
+bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
 ```
 
 ## 2. Target Pi off-screen validation
@@ -34,6 +34,30 @@ Physical gates evaluate things automated render tests cannot fully prove:
 - framebuffer ownership/recovery;
 - transition behavior;
 - thermal impact over realistic use.
+
+## v0.19 bounded physical package
+
+For the active v0.19 branch, the physical interaction gate is packaged as one
+reversible session:
+
+    sudo beast-v019-accept start 15
+
+While using the TFT normally, collect an objective window:
+
+    sudo beast-v019-accept sample 60
+
+Then bundle the session with an explicit ownership decision:
+
+    sudo beast-v019-accept finish observe
+    sudo beast-v019-accept finish pass
+    sudo beast-v019-accept finish rollback
+
+The generated summary includes render/compose/framebuffer-write timing, changed
+rows, bytes written, temperature, CPU/governor state, touch evidence and
+Capsule/QR availability. It explicitly does not decide readability, touch feel,
+phone-camera scan reliability or overall physical polish for the user.
+
+See `Beastagotchi_v019_Physical_Acceptance_Package.md`.
 
 ## Rule
 

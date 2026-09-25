@@ -7,7 +7,7 @@ Wants=beast-core.service
 Type=simple
 User=pi
 SupplementaryGroups=video input beastagotchi
-Environment=PYTHONPATH=/opt/beast-ui
+Environment=PYTHONPATH=/opt/beast-ui:/opt/beast-python/site-packages
 ExecStartPre=/opt/beast-ui/bin/display_config.py --config /etc/pwnagotchi/config.toml require-disabled
 ExecStart=/opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --framebuffer /dev/fb1
 Restart=on-failure

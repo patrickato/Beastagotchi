@@ -157,6 +157,152 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 CREATE INDEX IF NOT EXISTS idx_incidents_status_seen ON incidents(status,last_seen DESC);
 CREATE INDEX IF NOT EXISTS idx_incidents_kind_seen ON incidents(kind,last_seen DESC);
+CREATE TABLE IF NOT EXISTS beasts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'beast',
+  lineage_id TEXT NOT NULL DEFAULT 'founder',
+  status TEXT NOT NULL DEFAULT 'resting',
+  active INTEGER NOT NULL DEFAULT 0,
+  generation INTEGER NOT NULL DEFAULT 0,
+  created_at REAL NOT NULL,
+  updated_at REAL NOT NULL,
+  trait_seed TEXT,
+  identity_json TEXT NOT NULL DEFAULT '{}',
+  appearance_json TEXT NOT NULL DEFAULT '{}',
+  preferences_json TEXT NOT NULL DEFAULT '{}',
+  legend_at REAL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_beasts_single_active ON beasts(active) WHERE active=1;
+CREATE INDEX IF NOT EXISTS idx_beasts_kind_status ON beasts(kind,status,updated_at DESC);
+CREATE TABLE IF NOT EXISTS beast_progress (
+  beast_id TEXT PRIMARY KEY,
+  xp INTEGER NOT NULL DEFAULT 0,
+  max_level INTEGER NOT NULL DEFAULT 100,
+  lifetime_runtime_sec REAL NOT NULL DEFAULT 0,
+  runtime_award_remainder_sec REAL NOT NULL DEFAULT 0,
+  counters_json TEXT NOT NULL DEFAULT '{}',
+  seen_vendors_json TEXT NOT NULL DEFAULT '[]',
+  updated_at REAL NOT NULL,
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_wifi_encounters (
+  beast_id TEXT NOT NULL,
+  bssid TEXT NOT NULL,
+  first_seen REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  observation_count INTEGER NOT NULL DEFAULT 1,
+  device_new_on_first INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(beast_id,bssid),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_wifi_beast_seen ON beast_wifi_encounters(beast_id,last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_beast_wifi_bssid ON beast_wifi_encounters(bssid);
+CREATE TABLE IF NOT EXISTS global_achievements (
+  achievement_id TEXT PRIMARY KEY,
+  unlocked_at REAL NOT NULL,
+  context_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_global_achievements_unlocked ON global_achievements(unlocked_at DESC);
+CREATE TABLE IF NOT EXISTS beast_achievements (
+  beast_id TEXT NOT NULL,
+  achievement_id TEXT NOT NULL,
+  unlocked_at REAL NOT NULL,
+  context_json TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY(beast_id,achievement_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_unlocks (
+  beast_id TEXT NOT NULL,
+  unlock_id TEXT NOT NULL,
+  unlocked_at REAL NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY(beast_id,unlock_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS beast_ancestry (
+  child_id TEXT NOT NULL,
+  parent_id TEXT NOT NULL,
+  parent_role TEXT NOT NULL DEFAULT 'parent',
+  PRIMARY KEY(child_id,parent_id),
+  FOREIGN KEY(child_id) REFERENCES beasts(id) ON DELETE CASCADE,
+  FOREIGN KEY(parent_id) REFERENCES beasts(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_beast_ancestry_parent ON beast_ancestry(parent_id);
+CREATE TABLE IF NOT EXISTS monster_syntheses (
+  id TEXT PRIMARY KEY,
+  created_at REAL NOT NULL,
+  parent_a TEXT NOT NULL,
+  parent_b TEXT NOT NULL,
+  child_id TEXT UNIQUE NOT NULL,
+  seed TEXT NOT NULL,
+  recipe_id TEXT NOT NULL DEFAULT 'lineage_synthesis_v1',
+  data_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(parent_a) REFERENCES beasts(id) ON DELETE RESTRICT,
+  FOREIGN KEY(parent_b) REFERENCES beasts(id) ON DELETE RESTRICT,
+  FOREIGN KEY(child_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS global_unlocks (
+  unlock_id TEXT PRIMARY KEY,
+  unlocked_at REAL NOT NULL,
+  source TEXT NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS peer_encounters (
+  fingerprint TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL DEFAULT '???',
+  first_seen REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  seen_events INTEGER NOT NULL DEFAULT 0,
+  advertised_encounters INTEGER NOT NULL DEFAULT 0,
+  last_rssi INTEGER,
+  best_rssi INTEGER,
+  last_channel INTEGER,
+  version TEXT NOT NULL DEFAULT '',
+  last_face TEXT NOT NULL DEFAULT '',
+  pwnd_run INTEGER NOT NULL DEFAULT 0,
+  pwnd_total INTEGER NOT NULL DEFAULT 0,
+  session_id TEXT NOT NULL DEFAULT '',
+  beast_capable INTEGER NOT NULL DEFAULT 0,
+  public_beast_json TEXT NOT NULL DEFAULT '{}',
+  data_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_peer_encounters_last_seen ON peer_encounters(last_seen DESC);
+CREATE TABLE IF NOT EXISTS beast_memories (
+  id TEXT PRIMARY KEY,
+  beast_id TEXT NOT NULL,
+  ts REAL NOT NULL,
+  kind TEXT NOT NULL,
+  source_event_type TEXT NOT NULL,
+  rarity TEXT,
+  expedition_id TEXT,
+  summary TEXT NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_memories_beast_ts ON beast_memories(beast_id,ts DESC);
+CREATE INDEX IF NOT EXISTS idx_beast_memories_kind_ts ON beast_memories(kind,ts DESC);
+CREATE TABLE IF NOT EXISTS beast_expeditions (
+  beast_id TEXT NOT NULL,
+  expedition_id TEXT NOT NULL,
+  first_active_at REAL NOT NULL,
+  last_active_at REAL NOT NULL,
+  PRIMARY KEY(beast_id,expedition_id),
+  FOREIGN KEY(beast_id) REFERENCES beasts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_beast_expeditions_exp ON beast_expeditions(expedition_id,last_active_at DESC);
+CREATE TABLE IF NOT EXISTS global_sync_queue (
+  id TEXT PRIMARY KEY,
+  created_at REAL NOT NULL,
+  content_hash TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payload_json TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at REAL,
+  last_error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_global_sync_queue_status_created ON global_sync_queue(status,created_at);
 """
 
 class Store:
@@ -179,6 +325,9 @@ class Store:
         }
         for name,decl in additions.items():
             if name not in cols:self.conn.execute(f"ALTER TABLE wifi_encounters ADD COLUMN {name} {decl}")
+        beast_cols={r[1] for r in self.conn.execute("PRAGMA table_info(beasts)").fetchall()}
+        if beast_cols and "legend_at" not in beast_cols:
+            self.conn.execute("ALTER TABLE beasts ADD COLUMN legend_at REAL")
         # FTS5 is available in normal Raspberry Pi / Python SQLite builds, but
         # Field Library must remain usable if a custom build omits it.
         try:
@@ -193,6 +342,29 @@ class Store:
                     SELECT id,title,filename,path,text_content FROM library_documents WHERE status='present'""")
         except sqlite3.OperationalError:
             self.library_fts = False
+
+    def get_meta_json(self, key: str, default: Any = None) -> Any:
+        row = self.conn.execute("SELECT value FROM meta WHERE key=? LIMIT 1", (str(key),)).fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(row[0])
+        except Exception:
+            return default
+
+    def set_meta_json(self, key: str, value: Any) -> bool:
+        """Persist compact JSON metadata only when its serialized value changed."""
+        payload = json.dumps(value, separators=(",", ":"), sort_keys=True, default=str)
+        row = self.conn.execute("SELECT value FROM meta WHERE key=? LIMIT 1", (str(key),)).fetchone()
+        if row is not None and row[0] == payload:
+            return False
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO meta(key,value) VALUES(?,?)
+                   ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+                (str(key), payload),
+            )
+        return True
 
     def add_event(self, ev: Any) -> None:
         self.conn.execute(
@@ -274,6 +446,65 @@ class Store:
                         (ts, ssid, vendor, ch, strongest, encryption, json.dumps(sorted(channels)), client_count, bssid),
                     )
         return {"new_count": len(new_bssids), "total": self.count_wifi_encounters(), "new_bssids": new_bssids}
+
+    def record_beast_wifi_encounters(
+        self,
+        beast_id: str,
+        aps: list[dict[str, Any]],
+        *,
+        device_new_bssids: list[str] | set[str] | None = None,
+        ts: float | None = None,
+    ) -> dict[str, Any]:
+        """Persist APs first encountered by one creature.
+
+        The global wifi_encounters table answers "new to this device". This table
+        separately answers "new to this Beast/Monster". Repeated observations never
+        become new again after reboot.
+        """
+        beast_id=str(beast_id or "").strip()
+        if not beast_id:
+            return {"new_count":0,"device_new_count":0,"familiar_new_count":0,"total":0,"new_bssids":[]}
+        ts=float(ts or __import__("time").time())
+        device_new={str(x).lower().strip() for x in (device_new_bssids or []) if str(x).strip()}
+        new_bssids=[];new_device=0
+        with self.conn:
+            for ap in aps or []:
+                if not isinstance(ap,dict):continue
+                bssid=str(ap.get("bssid") or ap.get("mac") or "").lower().strip()
+                if not bssid:continue
+                row=self.conn.execute(
+                    "SELECT observation_count FROM beast_wifi_encounters WHERE beast_id=? AND bssid=?",
+                    (beast_id,bssid),
+                ).fetchone()
+                if row is None:
+                    flag=1 if bssid in device_new else 0
+                    self.conn.execute(
+                        """INSERT INTO beast_wifi_encounters(
+                             beast_id,bssid,first_seen,last_seen,observation_count,device_new_on_first
+                           ) VALUES(?,?,?,?,1,?)""",
+                        (beast_id,bssid,ts,ts,flag),
+                    )
+                    new_bssids.append(bssid);new_device+=flag
+                else:
+                    self.conn.execute(
+                        "UPDATE beast_wifi_encounters SET last_seen=?,observation_count=observation_count+1 WHERE beast_id=? AND bssid=?",
+                        (ts,beast_id,bssid),
+                    )
+        total=self.count_beast_wifi_encounters(beast_id)
+        return {
+            "new_count":len(new_bssids),
+            "device_new_count":int(new_device),
+            "familiar_new_count":max(0,len(new_bssids)-int(new_device)),
+            "total":total,
+            "new_bssids":new_bssids,
+        }
+
+    def count_beast_wifi_encounters(self, beast_id: str) -> int:
+        row=self.conn.execute(
+            "SELECT COUNT(*) FROM beast_wifi_encounters WHERE beast_id=?",
+            (str(beast_id),),
+        ).fetchone()
+        return int(row[0] if row else 0)
 
     def count_wifi_encounters(self) -> int:
         row = self.conn.execute("SELECT COUNT(*) FROM wifi_encounters").fetchone()

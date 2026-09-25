@@ -35,4 +35,123 @@ jobs:
         run: python -m compileall -q beastcore beastui beaststudio
 
       - name: Shell syntax
-        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh
+        run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh tools/v019_stage_from_artifact.sh
+
+
+      - name: Render sanitized real-state UX gallery
+        run: |
+          mkdir -p artifacts/v019-real-state-gallery
+          PYTHONPATH=. python tools/render_v019_ux_gallery.py             --root beastui             --state tests/fixtures/v018_target_sanitized_state.json             --out artifacts/v019-real-state-gallery             --all-themes
+
+      - name: Upload v0.19 real-state UX gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-real-state-ux-gallery
+          path: artifacts/v019-real-state-gallery
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Render deterministic v0.19 Home motion proof
+        run: |
+          mkdir -p artifacts/v019-home-motion
+          PYTHONPATH=. python tools/render_v019_home_motion.py \
+            --root beastui \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-home-motion \
+            --themes classic,cyberpunk,blackice,wopr_norad \
+            --frames 8 \
+            --duration 2.0 \
+            --fps 6
+
+      - name: Upload v0.19 Home motion proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-home-motion-proof
+          path: artifacts/v019-home-motion
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Render v0.19 Experience structural silhouettes
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_silhouettes.py
+
+      - name: Upload v0.19 Experience structural silhouettes
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-silhouettes
+          path: artifacts/v019-experience-silhouettes
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Render Atlas Home Experience proof
+        run: |
+          PYTHONPATH=. python tools/render_v019_atlas_home.py \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-atlas-home \
+            --frames 6
+
+      - name: Upload Atlas Home Experience proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-atlas-home-proof
+          path: artifacts/v019-atlas-home
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Render first non-legacy Experience Home proofs
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_homes.py \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-experience-homes
+
+      - name: Upload non-legacy Experience Home proofs
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-home-proofs
+          path: artifacts/v019-experience-homes
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Render cross-page Experience translation proof
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_page_translations.py
+
+      - name: Upload cross-page Experience translation proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-page-translations
+          path: artifacts/v019-experience-page-translations
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Build commit-pinned v0.19 Pi acceptance source bundle
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p artifacts/v019-pi-acceptance
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          OUTDIR="artifacts/v019-pi-acceptance"
+          NAME="beastagotchi-v019-pi-acceptance-${SHORT_SHA}.tar.gz"
+          ARCHIVE="$OUTDIR/$NAME"
+          git archive --format=tar.gz --prefix="Beastagotchi-v019-${SHORT_SHA}/" -o "$ARCHIVE" "$SOURCE_SHA"
+          (cd "$OUTDIR" && sha256sum "$NAME" > "${NAME}.sha256")
+          printf '%s\n' "$SOURCE_SHA" > "$OUTDIR/SOURCE_COMMIT_SHA.txt"
+          printf '%s\n' "$GITHUB_SHA" > "$OUTDIR/CI_TESTED_SHA.txt"
+          git show "$SOURCE_SHA:tools/v019_stage_from_artifact.sh" > "$OUTDIR/STAGE_ON_PI.sh"
+          chmod 0755 "$OUTDIR/STAGE_ON_PI.sh"
+          git show "$SOURCE_SHA:docs/Beastagotchi_v019_Physical_Acceptance_Quickstart.txt" > "$OUTDIR/PHYSICAL_TEST_QUICKSTART.txt"
+
+      - name: Upload v0.19 Pi acceptance source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-pi-acceptance-source
+          path: artifacts/v019-pi-acceptance
+          if-no-files-found: error
+          retention-days: 30
