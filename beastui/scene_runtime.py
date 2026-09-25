@@ -92,6 +92,8 @@ class SceneRuntime:
         self.completed_at: float | None = None
         self._layers: dict[str, SceneLayerRecord] = {}
         self._order: list[str] = []
+        self._signal_values: dict[str, object] = {}
+        self._changed_signals: set[str] = set()
 
     def begin(self, *, page_id: str, scene_id: str | None = None,
               theme_id: str | None = None) -> None:
@@ -102,9 +104,64 @@ class SceneRuntime:
         self.completed_at = None
         self._layers = {}
         self._order = []
+        self._changed_signals = set()
 
     def set_scene(self, scene_id: str) -> None:
         self.scene_id = str(scene_id)
+
+    def update_signals(self, values: dict[str, object]) -> set[str]:
+        """Record a canonical signal snapshot and return keys whose values changed.
+
+        Missing keys are not treated as changes: callers may publish partial state
+        snapshots without accidentally dirtying unrelated layers.
+        """
+        changed: set[str] = set()
+        for key, value in (values or {}).items():
+            key = str(key)
+            if key not in self._signal_values or self._signal_values[key] != value:
+                changed.add(key)
+            self._signal_values[key] = value
+        self._changed_signals = changed
+        return set(changed)
+
+    def dirty_layer_ids(self, *, include_ambient: bool = True,
+                        include_interaction: bool = True) -> list[str]:
+        """Return semantic layers that need repaint under the current change set."""
+        dirty: list[str] = []
+        for layer_id in self._order:
+            rec = self._layers[layer_id]
+            spec = rec.spec
+            if spec.update_class in {"static", "protected"}:
+                continue
+            if spec.update_class == "ambient":
+                if include_ambient:
+                    dirty.append(layer_id)
+                continue
+            if spec.update_class == "interaction":
+                if include_interaction:
+                    dirty.append(layer_id)
+                continue
+            if any(sig in self._changed_signals for sig in spec.signals):
+                dirty.append(layer_id)
+        return dirty
+
+    def dirty_bounds(self, *, include_ambient: bool = True,
+                     include_interaction: bool = True) -> list[tuple[int, int, int, int]]:
+        """Return de-duplicated dirty rectangles in z/order sequence."""
+        seen = set()
+        out = []
+        ids = set(self.dirty_layer_ids(
+            include_ambient=include_ambient,
+            include_interaction=include_interaction,
+        ))
+        for layer_id in self._order:
+            if layer_id not in ids:
+                continue
+            bounds = tuple(int(v) for v in self._layers[layer_id].spec.bounds)
+            if bounds not in seen:
+                seen.add(bounds)
+                out.append(bounds)
+        return out
 
     def end(self) -> None:
         self.completed_at = time.perf_counter()
@@ -160,5 +217,8 @@ class SceneRuntime:
             "layer_count": len(rows),
             "layer_render_ms": round(total_ms, 3),
             "scene_elapsed_ms": None if elapsed_ms is None else round(elapsed_ms, 3),
+            "changed_signals": sorted(self._changed_signals),
+            "dirty_layers": self.dirty_layer_ids(),
+            "dirty_bounds": [list(x) for x in self.dirty_bounds()],
             "layers": rows,
         }
