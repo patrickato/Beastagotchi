@@ -165,6 +165,27 @@ Cumulative cross-page head `4328ebab8096532adac2ce8e62997cd4dad6e051` passed CI 
 **Gate 1 remains active.** This is not owner off-screen acceptance and does not enable physical
 TRY ON TFT execution.
 
+## Gate 1 second pixel-review checkpoint — 2026-09-25
+
+All five flagship Home Experiences have now completed a second bounded CI-rendered pixel-review
+cycle and the retained changes are merged into `v0.19-unified-experience` through
+`af39c6ab7d49217d5c2eac3637cabe19a340f215`.
+
+Current retained direction:
+- Atlas — expedition field notebook with a field-sketch companion, not a mascot badge;
+- Forge — one physical machine/chassis, further reduced panel/dashboard framing;
+- Observatory — measurement station with a scientific observer optic rather than a smiley badge;
+- Habitat — creature-first organic habitat with substantially deeper procedural creature form;
+- Monolith — sparse premium composition with a bust/plinth focal sculpture rather than a flat mask.
+
+Every retained visual change above was judged from the actual 480×320 CI PNG, not source layout
+alone. Cross-page proofs exist for all five families.
+
+**Gate 1 is still ACTIVE.** Owner off-screen acceptance has not been recorded, and physical TFT
+TRY ON / presentation ownership remains blocked until that acceptance.
+
+---
+
 ## Experience Compiler integration checkpoint — 2026-09-25
 
 The Experience architecture has advanced without changing Gate 1's acceptance status:
