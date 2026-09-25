@@ -12,6 +12,14 @@ class _API:
         self._state=state
     def live(self, limit=24):
         return {"state":self._state,"events":[]}
+    def experiences(self):
+        return {
+            "schema":1,
+            "mode":"read_only",
+            "count":1,
+            "items":[{"experience_id":"atlas","ready_for_preview":True}],
+            "tft_activation_enabled":False,
+        }
 
 
 def _studio(state):
@@ -39,3 +47,18 @@ def test_studio_experience_preview_rejects_unimplemented_page():
     st=_studio({})
     with pytest.raises(ExperienceDraftError):
         st.experience_preview({"id":"forge","page":"spectrum"})
+
+
+def test_studio_reads_core_compiled_experience_plan_without_local_recompile():
+    st=_studio({})
+    row=st.experiences()
+    assert row["mode"]=="read_only"
+    assert row["items"][0]["experience_id"]=="atlas"
+    assert row["tft_activation_enabled"] is False
+
+
+def test_studio_html_exposes_core_backed_builtin_experience_browser():
+    from beaststudio.server import HTML
+    assert 'id="builtinExperienceList"' in HTML
+    assert "jfetch('/api/experiences')" in HTML
+    assert "previewBuiltinExperience" in HTML
