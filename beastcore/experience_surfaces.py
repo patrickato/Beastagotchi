@@ -6,6 +6,17 @@ from typing import Any
 # Neutral, non-renderer-specific record of currently implemented first-party
 # Experience surfaces. Core and UI both consume this catalog so neither invents
 # page availability independently.
+BUILTIN_EXPERIENCE_NATIVE_TARGETS: dict[str, tuple[str, ...]] = {
+    # Current Experience renderers are authored natively for the 480x320
+    # reference target. Larger/micro classes require an explicit Scene variant
+    # before production readiness may be claimed.
+    "atlas": ("reference",),
+    "forge": ("reference",),
+    "observatory": ("reference",),
+    "habitat": ("reference",),
+    "monolith": ("reference",),
+}
+
 BUILTIN_EXPERIENCE_SURFACES: dict[str, dict[str, str]] = {
     "atlas": {
         "home": "prototype",
@@ -54,3 +65,10 @@ def experience_surface_catalog() -> list[dict[str, Any]]:
                 "reference_size": [480, 320],
             })
     return rows
+
+
+def experience_native_target_coverage() -> dict[str, list[str]]:
+    return {
+        experience_id: list(targets)
+        for experience_id, targets in sorted(BUILTIN_EXPERIENCE_NATIVE_TARGETS.items())
+    }
