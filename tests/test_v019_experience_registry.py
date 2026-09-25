@@ -24,9 +24,9 @@ def test_experience_renderer_registry_exposes_current_prototype_coverage():
     summary=experience_renderer_summary()
     assert summary["atlas"]==["home","recon"]
     assert summary["observatory"]==["home","spectrum"]
-    assert summary["forge"]==["home"]
+    assert summary["forge"]==["home","system"]
     assert summary["habitat"]==["beast","home"]
-    assert summary["monolith"]==["home"]
+    assert summary["monolith"]==["home","overview"]
 
 
 def test_registry_resolves_and_renders_semantic_scene():
