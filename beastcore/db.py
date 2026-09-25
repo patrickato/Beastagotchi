@@ -343,6 +343,29 @@ class Store:
         except sqlite3.OperationalError:
             self.library_fts = False
 
+    def get_meta_json(self, key: str, default: Any = None) -> Any:
+        row = self.conn.execute("SELECT value FROM meta WHERE key=? LIMIT 1", (str(key),)).fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(row[0])
+        except Exception:
+            return default
+
+    def set_meta_json(self, key: str, value: Any) -> bool:
+        """Persist compact JSON metadata only when its serialized value changed."""
+        payload = json.dumps(value, separators=(",", ":"), sort_keys=True, default=str)
+        row = self.conn.execute("SELECT value FROM meta WHERE key=? LIMIT 1", (str(key),)).fetchone()
+        if row is not None and row[0] == payload:
+            return False
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO meta(key,value) VALUES(?,?)
+                   ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+                (str(key), payload),
+            )
+        return True
+
     def add_event(self, ev: Any) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO events(id,ts,type,source,severity,data_json) VALUES(?,?,?,?,?,?)",
