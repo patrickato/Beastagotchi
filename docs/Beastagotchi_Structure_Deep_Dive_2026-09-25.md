@@ -587,3 +587,215 @@ breeding expansion.
 
 Use familiar lifecycle concepts without reproducing an operating system inside Beastagotchi.
 
+
+---
+
+# Layer 2C — Mutation authority: Actions, Transactions and owner override
+
+## ActionBroker — keep the boundary, change the dispatch structure
+
+The ActionBroker concept is strong:
+- allow-listed operations;
+- plan before perform;
+- operator/owner policy;
+- no generic shell API;
+- durable action audit;
+- explicit broker adapters for plugins/services/containers/packs/etc.;
+- owner override is distinct from technical capability.
+
+This should remain the mutation doorway for managed Beast operations.
+
+Current scaling concern:
+- `plan()` and `perform()` are long parallel action-name dispatch chains;
+- adding one Action requires editing both;
+- third-party extension requires central Core edits;
+- plan/perform drift becomes more likely as Action count grows.
+
+### Direction: Action Registry
+
+Each ActionSpec/handler should declare:
+- action id;
+- parameter schema;
+- plan handler;
+- perform handler;
+- required operator level;
+- owner-override policy;
+- risk class;
+- required capabilities;
+- whether it is read-only / simple mutation / transactional mutation;
+- verification behavior;
+- privacy/logging policy;
+- UI label/description hints if useful.
+
+ActionBroker remains the authority:
+1. lookup registered Action;
+2. validate;
+3. authorize;
+4. plan;
+5. dispatch through direct or Transaction path;
+6. audit;
+7. publish outcome.
+
+Do not allow arbitrary third-party raw-shell handlers to masquerade as trusted Actions.
+
+## Transaction — existing pattern, missing shared contract
+
+The project already contains multiple transaction-like implementations:
+
+### Pack install
+- plan;
+- compatibility check;
+- staged/inert content;
+- transaction id/directory;
+- previous copy snapshot;
+- journal;
+- verification;
+- rollback;
+- bounded rollback payload retention.
+
+### Pack update
+- trusted source;
+- verified download staging;
+- intake;
+- install;
+- probation;
+- automatic rollback on failed probation;
+- history.
+
+### Presentation switching
+Current planner already models:
+- prepare/release;
+- acquire;
+- verify;
+- rollback path.
+
+Physical execution is intentionally still disabled pending validation.
+
+### Backup/support/jobs
+Already model long-running status/result/artifact lifecycles.
+
+These are convergent evidence that Transaction deserves a first-class platform contract.
+
+## Proposed Transaction lifecycle
+
+Not every Action needs this.
+
+For consequential/reversible/multi-step mutations:
+
+    PLAN
+      ->
+    SNAPSHOT / PREPARE
+      ->
+    APPLY
+      ->
+    PROBATION / OBSERVE
+      ->
+    VERIFY
+      ->
+    COMMIT
+       or
+    ROLLBACK
+      ->
+    JOURNAL / EXPLAIN
+
+TransactionSpec may declare:
+- id/kind;
+- Action origin;
+- actor;
+- target;
+- plan;
+- before fingerprint/snapshot;
+- ordered steps;
+- verification conditions;
+- probation interval;
+- rollback adapter;
+- restart/reboot requirements;
+- resource/storage requirements;
+- result;
+- Doctor interpretation;
+- timestamps.
+
+## One Transaction Journal
+
+A high-value longer-term consolidation is one append-only Transaction Journal consumed by:
+- Doctor;
+- Recovery Vault;
+- support bundles;
+- known-good drift;
+- owner customization history;
+- Studio history;
+- Procedures.
+
+This does not require every subsystem to store huge rollback payloads in one database.
+The journal can reference subsystem-specific snapshots/artifacts.
+
+## Simple Action versus Transaction
+
+Avoid bureaucratizing the system.
+
+Examples likely **not** requiring a full Transaction:
+- read-only snapshot;
+- provider preference selection that activates nothing;
+- opening/saving a lightweight owner preference;
+- Doctor known-good checkpoint if it only writes Doctor metadata.
+
+Examples likely requiring Transaction:
+- plugin enable/disable with service restart;
+- package/dependency changes;
+- Pack install/update/activation where executable behavior changes;
+- presentation ownership switch;
+- config rewrite;
+- recovery restore;
+- provider handoff/failover;
+- major cleanup with destructive deletion;
+- OS/base update.
+
+The ActionSpec should declare which lifecycle it requires.
+
+## Owner sovereignty — current design is good
+
+`OwnerModeManager` makes a valuable distinction:
+- Expert Mode is not OS privilege;
+- normal brokers still execute the change;
+- successful policy overrides mark the device customized;
+- owner support state becomes visible.
+
+Preserve:
+- policy blocker != technical impossibility;
+- local/root owner remains able to bypass Beast outside the managed system;
+- managed override paths are explicit/audited.
+
+### Improve: append-only customization ledger
+
+Current OwnerMode retains summary/last-override state plus action audit.
+
+Eventually unify this into an append-only customization/override ledger:
+- actor;
+- timestamp;
+- action;
+- target;
+- reason/policy blocker;
+- before/after;
+- Transaction id;
+- revert availability.
+
+Doctor can then distinguish:
+- unexplained drift;
+- known owner customization;
+- failed mutation;
+- current managed state.
+
+## Procedures sit above Actions/Transactions
+
+Procedure is orchestration, not a competing mutation authority.
+
+A Procedure:
+- invokes probes;
+- calls registered Actions;
+- may start Transactions;
+- gathers results;
+- invokes Doctor interpretation;
+- presents next steps.
+
+This prevents a future Procedure ecosystem from becoming a shadow shell-script execution framework.
+
