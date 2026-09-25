@@ -148,12 +148,28 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
 
     # One chassis occupies the screen. Subsystems are separated by frame rails,
     # not rounded independent cards.
-    d.rectangle((8, 36, 471, 275), fill=(35, 34, 30), outline=_EDGE, width=2)
-    d.rectangle((12, 53, 467, 264), fill=(27, 27, 24), outline=_METAL_2)
+    chassis = [
+        (8, 44), (18, 36), (461, 36), (471, 46),
+        (471, 265), (461, 275), (18, 275), (8, 265),
+    ]
+    d.polygon(chassis, fill=(35, 34, 30), outline=_EDGE)
+    inner = [
+        (13, 57), (21, 51), (458, 51), (466, 58),
+        (466, 257), (458, 264), (21, 264), (13, 257),
+    ]
+    d.polygon(inner, fill=(27, 27, 24), outline=_METAL_2)
+
+    # Exposed structural rails, braces and fasteners rather than card dividers.
     for x in (160, 320):
-        d.rectangle((x-2, 52, x+2, 264), fill=_METAL_2)
-        for y in (62, 132, 205, 252):
-            d.ellipse((x-4, y-2, x+4, y+6), fill=_EDGE, outline=_BG)
+        d.line((x, 54, x, 260), fill=_METAL_2, width=3)
+        d.line((x-8, 62, x, 54, x+8, 62), fill=_EDGE, width=1)
+        d.line((x-8, 252, x, 260, x+8, 252), fill=_EDGE, width=1)
+        for y in (69, 132, 205, 246):
+            d.ellipse((x-3, y-3, x+3, y+3), fill=_EDGE, outline=_BG)
+    for x,y in ((23,61),(456,61),(23,252),(456,252)):
+        d.ellipse((x-3,y-3,x+3,y+3), fill=_EDGE, outline=_BG)
+    d.line((18, 172, 47, 197), fill=(70, 66, 55), width=2)
+    d.line((462, 171, 431, 199), fill=(70, 66, 55), width=2)
 
     # COMPUTE bay: one physical gauge plus memory rail.
     _bay_title(d, 14, 158, "COMPUTE CORE", f"{meta['temp_c']:.0f}C", state_color=_OK if meta["temp_c"] < 75 else _WARN)
@@ -168,6 +184,12 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
         "forge.compute", "instrument", (14, 34, 158, 148),
         signals=("system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct"), update_class="live",
     ))
+
+    # Heat-sink fins and conduit make the compute bay feel physically installed.
+    d.text((21, 130), "HEAT SINK", fill=_MUTED, font=_font(6))
+    for vx in range(24, 143, 11):
+        d.line((vx, 141, vx+7, 141), fill=(80, 76, 63), width=2)
+    d.line((145, 91, 151, 91, 151, 139), fill=_EDGE, width=1)
 
     # RADIO bay: frequency ruler and channel are embedded in the chassis.
     _bay_title(d, 164, 318, "RADIO DECK", meta["band"], state_color=_OK)
@@ -187,6 +209,10 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
         signals=("radio.primary.channel", "radio.primary.band", "wifi.ap_count"), update_class="live",
     ))
 
+    d.text((274, 135), "RF COUPLER", fill=_MUTED, font=_font(6))
+    d.line((286, 128, 302, 128, 307, 133), fill=_EDGE, width=1)
+    d.arc((303, 126, 315, 138), 205, 335, fill=_AMBER, width=1)
+
     # POWER bay is truthful about absent telemetry; still looks like hardware.
     power_col = _OK if meta["power_available"] else _EDGE
     power_state = "SENSOR ONLINE" if meta["power_available"] else "NO SENSOR"
@@ -201,6 +227,9 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
         "forge.power", "instrument", (324, 34, 466, 148),
         signals=("power.telemetry.available", "power.ups.state"), update_class="live",
     ))
+
+    d.text((389, 133), "POWER BUS", fill=_MUTED, font=_font(6))
+    d.line((451, 74, 456, 74, 456, 139, 446, 139), fill=power_col, width=1)
 
     # Shared bus physically binds every subsystem. Beast is the machine core.
     d.rectangle((24, 155, 455, 163), fill=_METAL_2)
@@ -238,8 +267,10 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
         update_class="ambient", reduced_motion="static", decorative=True,
     ))
 
-    # Lower machine bay: ports/capabilities on the left, fault/governor stack on right.
-    d.line((14, 194, 465, 194), fill=_EDGE)
+    # Lower machine floor: open service area, not another dashboard row.
+    d.line((18, 194, 286, 194), fill=_EDGE)
+    d.line((300, 194, 459, 194), fill=_EDGE)
+    d.line((291, 188, 296, 194, 291, 200), fill=_AMBER, width=2)
     d.text((18, 181), "I/O FABRIC", fill=_MUTED, font=_font(8))
     ethernet = bool(meta["ethernet"])
     _port(d, 20, 207, active=ethernet)
@@ -255,13 +286,18 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
         signals=("capabilities.count", "network.ethernet.carrier", "radio.primary.channel"), update_class="live",
     ))
 
-    d.rectangle((302, 200, 458, 258), outline=_EDGE, width=1)
-    d.text((312, 207), "DOCTOR / GOVERNOR", fill=_MUTED, font=_font(8))
+    # Doctor/governor is stencilled directly onto the service plate.
+    d.text((309, 204), "DOCTOR // GOVERNOR", fill=_MUTED, font=_font(8))
     attention = meta["attention_count"]
     doctor_text = "READY" if attention == 0 and health == "HEALTHY" else f"{attention} ATTENTION"
-    d.ellipse((312, 226, 326, 240), fill=_OK if doctor_text == "READY" else _WARN)
-    d.text((335, 224), doctor_text, fill=_INK, font=_font(11))
-    d.text((335, 242), f"GOV {meta['governor'].upper()}", fill=_AMBER, font=_font(8))
+    led_col = _OK if doctor_text == "READY" else _WARN
+    d.ellipse((310, 225, 324, 239), fill=led_col)
+    d.ellipse((306, 221, 328, 243), outline=(64, 62, 52), width=1)
+    d.text((337, 221), doctor_text, fill=_INK, font=_font(11))
+    d.text((337, 240), f"GOV {meta['governor'].upper()}", fill=_AMBER, font=_font(8))
+    d.line((304, 254, 454, 254), fill=(70, 67, 56), width=1)
+    for x in (309, 347, 385, 423):
+        d.line((x, 250, x+18, 250), fill=_METAL_2, width=2)
     _register(rt, SceneLayerSpec(
         "forge.doctor", "instrument", (302, 198, 460, 262),
         signals=("overview.attention", "health.core.state", "governor.mode"), update_class="live",
