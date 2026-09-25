@@ -1686,6 +1686,37 @@ class BeastUI:
             rows.append({'title':'LOCAL MODELS','subtitle':'Model files discovered in Beast model roots','value':str(self.state.get('ai.models.count') or 0),'severity':'info'})
             rows.append({'title':'PRIVILEGE MODEL','subtitle':'Observer / Operator / Maintainer / Administrator Session','value':'ACTION BROKER','severity':'info'})
         elif mode=='diagnostics':
+            coverage=self.state.get('doctor.coverage') or {}
+            counts=coverage.get('counts') or {} if isinstance(coverage,dict) else {}
+            covered=int(counts.get('covered',0) or 0);unavailable=int(counts.get('unavailable',0) or 0);unknown=int(counts.get('unknown',0) or 0)
+            total=int(coverage.get('count',covered+unavailable+unknown) or 0) if isinstance(coverage,dict) else 0
+            if total:
+                rows.append({
+                    'title':'DOCTOR COVERAGE',
+                    'subtitle':f'{covered} covered / {unavailable} unavailable / {unknown} unknown',
+                    'value':'FULL' if unknown==0 else 'PARTIAL',
+                    'severity':'info' if unknown==0 else 'warning',
+                })
+            patient=self.state.get('doctor.patient.identity') or {}
+            if isinstance(patient,dict) and any(patient.values()):
+                model=str(patient.get('model') or 'unknown model')
+                arch=str(patient.get('architecture') or 'unknown arch')
+                kernel=str(patient.get('kernel') or 'unknown kernel')
+                rows.append({
+                    'title':'PATIENT CHART',
+                    'subtitle':f'{model} / {arch} / kernel {kernel}'[:67],
+                    'value':str(patient.get('os_id') or 'IDENTIFIED').upper()[:14],
+                    'severity':'info',
+                })
+                py=str(patient.get('python_version') or 'unknown')
+                pwn=str(patient.get('pwnagotchi_version') or 'unknown')
+                osver=str(patient.get('os_version_id') or patient.get('os_build_id') or 'unknown')
+                rows.append({
+                    'title':'COMPATIBILITY FINGERPRINT',
+                    'subtitle':f'Pwnagotchi {pwn} / Python {py} / OS {osver}'[:67],
+                    'value':'READ ONLY',
+                    'severity':'info',
+                })
             names=[]
             for k in self.state:
                 if k.startswith('health.collector.') and k.endswith('.state'):
