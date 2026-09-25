@@ -4,7 +4,7 @@ import pytest
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from beastui.home_scenes import render_home_scene, _paste_concept_creature
-from beastui.concept_creatures import concept_creature
+from beastui.concept_creatures import concept_creature, concept_creature_scene
 from beastui.scene_compositor import (
     ambient_glow,
     clear_compositor_caches,
@@ -227,3 +227,14 @@ def test_concept_creature_is_upscaled_to_scene_scale_not_native_thumbnail():
     # Flagship concept art must materially own its assigned scene region.
     assert width >= 150
     assert height >= 120
+
+
+def test_scene_scale_concept_creature_preprocessing_is_cached():
+    a = concept_creature_scene("classic", 250, 182, 10)
+    b = concept_creature_scene("classic", 250, 182, 10)
+    c = concept_creature_scene("classic", 220, 160, 10)
+    assert a is not None and b is not None and c is not None
+    assert a is b
+    assert a is not c
+    assert a.width <= 250 and a.height <= 182
+    assert a.width >= 150 and a.height >= 120
