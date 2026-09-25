@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .experience_compiler import compile_builtin_catalog, compile_pack_experience
-from .experience_surfaces import experience_surface_coverage
+from .experience_surfaces import experience_native_target_coverage, experience_surface_coverage
 
 
 class ExperiencePlanPublisher:
@@ -31,6 +31,7 @@ class ExperiencePlanPublisher:
         profile: dict[str, Any],
         context: str,
         coverage: dict[str, list[str]],
+        target_coverage: dict[str, list[str]],
     ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
         rows: list[dict[str, Any]] = []
         errors: list[dict[str, str]] = []
@@ -66,6 +67,7 @@ class ExperiencePlanPublisher:
                     context=context,
                     resolver=self.resolver,
                     renderer_pages=coverage.get(renderer_ref, []),
+                    renderer_native_targets=target_coverage.get(renderer_ref, ["reference"]),
                     source_pack=str(mission.get("source_pack") or ""),
                     source_file=str(mission.get("source_file") or ""),
                 )
@@ -91,13 +93,15 @@ class ExperiencePlanPublisher:
         profile = dict(self.platform_profile.snapshot() or {})
         context = self._context()
         coverage = experience_surface_coverage()
+        target_coverage = experience_native_target_coverage()
         rows = compile_builtin_catalog(
             profile,
             context=context,
             resolver=self.resolver,
             renderer_coverage=coverage,
+            native_target_coverage=target_coverage,
         )
-        pack_rows, pack_errors = self._pack_plans(profile, context, coverage)
+        pack_rows, pack_errors = self._pack_plans(profile, context, coverage, target_coverage)
         rows.extend(pack_rows)
         preview_ready = sum(1 for row in rows if row.get("ready_for_preview") is True)
         production_ready = sum(
@@ -118,6 +122,7 @@ class ExperiencePlanPublisher:
             "preview_ready_count": preview_ready,
             "production_navigation_ready_count": production_ready,
             "renderer_coverage": coverage,
+            "native_target_coverage": target_coverage,
             "items": rows,
             "writes_preferences": False,
             "installs_dependencies": False,
