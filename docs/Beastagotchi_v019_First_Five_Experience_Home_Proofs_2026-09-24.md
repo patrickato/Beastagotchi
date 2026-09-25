@@ -57,7 +57,7 @@ Reads as a living companion environment.
 - Expedition state appears as an ambient roaming cue;
 - operational truth remains present in a small strip rather than reclaiming the screen.
 
-Current limitation: creature art is still procedural proof art. Final Habitat will need much richer creature/environment assets and behavior choreography.
+Current fidelity update: the former circle/dot-eye mascot has been replaced by a layered organic companion portrait with body/shoulder depth, head/cheek planes, inner ears, expressive eyes, mood-driven mouth and a small collar identity tag. It remains procedural/project-owned proof art; richer Pack-ready creature/environment assets and behavior choreography are still future fidelity work.
 
 ## Monolith
 
