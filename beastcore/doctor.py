@@ -286,6 +286,7 @@ class BeastDoctor:
         coverage = self.diagnostic_coverage()
         identity = self.patient_identity()
         self.patient.observe_identity_coverage(identity, coverage)
+        self.patient.refresh_recurrence()
         patient_memory = self.patient.summary()
         return {
             "schema": self.schema,
