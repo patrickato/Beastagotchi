@@ -20,7 +20,7 @@ Reads as a field/expedition instrument.
 - Beast is a supporting field companion;
 - live radio/discovery/journey/system facts stay at the edge.
 
-Current limitation: the right-side instrument stack is still somewhat card-like and should be integrated more organically into the field language in later fidelity work.
+Current fidelity update: the former four-card right-side stack has been replaced by a ruled field-notebook margin; the field canvas now bleeds across the body and the expedition ledger spans the page. Remaining work is source-art/environment depth and owner visual acceptance.
 
 ## Forge
 
@@ -32,7 +32,7 @@ Reads as an industrial machine bay.
 - unavailable power telemetry is shown as NO SENSOR rather than invented;
 - Doctor is visually native and prominent.
 
-Current limitation: visual material/texture is still schematic; future fidelity work should make it feel more physical without turning it into decorative steampunk.
+Current fidelity update: Home has been rebuilt as a single continuous chassis with integrated compute gauge, radio deck, power train, machine bus/Beast core, I/O ports and mounted Doctor/Governor fault module. It no longer uses the repeated rounded-card module layout. Material/texture remains intentionally restrained; owner visual acceptance is still pending.
 
 ## Observatory
 
@@ -45,7 +45,7 @@ Reads as a scientific measurement station.
 - footer explicitly says NO SYNTHETIC HISTORY;
 - Beast is a small observer rather than the visual center.
 
-Current limitation: larger-history/correlation surfaces need genuine persisted history before they can be added.
+Current fidelity update: Home now uses one continuous measurement surface with open scientific axes, an integrated observed-band comparison strip and a ruled provenance/observer margin instead of boxed plot/provenance panels. Larger-history/correlation surfaces still require genuine persisted history before they can be added.
 
 ## Habitat
 
