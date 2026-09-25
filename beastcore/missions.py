@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .experience_dna import experience_dna_from_dict
+
 BUILTINS=(
     {'id':'field-survey','label':'Field Survey','description':'Portable RF/GPS observation session','deck':'field','theme':'classic','apps':['overview','recon','spectrum','map','expedition','capture_vault'],'capabilities':['display'],'checklist':['Confirm storage health','Confirm GPS state','Start or resume Expedition','Review captures before ending session']},
     {'id':'road-trip','label':'Road Trip','description':'Navigation, Expedition and low-distraction status','deck':'field','theme':'ghost_minimal','apps':['overview','map','expedition','system'],'capabilities':['gps'],'checklist':['Confirm GPS receiver','Check available storage','Use low-distraction layout']},
@@ -28,15 +30,50 @@ class MissionPackEngine:
         board=str(obj.get('board') or '')[:96]
         layout=str(obj.get('layout') or '')[:96]
         theme=str(obj.get('theme') or '')[:64]
-        experience=bool(theme or face_profile or animation_profile or board or layout)
+        raw_dna=dict(obj.get('experience_dna') or {}) if isinstance(obj.get('experience_dna'),dict) else {}
+        raw_policy=dict(obj.get('experience_policy') or {}) if isinstance(obj.get('experience_policy'),dict) else {}
+        def sv(value,limit=32):
+            return [str(x).strip()[:128] for x in value[:limit] if str(x).strip()] if isinstance(value,list) else []
+        policy={
+            'requires':sv(raw_policy.get('requires')),
+            'optional_requirements':sv(raw_policy.get('optional_requirements')),
+            'preferred_pages':[str(x).strip().lower()[:48] for x in sv(raw_policy.get('preferred_pages'))],
+            'presentation_engine':str(raw_policy.get('presentation_engine') or 'beast_scene').strip()[:64],
+            'fallback_policy':str(raw_policy.get('fallback_policy') or 'identity_preserving').strip()[:64],
+        }
+        renderer=str(obj.get('experience_renderer') or raw_policy.get('renderer') or '').strip().lower()[:64]
+        experience=bool(theme or face_profile or animation_profile or board or layout or raw_dna)
         return {
             'id':mid[:64],'label':label[:64],'description':str(obj.get('description') or '')[:180],
             'deck':str(obj.get('deck') or '')[:32],'theme':theme,'face_profile':face_profile,
             'animation_profile':animation_profile,'board':board,'layout':layout,
             'apps':sl('apps'),'capabilities':sl('capabilities'),'checklist':sl('checklist'),
+            'experience_dna':raw_dna,'experience_policy':policy,'experience_renderer':renderer,
             'source':str(obj.get('source') or 'user')[:128],
             'readonly':bool(obj.get('readonly',False)),'experience':experience,
         }
+
+    @staticmethod
+    def _finalize_experience(row: dict[str, Any]) -> dict[str, Any]:
+        raw = row.get("experience_dna")
+        if not isinstance(raw, dict) or not raw:
+            row["experience_dna_valid"] = False
+            row["experience_dna_error"] = ""
+            return row
+        try:
+            dna = experience_dna_from_dict(
+                raw,
+                experience_id=str(row.get("id") or ""),
+                label=str(row.get("label") or row.get("id") or "Experience"),
+            )
+            row["experience_dna"] = dna.as_dict()
+            row["experience_dna_valid"] = True
+            row["experience_dna_error"] = ""
+        except ValueError as exc:
+            row["experience_dna_valid"] = False
+            row["experience_dna_error"] = str(exc)[:320]
+        row["experience"] = True
+        return row
 
     @staticmethod
     def _runtime_id(pack_id: str, mission_id: str)->str:
@@ -65,6 +102,7 @@ class MissionPackEngine:
                         if not row:continue
                         local_id=row['id'];row['local_id']=local_id;row['id']=self._runtime_id(pack_id,local_id)
                         row['source_pack']=pack_id;row['source_file']=str(fp)
+                        self._finalize_experience(row)
                         out.append(row)
             except Exception:continue
         return out
@@ -77,7 +115,9 @@ class MissionPackEngine:
             except Exception:continue
             if not isinstance(obj,dict):continue
             obj=dict(obj,source='user');row=self._clean(obj)
-            if row:merged[row['id']]=row
+            if row:
+                self._finalize_experience(row)
+                merged[row['id']]=row
         for row in self._pack_missions():
             merged[row['id']]=row
         return list(merged.values())
