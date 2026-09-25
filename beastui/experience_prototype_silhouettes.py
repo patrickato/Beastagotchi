@@ -30,12 +30,13 @@ PROTOTYPE_SILHOUETTES: dict[str, PrototypeSilhouette] = {
         PrototypeRegion("journey", "timeline", (124, 284, 470, 314), 1),
     )),
     "forge": PrototypeSilhouette("forge", (
-        PrototypeRegion("compute", "module", (12, 40, 150, 142), 3),
-        PrototypeRegion("radio", "module", (164, 40, 304, 142), 3),
-        PrototypeRegion("power", "module", (318, 40, 468, 142), 3),
-        PrototypeRegion("storage", "module", (12, 156, 228, 270), 3),
-        PrototypeRegion("doctor", "module", (242, 156, 468, 270), 4),
-        PrototypeRegion("machine_bus", "bus", (60, 276, 420, 306), 1),
+        PrototypeRegion("chassis", "chassis", (8, 36, 472, 275), 6),
+        PrototypeRegion("compute_gauge", "instrument", (18, 52, 154, 145), 2),
+        PrototypeRegion("radio_deck", "instrument", (164, 52, 316, 145), 2),
+        PrototypeRegion("power_train", "instrument", (326, 52, 464, 145), 2),
+        PrototypeRegion("machine_bus", "bus", (24, 146, 456, 180), 2),
+        PrototypeRegion("io_fabric", "instrument", (18, 194, 292, 262), 2),
+        PrototypeRegion("doctor_core", "instrument", (304, 198, 458, 260), 2),
     )),
     "observatory": PrototypeSilhouette("observatory", (
         PrototypeRegion("primary_plot", "plot", (10, 38, 336, 184), 5),
@@ -89,6 +90,7 @@ def render_silhouette(
         "timeline": 115,
         "ambient": 220,
         "bus": 105,
+        "chassis": 225,
     }
     for region in spec.regions:
         fill = tones.get(region.kind, 170)
