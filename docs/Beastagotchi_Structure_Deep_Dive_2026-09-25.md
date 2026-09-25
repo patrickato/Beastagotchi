@@ -799,3 +799,200 @@ A Procedure:
 
 This prevents a future Procedure ecosystem from becoming a shadow shell-script execution framework.
 
+
+---
+
+# Layer 2D — Capabilities, dependencies and providers
+
+## Current boundary is strong
+
+The current separation is structurally correct:
+
+### DependencyCapabilityResolver
+Answers:
+- what a component requires;
+- whether evidence satisfies it;
+- technical blocker vs policy blocker;
+- remediation class;
+- which providers can satisfy it.
+
+It is deliberately side-effect free.
+
+### CapabilityProviderArbitrator
+Answers:
+- candidate providers;
+- selected/ready state;
+- active provider;
+- owner preference;
+- recommendation;
+- fallback chain;
+- health/confidence/freshness;
+- whether an owner choice is required.
+
+It is deliberately read-only:
+- no automatic selection mutation;
+- no automatic failover.
+
+### ProviderPreferenceManager
+Stores owner preference only.
+Setting a preference does not enable/start/switch a provider.
+
+Protect this separation.
+
+## Future scaling concern
+
+Native-provider discovery and some requirement knowledge currently live as hard-coded resolver logic.
+
+As hardware/plugins/community providers grow, introduce registries rather than extending one giant
+resolver indefinitely.
+
+Potential contracts:
+- CapabilitySpec;
+- ProviderSpec;
+- RequirementProbe.
+
+A ProviderSpec may declare:
+- provider id;
+- capabilities provided;
+- readiness/health evidence;
+- confidence/freshness;
+- technical requirements;
+- selection state;
+- activation adapter if one exists;
+- resource cost;
+- ownership/conflict class.
+
+The read-only resolver/arbitrator consumes registrations.
+Activation remains an Action/Transaction responsibility.
+
+## Automatic failover
+
+Do not enable merely because fallback chains exist.
+
+Future automatic provider handoff should require:
+- provider-specific Transaction adapter;
+- snapshot/prepare;
+- acquire;
+- probation;
+- verification;
+- rollback;
+- Doctor evidence;
+- owner policy allowing automatic failover.
+
+The current explicit `automatic_failover_enabled=False` is the correct default.
+
+---
+
+# Layer 2E — Doctor's structural place in Core
+
+## Doctor is an interpreter/medical authority, not mutation authority
+
+Current `BeastDoctor` is correctly read-only over canonical Beast state plus a durable Patient
+Chart.
+
+Doctor should own:
+- diagnostic interpretation;
+- Patient Chart;
+- diagnostic coverage;
+- recurrence memory;
+- known-good comparison;
+- causal/explanation output;
+- recommendations;
+- treatment outcome memory;
+- health presentation semantics.
+
+Doctor should **not** directly own:
+- systemctl/package mutation;
+- plugin mutation;
+- provider switching;
+- config rewriting;
+- display ownership mutation;
+- arbitrary shell execution.
+
+Preferred treatment flow:
+
+    Doctor finding
+        ->
+    explanation / evidence
+        ->
+    recommended Action or Procedure
+        ->
+    owner/policy approval
+        ->
+    ActionBroker / TransactionEngine
+        ->
+    verification evidence
+        ->
+    Doctor interprets result
+        ->
+    Patient Chart remembers
+
+This supports the TFT heartbeat/health affordance while keeping authority clean.
+
+## Doctor and IncidentEngine
+
+IncidentEngine currently owns detailed durable system incidents.
+
+Patient Chart correctly stores compact recurrence summaries instead of duplicating the Black Box.
+
+Long-term Doctor should consume IncidentEngine/Store as one of its evidence sources rather than
+re-implementing the same incident detectors.
+
+Suggested hierarchy:
+- collectors/modules publish canonical state;
+- SemanticEngine produces meaningful transitions;
+- IncidentEngine owns detailed condition episodes;
+- Doctor interprets incidents + provider/dependency health + drift + diagnostic coverage;
+- Patient Chart remembers compact patient history.
+
+Avoid two independent systems separately deciding that the same condition exists.
+
+## Doctor coverage should expand by evidence, not giant hard-coded if chains
+
+As Module/Signal/Capability registries mature, Doctor can derive more of its diagnostic map from
+registered metadata:
+- module health probes;
+- capability status;
+- provider decisions;
+- Signal freshness/quality;
+- known conditions/runbooks;
+- Transaction outcomes.
+
+This lets Doctor coverage grow with the ecosystem.
+
+Condition/runbook packs may teach Doctor how to interpret new conditions, but knowledge does not
+inherit mutation authority.
+
+## Doctor UI/actions
+
+A Doctor finding should be able to expose contextual next steps:
+- VIEW EVIDENCE;
+- RUN DIAGNOSTIC;
+- TAKE ACTION;
+- FIX THIS;
+- RESTART & VERIFY;
+- RUN PROCEDURE;
+- BUILD SUPPORT BUNDLE;
+- IGNORE / REMIND LATER where appropriate.
+
+These are links into registered Actions/Procedures, not direct Doctor-side mutations.
+
+## Patient Chart
+
+Current design is strong:
+- privacy-light technical identity;
+- diagnostic coverage;
+- bounded recurrence;
+- bounded known-good history;
+- change-gated writes.
+
+Future additions worth considering:
+- successful/failed remedy history;
+- Transaction references;
+- owner-customization references;
+- condition last-treatment/last-verified timestamps;
+- chronic/recurrent classification;
+- explicit "under observation/recovery" state for the proposed blue heartbeat status.
+
+Do not turn Patient Chart into a full duplicate event database.
+
