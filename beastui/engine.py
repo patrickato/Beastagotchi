@@ -31,7 +31,7 @@ from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
 from .components import transient_notice
-from .design import TOKENS
+from .design import TOKENS, page_group, page_group_boundaries
 from . import __version__ as UI_VERSION
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
 from .qr_render import draw_qr, qr_backend_status
@@ -1118,13 +1118,29 @@ class BeastUI:
         center_col=t.c('accent') if flash=='home' else t.c('text')
         center_name='HOME' if cur_id=='home' else name
         tw=d.textbbox((0,0),center_name,font=f['small'])[2]
-        d.text((240-tw//2,285),center_name,font=f['small'],fill=center_col)
-        index=f'{idx+1} / {count}';iw=d.textbbox((0,0),index,font=f['micro'])[2]
-        d.text((240-iw//2,299),index,font=f['micro'],fill=t.c('dim'))
-        total=(count-1)*7+13;x=240-total//2
-        for i in range(count):
-            w=13 if i==idx else 5
-            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=t.c('accent') if i==idx else t.c('edge'));x+=w+2
+        d.text((240-tw//2,284),center_name,font=f['small'],fill=center_col)
+
+        # The page rail is a semantic product carousel, not an undifferentiated
+        # row of eleven pages. Group label adds orientation without changing
+        # swipe/touch behavior or consuming more vertical space.
+        group=page_group(cur_id).upper()
+        meta=f'{group} · {idx+1}/{count}'
+        iw=d.textbbox((0,0),meta,font=f['micro'])[2]
+        d.text((240-iw//2,298),meta,font=f['micro'],fill=t.c('dim'))
+
+        boundaries=set(page_group_boundaries())
+        widths=[13 if i==idx else 5 for i in range(count)]
+        total=sum(widths)+2*(count-1)+5*len(boundaries)
+        x=240-total//2
+        current_group=page_group(cur_id)
+        for i,page_id in enumerate(self.pages.IDS):
+            if i in boundaries:x+=5
+            w=widths[i]
+            if i==idx:dot_col=t.c('accent')
+            elif page_group(page_id)==current_group:dot_col=t.c('primary')
+            else:dot_col=t.c('edge')
+            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=dot_col)
+            x+=w+2
 
         if flash and str(flash).startswith('renderer:'):
             label=str(flash).split(':')[-1].upper()[:18]
