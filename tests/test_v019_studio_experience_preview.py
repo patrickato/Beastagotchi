@@ -57,8 +57,10 @@ def test_studio_reads_core_compiled_experience_plan_without_local_recompile():
     assert row["tft_activation_enabled"] is False
 
 
-def test_studio_html_exposes_core_backed_builtin_experience_browser():
+def test_studio_html_exposes_core_backed_compiled_experience_browser():
     from beaststudio.server import HTML
     assert 'id="builtinExperienceList"' in HTML
     assert "jfetch('/api/experiences')" in HTML
-    assert "previewBuiltinExperience" in HTML
+    assert "COMPILED EXPERIENCE DNA" in HTML
+    assert "previewCompiledExperience" in HTML
+    assert "renderer_experience_id" in HTML
