@@ -2223,3 +2223,262 @@ Compiler must validate:
 
 Third-party presentation requests capability; it does not grant itself capability.
 
+
+---
+
+# Layer 4A — BeastUI, touch/input and local presentation state
+
+## BeastUI is the largest current presentation composition root
+
+Current `beastui/engine.py` is approximately:
+- 2,300 lines;
+- 167 KiB source.
+
+It currently owns or directly coordinates:
+- theme discovery/options;
+- presentation preferences;
+- pages/navigation;
+- Apps;
+- many overlay booleans + offsets/detail state;
+- touch/input routing;
+- Native Pwnagotchi presentation;
+- rare/Monster precedence;
+- dashboard boards;
+- telemetry/history snapshots;
+- notices;
+- transitions;
+- frame cadence;
+- resource/thermal adaptation;
+- framebuffer writes;
+- runtime performance telemetry.
+
+This works, but it is becoming the primary scaling risk in the UI layer.
+
+The correct goal is not arbitrary file splitting.
+The goal is **responsibility extraction behind stable interfaces**.
+
+## Touch acquisition — keep
+
+`TouchInput` is structurally good:
+- discovers ADS7846 dynamically;
+- reads Linux input directly;
+- samples complete SYN frames;
+- filters/noise-hardens gestures;
+- emits touch-down/drag/up/tap/long-press/swipe;
+- writes bounded ephemeral traces under `/run`;
+- separates physical calibration from logical UI behavior.
+
+Keep physical-input acquisition separate from UI semantics.
+
+## Input routing — current bottleneck
+
+`BeastUI.on_input()` is a large explicit priority ladder:
+- Monster reveal;
+- Rare Moment;
+- Native mode;
+- App launcher;
+- Capsule;
+- Telemetry;
+- Widget inspector;
+- Correlation;
+- Plugins;
+- BeastDex;
+- Capture Vault;
+- Performance;
+- platform overlays;
+- Studio overlay;
+- themes;
+- visualizers;
+- achievements;
+- help;
+- page navigation;
+- drawer;
+- etc.
+
+This encodes z-order/modal precedence implicitly in code order.
+
+Every new Surface increases the chance that:
+- a touch leaks through;
+- an overlay wins at the wrong priority;
+- close/back behavior differs;
+- swipe semantics collide.
+
+### Direction: SurfaceStack + InputRouter
+
+A Surface instance should declare:
+- id/kind;
+- modality;
+- z/priority;
+- visible/active state;
+- input handler;
+- dismiss/back policy;
+- bounds/hit regions;
+- whether it captures tap/swipe/long-press;
+- Scene renderer.
+
+InputRouter:
+1. normalizes gesture;
+2. walks active SurfaceStack top-down;
+3. dispatches to first Surface that accepts it;
+4. only reaches primary navigation when no higher Surface consumes it.
+
+Monster/Rare/critical Doctor priority becomes declarative rather than code-order magic.
+
+## NavigationController
+
+Separate:
+- primary page index/group transitions;
+- App launcher;
+- back/close;
+- context deck selection;
+- Surface deep links.
+
+Primary pages remain swipe-first.
+Apps/overlays remain one layer deeper.
+The controller consumes SurfaceRegistry rather than hard-coded overlay booleans.
+
+## Overlay state
+
+Current dozens of booleans/offset/detail fields should gradually become per-Surface state objects.
+
+Example:
+
+    SurfaceSession(
+      id="capture_vault",
+      offset=6,
+      selected_id="...",
+      opened_from="apps"
+    )
+
+This avoids one BeastUI object growing a permanent field for every future feature.
+
+Do not convert all existing overlays at once; migrate opportunistically behind a Surface adapter.
+
+## PresentationPreferenceStore
+
+Current presentation preferences are implemented twice:
+- BeastUI directly reads/writes `preferences.json`;
+- Beast Studio independently validates, backs up and atomically writes the same file.
+
+This creates schema/default/version drift risk.
+
+Introduce one shared **PresentationPreferenceStore** responsible for:
+- schema version;
+- defaults;
+- validation;
+- atomic writes;
+- backup/rollback history;
+- change fingerprint;
+- migration;
+- preference-change event/signal.
+
+Consumers:
+- BeastUI;
+- Beast Studio;
+- future CLI/mobile client;
+- roster preferred-presentation storage adapter.
+
+BeastUI should consume the store rather than knowing file serialization details.
+
+Studio may still edit preferences directly through this safe non-privileged contract; ordinary visual
+preference changes do not need ActionBroker.
+
+## Preference versus system mutation boundary
+
+Presentation preferences include:
+- theme;
+- face/animation selection;
+- renderer choice;
+- dashboard layout;
+- context decks;
+- palette;
+- correlation preferences.
+
+These are safe owner presentation state.
+
+Changes that affect:
+- services;
+- Pwnagotchi config;
+- provider activation;
+- package/plugin state;
+- physical presentation owner;
+
+remain Actions/Transactions.
+
+Make this distinction explicit in code/contracts.
+
+## Small confirmed metadata drift
+
+Beast Studio currently reports schema `version: "0.18.0"` while the active development line is
+v0.19.
+
+This is a small bug, but it demonstrates why version/default/schema metadata should come from one
+shared contract rather than duplicated literals.
+
+## Render loop — keep the good behavior
+
+Current UI loop already does several things well:
+- DataFeed never blocks rendering;
+- dirty Event gates rendering;
+- adaptive FPS reacts to thermal/CPU/governor state;
+- static pages do not redraw merely because FPS budget permits it;
+- background layers have independent cadence;
+- framebuffer writes use dirty-row spans;
+- render/write timing is exposed.
+
+Preserve these behaviors while extracting structure.
+
+## Framebuffer writer — protect
+
+Current `FrameBuffer`:
+- RGB565 conversion;
+- previous-frame comparison;
+- dirty row/span merging;
+- full-write threshold;
+- write telemetry.
+
+This is a strong physical-target optimization.
+
+Scene dirty bounds should eventually inform compositor work **before** full-image generation, while
+Framebuffer row diff remains the final physical safety net.
+
+## DataFeed — migrate transport, preserve threading isolation
+
+Current DataFeed:
+- polls `/live` every 0.5 sec;
+- batches history every 5 sec;
+- avoids one request per graph;
+- exposes lock-protected snapshots;
+- only dirties UI when state/event sequence changes.
+
+This is already improved over naïve polling.
+
+Future:
+- WebSocket initial snapshot + state/event patches;
+- sequence-gap/reconnect full resync;
+- HTTP batches for history/platform data;
+- current polling mode as fallback.
+
+Keep network I/O off the render thread.
+
+## Proposed BeastUI target
+
+    BeastUIShell
+      |- RenderRuntime
+      |- SurfaceStack
+      |- InputRouter
+      |- NavigationController
+      |- PresentationPreferenceStore client
+      |- DataFeed
+      |- FrameBuffer
+      |- TouchInput
+      |- Transient/Notice controller
+
+Feature-specific Surfaces own their own:
+- view state;
+- input;
+- rendering;
+- pagination/detail selection.
+
+The shell coordinates; it does not accumulate every feature's fields forever.
+
