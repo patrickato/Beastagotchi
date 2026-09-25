@@ -40,6 +40,7 @@ class DesignTokens:
     motion_fast_s: float = 0.16
     motion_page_s: float = 0.24
     motion_notice_s: float = 0.30
+    notice_default_s: float = 2.40
 
     font_micro: int = 6
     font_tiny: int = 7
