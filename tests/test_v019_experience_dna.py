@@ -3,6 +3,7 @@ from beastcore.experience_dna import (
     LEGACY_REFERENCE_IDENTITIES,
     VISUAL_FAMILIES,
     compile_experience_variant,
+    experience_dna_from_dict,
     get_experience_dna,
     validate_builtin_experiences,
 )
@@ -109,3 +110,38 @@ def test_namespaced_pack_families_can_extend_presentation_without_core_patch():
     errors = bad.validate()
     assert any("visual_family" in x for x in errors)
     assert any("layout_family" in x for x in errors)
+
+
+def test_pack_dna_parser_validates_core_and_namespaced_axes():
+    row = experience_dna_from_dict({
+        "visual_family": "example.biomech",
+        "layout_family": "example.organism",
+        "density": "dense",
+        "motion_profile": "example.pulse",
+        "creature_presence": "supporting",
+        "utility_bias": "instrument",
+        "playfulness": "low",
+        "alert_style": "example.alert",
+        "input_model": "touch_first",
+        "doctor_visibility": "contextual",
+        "mystery_level": "discoverable",
+        "hardware_fit": ["reference", "large"],
+        "mission_bias": ["field", "signals"],
+        "tags": ["pack", "biomech"],
+    }, experience_id="pack_example_biomech", label="Pack Biomech")
+    assert row.id == "pack_example_biomech"
+    assert row.visual_family == "example.biomech"
+    assert row.layout_family == "example.organism"
+    assert row.hardware_fit == ("reference", "large")
+    assert row.validate() == ()
+
+    try:
+        experience_dna_from_dict({
+            "visual_family": "biomech",
+            "layout_family": "organism",
+        }, experience_id="bad_pack", label="Bad")
+    except ValueError as exc:
+        assert "visual_family" in str(exc)
+        assert "layout_family" in str(exc)
+    else:
+        raise AssertionError("unnamespaced Pack vocab should fail")
