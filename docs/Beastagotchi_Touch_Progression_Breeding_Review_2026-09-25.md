@@ -735,3 +735,203 @@ This model separates:
 age/maturity, visual form, accomplishment, behavior, rarity and endgame state instead of forcing all
 of them into one Stage label.
 
+
+---
+
+## 15. Layered progression integrity: tamper-evident, not owner-hostile
+
+The project owner wants trivial progression cheating to be intentionally frustrating/funny rather
+than one-line easy, while preserving open-source/root sovereignty.
+
+The design goal is **defense in depth for progression provenance**, not impossible local anti-cheat.
+
+### Principle
+
+No single editable value should be sufficient to manufacture a fully "verified" high-level Beast.
+
+Changing one layer should create inconsistencies detectable by another layer.
+
+### Layer A — materialized progression cache
+
+Fast runtime tables may contain:
+- xp;
+- level;
+- stage;
+- counters.
+
+These are caches/derived state.
+
+They are periodically recomputed/verified from the Life Ledger.
+
+If cache != ledger:
+- mark integrity mismatch;
+- rebuild cache from ledger;
+- record Doctor finding;
+- do not destroy owner data.
+
+### Layer B — Life Ledger hash chain
+
+Every progression-granting event records:
+- sequence;
+- creature id;
+- event/rule id;
+- rule-set version/hash;
+- XP delta;
+- bounded context;
+- previous entry hash;
+- entry hash;
+- optional device-local MAC/signature.
+
+Reordering/deleting/editing entries breaks the chain.
+
+### Layer C — independent checkpoints / Merkle-style summary
+
+Do not rely on only the ledger's own final hash.
+
+Periodically store independent progression checkpoints derived from:
+- ledger head hash;
+- total XP;
+- level;
+- achievement/unlock set digest;
+- creature identity/lineage id;
+- ruleset id.
+
+Possible stores:
+- separate SQLite table/domain;
+- Patient Chart technical history;
+- Recovery/known-good metadata;
+- signed Capsule/backup metadata where relevant.
+
+The purpose is cross-checking, not secrecy.
+
+### Layer D — achievement/award provenance
+
+High-value Achievements/Awards should record:
+- source event;
+- required rule id;
+- source ledger sequence/head;
+- creature id;
+- build/ruleset provenance;
+- unlock timestamp.
+
+Therefore directly inserting an Achievement row without matching provenance can be detected.
+
+### Layer E — integrity eligibility state
+
+Introduce a derived state such as:
+
+- `verified` — current history validates under an accepted ruleset;
+- `restored` — valid history restored from trusted backup;
+- `imported` — imported history with valid provenance;
+- `customized` — owner intentionally modified progression/rules;
+- `integrity_warning` — unexplained mismatch;
+- `sandbox` — development/testing progression.
+
+Normal local functionality always remains available.
+
+However, **verified-only** recognition may be suspended while the state is unexplained.
+
+Examples:
+- official verified badge;
+- "clean lineage" marker;
+- verified Hall-of-Legends status;
+- certain global/shared leaderboard/community badges if such systems ever exist.
+
+Do not disable ordinary local play simply because the owner customized their machine.
+
+### Layer F — Doctor/integrity explanation
+
+Doctor can say:
+
+    PROGRESSION INTEGRITY WARNING
+
+    Cached XP: 28,450
+    Ledger-derived XP: 12,730
+    Achievement provenance: 3 mismatches
+    Last known-good checkpoint: <timestamp>
+
+    [ RESTORE VERIFIED STATE ]
+    [ SHOW DIFFERENCE ]
+    [ ADOPT CUSTOM TIMELINE — EXPERT ]
+
+This is preferable to silent punishment.
+
+### Circular cross-check / "whack-a-mole" behavior
+
+The desired playful friction can be achieved by having multiple independently derived invariants.
+
+Example:
+
+1. Owner edits XP cache.
+   - Ledger disagrees.
+
+2. Owner edits ledger totals/entries.
+   - Hash chain/checkpoint disagrees.
+
+3. Owner edits the checkpoint.
+   - Achievement/unlock provenance and Patient Chart/backup history disagree.
+
+4. Owner inserts/edits achievements.
+   - Award provenance/ledger sequence/ruleset validation disagrees.
+
+5. Owner patches one validator.
+   - Build/ruleset provenance becomes customized, so the device may no longer claim
+     `verified` progression unless the owner also replaces the higher-level integrity policy.
+
+Eventually the owner can patch the entire integrity system because they are root and have source.
+At that point the correct state is **customized**, not an endless hostile arms race.
+
+### No destructive anti-tamper
+
+Never:
+- delete a Beast;
+- corrupt saves intentionally;
+- brick boot;
+- wipe awards;
+- encrypt owner data as punishment;
+- create reboot loops;
+- hide recovery paths.
+
+The "loop" should be semantic/provenance friction, not sabotage.
+
+### Awards/Achievements during unexplained integrity failure
+
+A sensible default:
+- existing local history remains visible;
+- new **verified** achievements/awards can be held in a pending/unverified state;
+- XP derived from unverifiable entries is not accepted into verified progression;
+- once repaired/adopted, pending items are re-evaluated.
+
+If the owner explicitly chooses **Adopt Customized Timeline**, normal local progression can continue
+under a customized provenance label.
+
+This preserves fun while keeping the "verified" path meaningful.
+
+### Easter-egg opportunity
+
+A determined owner who intentionally defeats or replaces the integrity validator through a documented
+Expert/developer path could unlock a harmless hidden Achievement/Easter egg.
+
+Examples:
+- `THE AUDITOR BLINKED`
+- `ROOT OF ALL EVIL`
+- `TEMPORAL ENGINEER`
+- `YOU CHECKED THE CHECKER`
+
+Do not award it merely for corrupting state accidentally.
+Trigger only through an explicit advanced/developer path or recognized validator override state.
+
+### Important boundary
+
+This is not security against a malicious root user.
+
+It is:
+- integrity checking;
+- provenance;
+- trivial-cheat resistance;
+- a fun owner-facing puzzle;
+- supportability.
+
+A technically skilled owner can always fork/remove the system.
+That is acceptable and should be acknowledged rather than fought indefinitely.
+
