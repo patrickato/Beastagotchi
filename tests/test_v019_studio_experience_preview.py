@@ -64,3 +64,6 @@ def test_studio_html_exposes_core_backed_compiled_experience_browser():
     assert "COMPILED EXPERIENCE DNA" in HTML
     assert "previewCompiledExperience" in HTML
     assert "renderer_experience_id" in HTML
+    assert "TRY ON TFT PLAN" in HTML
+    assert "planTryOnTft" in HTML
+    assert "/api/experience-try-plan" in HTML
