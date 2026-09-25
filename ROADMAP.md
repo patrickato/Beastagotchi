@@ -545,3 +545,4 @@ The detailed recovered rationale is preserved in
 - `beastui/experience_registry.py` centralizes currently implemented Experience/page renderers; Studio schema exposes coverage and `/api/experience-preview` provides paired live previews.
 - next diversification proof: translate **Habitat** into progression/memory/Expedition surfaces before broad production integration.
 - production TFT ownership should wait for an Experience Compiler/resolution path and owner off-screen acceptance; do not hard-wire prototypes directly into live navigation yet.
+- All five first non-legacy Experience prototypes now have cross-page proof: Atlas Home/Recon, Forge Home/System, Observatory Home/Spectrum, Habitat Home/Beast, Monolith Home/Overview. Preserve their distinct product grammars as additional pages are added.
