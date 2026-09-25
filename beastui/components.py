@@ -92,3 +92,39 @@ def summary_strip(d, box, items, fonts, theme, *, accent=None):
         if i<len(rows)-1:
             x=x1+(i+1)*cell
             d.line((x,y1+7,x,y2-7),fill=theme.c('edge'))
+
+
+def transient_notice(d, notice, fonts, theme, *, phase=0.0):
+    """Render one compact shared transient state above normal UI chrome.
+
+    Kinds: info, success, warn, error, loading. This is presentation only; the
+    caller owns lifecycle/timing and must not encode fake progress in loading.
+    """
+    row=dict(notice or {})
+    if not row:
+        return None
+    kind=str(row.get('kind') or 'info').lower()
+    title=str(row.get('title') or '').strip().upper()[:34]
+    detail=str(row.get('detail') or '').strip()[:54]
+    colors={
+        'info':theme.c('info',theme.c('primary')),
+        'success':theme.c('accent'),
+        'warn':theme.c('warn'),
+        'error':theme.c('danger',theme.c('warn')),
+        'loading':theme.c('primary'),
+    }
+    accent=colors.get(kind,colors['info'])
+    x1,y1,x2,y2=54,42,426,100 if detail else 84
+    d.rounded_rectangle((x1,y1,x2,y2),radius=TOKENS.radius_m,
+                        fill=theme.c('panel2'),outline=accent,width=2)
+    # Small semantic marker keeps kind legible even on restrained palettes.
+    if kind=='loading':
+        dots=1+(int(float(phase)*2.0)%3)
+        marker='·'*dots
+    else:
+        marker={'success':'✓','warn':'!','error':'×','info':'i'}.get(kind,'i')
+    d.text((x1+12,y1+11),marker,font=fonts['medium'],fill=accent)
+    d.text((x1+38,y1+10),title or kind.upper(),font=fonts['small'],fill=theme.c('text'))
+    if detail:
+        d.text((x1+38,y1+31),detail,font=fonts['tiny'],fill=theme.c('dim'))
+    return (x1,y1,x2,y2)
