@@ -83,10 +83,13 @@ Recent progress:
 - a layered Scene compositor proof has begun so creature/environment art, ambient motion and live HUD information can coexist without forcing every Experience into a card-grid composition;
 - the maturity architecture review preserves the direction toward versioned Signal, Action, Capability, Scene and Experience contracts rather than continuing one-off UI growth;
 - Signal v1 metadata is now implemented over the existing canonical StateRegistry/Telemetry Catalog, and a read-only Integration Catalog now inventories optional Linux/Pi provider backends without auto-installing them.
+- Home flagship scenes now publish semantic Scene layers with per-layer render-cost metadata; SceneRuntime also tracks canonical signal changes and resolves dirty semantic layers/bounds without treating ambient decoration as telemetry.
+- the deterministic Home motion proof now renders multi-frame Classic/Cyberpunk/Black-Ice/WOPR evidence from captured state and records Scene/compositor-cache metadata frame by frame;
+- a real composition defect was fixed in the concept-creature path: compact concept rasters were previously passed through Pillow `thumbnail()` and therefore never enlarged to their assigned scene region. Flagship creatures now scale aspect-preservingly into the scene with edge feathering, so the Beast actually owns visual space instead of reading as a pasted icon.
 
 Still to finish:
 - return the active reconstruction head to a fully green source/CI gate;
-- stabilize/cache the layered Scene compositor and regenerate real-state visual evidence;
+- continue stabilizing/caching the layered Scene compositor and improve source-art fidelity now that the creature-scale composition bug is fixed; regenerate real-state visual evidence after each bounded flagship-scene step;
 - obtain off-screen owner acceptance of the actual generated Home/major-scene language before staging it physically;
 - define the bounded Scene/semantic-layer contract needed for visual depth and future Studio editing without turning Gate 1 into a platform rewrite;
 - finish hierarchy/interaction cleanup across the high-frequency page carousel;
