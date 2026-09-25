@@ -28,6 +28,7 @@ from .dependency_resolver import DependencyCapabilityResolver
 from .template_tokens import TemplateTokenRegistry
 from .signals import SignalCatalog
 from .platform_profile import PlatformProfile
+from .experience_runtime import ExperiencePlanPublisher
 from .integration_catalog import IntegrationCatalog
 from .records import RecordsEngine
 from .overview import OverviewEngine
@@ -72,11 +73,15 @@ class BeastCore:
         self.signals = SignalCatalog(self.state, telemetry=self.telemetry)
         self.integration_catalog = IntegrationCatalog(self.state, resolver=self.dependencies)
         self.platform_profile = PlatformProfile(self.state)
+        self.experience_plans = ExperiencePlanPublisher(
+            self.state, resolver=self.dependencies, platform_profile=self.platform_profile
+        )
         self.api = LocalAPI(self.state, self.events, self.store, host, port,
                             channel_history=self.channel_history, telemetry=self.telemetry)
         self.api.template_tokens = self.template_tokens
         self.api.signals = self.signals
         self.api.integration_catalog = self.integration_catalog
+        self.api.experience_plans = self.experience_plans
         self.collectors = [
             SystemCollector(), RadioCollector(), GPSCollector(), BettercapCollector(),
             PwnagotchiCollector(), BridgeCollector(), ServicesCollector(), StorageCollector(), HardwareCollector(),
@@ -587,6 +592,33 @@ class BeastCore:
             except asyncio.TimeoutError:
                 pass
 
+
+    async def _experience_plan_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many(
+                    "experience_compiler", self.experience_plans.state_patch(), priority=75
+                )
+                if changed:
+                    self.events.publish(
+                        "experience.compiler.changed",
+                        "experience_compiler",
+                        {"keys": [x[0] for x in changed]},
+                    )
+            except Exception as exc:
+                log.exception("Experience compiler publication failed")
+                ev = self.events.publish(
+                    "experience.compiler.error",
+                    "experience_compiler",
+                    {"error": repr(exc)},
+                    "warning",
+                )
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                pass
+
     async def _doctor_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -708,6 +740,7 @@ class BeastCore:
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
             asyncio.create_task(self._packs_loop(), name="packs"),
             asyncio.create_task(self._platform_profile_loop(), name="platform-profile"),
+            asyncio.create_task(self._experience_plan_loop(), name="experience-plans"),
             asyncio.create_task(self._doctor_loop(), name="doctor"),
             asyncio.create_task(self._updates_loop(), name="updates"),
             asyncio.create_task(self._update_automation_loop(), name="update-automation"),
