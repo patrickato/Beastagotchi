@@ -70,7 +70,7 @@ Reads as a restrained premium product surface.
 - no grid, scanline, particle field or dense instrumentation required;
 - health is a tiny status cue unless intervention is needed.
 
-Current limitation: typography, transitions and final focal art will determine whether it feels genuinely premium rather than simply sparse.
+Current fidelity update: the former circle-outline face has been replaced by a restrained sculptural/faceted focal Beast with subtle depth rings, eye slits and engraved identity while preserving the large negative-space and single-fact hierarchy. Typography, transition choreography and final Pack-ready focal art still determine whether the finished product reaches the full premium target.
 
 ## Result
 
