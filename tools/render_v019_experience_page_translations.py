@@ -8,6 +8,8 @@ from PIL import Image, ImageDraw, ImageFont
 from beastui.experience_atlas import render_atlas_home, render_atlas_recon
 from beastui.experience_observatory import render_observatory_home, render_observatory_spectrum
 from beastui.experience_habitat import render_habitat_home, render_habitat_beast
+from beastui.experience_forge import render_forge_home, render_forge_system
+from beastui.experience_monolith import render_monolith_home, render_monolith_overview
 from beastui.scene_runtime import SceneRuntime
 
 
@@ -33,6 +35,10 @@ def main()->int:
         ("observatory_spectrum",render_observatory_spectrum),
         ("habitat_home",render_habitat_home),
         ("habitat_beast",render_habitat_beast),
+        ("forge_home",render_forge_home),
+        ("forge_system",render_forge_system),
+        ("monolith_home",render_monolith_home),
+        ("monolith_overview",render_monolith_overview),
     ]
     manifest={"purpose":"cross-page Experience-DNA translation proof","pages":{}}
     cards=[]
@@ -44,9 +50,10 @@ def main()->int:
         manifest["pages"][name]={"file":fp.name,"scene":rt.snapshot()}
         cards.append(_card(name.replace("_"," ").upper(),im))
 
-    sheet=Image.new("RGB",(1440,700),(8,8,8))
+    cols=3;rows=(len(cards)+cols-1)//cols
+    sheet=Image.new("RGB",(cols*480,rows*350),(8,8,8))
     for idx,card in enumerate(cards):
-        sheet.paste(card,((idx%3)*480,(idx//3)*350))
+        sheet.paste(card,((idx%cols)*480,(idx//cols)*350))
     sheet.save(root/"comparison.png")
     manifest["comparison"]="comparison.png"
     (root/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
