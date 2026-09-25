@@ -164,6 +164,18 @@ class ActionBroker:
                 "warnings": warnings,
                 "blockers": blockers,
             }
+        if action == "doctor.known_good_save":
+            doctor = getattr(self, "doctor", None)
+            return {
+                "allowed": doctor is not None,
+                "operation": "doctor.known_good_save",
+                "label": str(payload.get("label") or "owner")[:80],
+                "warnings": [
+                    "This saves a privacy-light Doctor baseline in Beast's local database only.",
+                    "It does not change the running platform, UI, providers, services or Pwnagotchi configuration.",
+                ],
+                "blockers": [] if doctor is not None else ["Beast Doctor unavailable"],
+            }
         if action == "service.restart":
             return self.service_broker.plan_restart(str(payload.get("unit") or ""))
         if action == "backup.create":
@@ -485,6 +497,13 @@ class ActionBroker:
                     )
                     self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
                     result["owner_mode"] = mode
+            elif action == "doctor.known_good_save":
+                doctor = getattr(self, "doctor", None)
+                if doctor is None:
+                    raise ValueError("Beast Doctor unavailable")
+                saved = doctor.save_known_good(str(requested.get("label") or "owner")[:80])
+                result = {"ok": True, **saved}
+                self.state.update_many("doctor", doctor.state_patch(), priority=76)
             elif action == "service.restart":
                 result = self.service_broker.restart(str(requested.get("unit") or ""))
             elif action == "container.control":
@@ -513,7 +532,12 @@ class ActionBroker:
             "finished_at": finished,
             "actor": str(actor),
             "action": action,
-            "target": str(requested.get("name") or requested.get("unit") or requested.get("target") or requested.get("id") or requested.get("capability") or ""),
+            "target": (
+                "doctor.patient"
+                if action == "doctor.known_good_save"
+                else str(requested.get("name") or requested.get("unit") or requested.get("target")
+                         or requested.get("id") or requested.get("capability") or "")
+            ),
             "status": status,
             "request": requested,
             "plan": plan,

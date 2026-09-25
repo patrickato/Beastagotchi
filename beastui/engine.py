@@ -1717,6 +1717,29 @@ class BeastUI:
                     'value':'READ ONLY',
                     'severity':'info',
                 })
+            memory=self.state.get('doctor.patient.memory') or {}
+            recurrence=(memory.get('recurrence') or {}) if isinstance(memory,dict) else {}
+            if isinstance(recurrence,dict) and recurrence:
+                recurrent=sum(1 for row in recurrence.values() if isinstance(row,dict) and row.get('recurrent'))
+                active=sum(1 for row in recurrence.values() if isinstance(row,dict) and row.get('active'))
+                rows.append({
+                    'title':'RECURRENCE MEMORY',
+                    'subtitle':f'{len(recurrence)} incident kinds / {recurrent} recurrent / {active} active',
+                    'value':'RECUR' if recurrent else 'QUIET',
+                    'severity':'warning' if active or recurrent else 'info',
+                })
+            kg_count=int(self.state.get('doctor.patient.known_good_count') or 0)
+            drift=self.state.get('doctor.patient.known_good_drift') or {}
+            if kg_count or (isinstance(drift,dict) and drift.get('found')):
+                change_count=int((drift.get('change_count') if isinstance(drift,dict) else 0) or 0)
+                checkpoint=(drift.get('checkpoint') or {}) if isinstance(drift,dict) else {}
+                label=str(checkpoint.get('label') or 'latest baseline')
+                rows.append({
+                    'title':'KNOWN-GOOD BASELINE',
+                    'subtitle':f'{kg_count} saved / {label}'[:67],
+                    'value':f'DRIFT {change_count}' if change_count else 'MATCH',
+                    'severity':'warning' if change_count else 'info',
+                })
             names=[]
             for k in self.state:
                 if k.startswith('health.collector.') and k.endswith('.state'):
