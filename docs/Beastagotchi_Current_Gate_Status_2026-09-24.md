@@ -140,6 +140,20 @@ At the current verified staging checkpoint:
 
 The next meaningful truth is first the actual generated renderer after the visual-scene rebuild; the Pi/TFT remains the following physical truth gate.
 
+## Experience Compiler integration checkpoint — 2026-09-25
+
+The Experience architecture has advanced without changing Gate 1's acceptance status:
+
+- Beast Core now publishes compiled Experience plans through the shared long-lived DependencyCapabilityResolver;
+- Beast Studio consumes those Core plans;
+- enabled Mission Packs may contribute validated declarative Experience DNA/policy/component references without shipping arbitrary renderer code;
+- Pack Experiences may reference trusted registered Beast renderers for preview while retaining distinct Pack identity/provenance;
+- renderer target truth is explicit: current first-party Experience renderers are native for 480×320 reference only, and larger compatibility scaling is not claimed as native responsiveness;
+- a bounded TRY ON TFT transaction plan now exists with mandatory rollback, but there is **no physical executor** and no preference/TFT mutation path;
+- Gate 1 off-screen owner acceptance remains false/pending.
+
+This closes compiler plumbing items that were previously listed as future work. It does **not** close the visual gate: the next meaningful work is improving and reviewing the actual generated renderer.
+
 ## Five-way Experience proof evidence — 2026-09-24
 
 CI artifact `v019-experience-home-proofs` now renders Atlas, Forge, Observatory, Habitat and Monolith from the same sanitized real target state and includes a side-by-side `comparison.png`.
