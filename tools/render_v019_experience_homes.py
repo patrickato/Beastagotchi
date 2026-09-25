@@ -4,6 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFont
+
 from beastui.experience_atlas import render_atlas_home
 from beastui.experience_forge import render_forge_home
 from beastui.experience_observatory import render_observatory_home
@@ -46,6 +48,26 @@ def main() -> int:
             "scene": rt.snapshot(),
         }
 
+    # Side-by-side comparison is intentionally a review artifact, not a runtime UI.
+    cards = []
+    for experience_id in RENDERERS:
+        im = Image.open(root / f"{experience_id}_home.png").convert("RGB")
+        card = Image.new("RGB", (480, 350), (12, 12, 12))
+        card.paste(im, (0, 30))
+        dd = ImageDraw.Draw(card)
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", 16)
+        except Exception:
+            font = ImageFont.load_default()
+        dd.text((10, 7), experience_id.upper(), fill=(230, 230, 225), font=font)
+        cards.append(card)
+    sheet = Image.new("RGB", (1440, 700), (8, 8, 8))
+    for idx, card in enumerate(cards):
+        col = idx % 3
+        row = idx // 3
+        sheet.paste(card, (col * 480, row * 350))
+    sheet.save(root / "comparison.png")
+    manifest["comparison"] = "comparison.png"
     (root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(root)
     return 0
