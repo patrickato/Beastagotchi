@@ -157,3 +157,34 @@ def test_diagnostics_surface_shows_patient_chart_and_coverage(tmp_path):
     assert rows[2]["title"] == "COMPATIBILITY FINGERPRINT"
     assert "2.9.5.9" in rows[2]["subtitle"]
     assert any(row["title"] == "SYSTEM" for row in rows)
+
+
+def test_pwnagotchi_version_probe_is_cached(monkeypatch):
+    import beastcore.collectors.pwnagotchi as mod
+
+    calls = []
+    def fake_run(cmd, timeout=0):
+        calls.append((tuple(cmd), timeout))
+        return 0, "pwnagotchi 2.9.5.9\n", ""
+
+    monkeypatch.setattr(mod, "run", fake_run)
+    collector = mod.PwnagotchiCollector()
+    assert collector._version(max_age=300) == "2.9.5.9"
+    assert collector._version(max_age=300) == "2.9.5.9"
+    assert len(calls) == 1
+
+
+def test_system_os_release_parser_is_privacy_light(monkeypatch):
+    import beastcore.collectors.system as mod
+
+    sample = """ID=debian
+VERSION_ID="12"
+BUILD_ID=bookworm-test
+NAME="Debian GNU/Linux"
+"""
+    monkeypatch.setattr(mod, "read_text", lambda path: sample if path == "/etc/os-release" else "")
+    row = mod.SystemCollector._os_release()
+    assert row["ID"] == "debian"
+    assert row["VERSION_ID"] == "12"
+    assert row["BUILD_ID"] == "bookworm-test"
+    assert "HOSTNAME" not in row
