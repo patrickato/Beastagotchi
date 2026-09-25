@@ -177,6 +177,6 @@ def render_monolith_overview(
     d.text((200, 291), "HOLD FOR DETAIL", fill=_MUTED, font=_font(7))
     _register(rt, SceneLayerSpec(
         "monolith_overview.inspect_hint", "interaction", (184,276,296,312),
-        action_id="inspect.current", update_class="interaction",
+        touch="hold_for_detail", update_class="interaction",
     ))
     return im
