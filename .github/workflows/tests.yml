@@ -86,6 +86,22 @@ jobs:
           retention-days: 30
 
 
+      - name: Render Atlas Home Experience proof
+        run: |
+          PYTHONPATH=. python tools/render_v019_atlas_home.py \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-atlas-home \
+            --frames 6
+
+      - name: Upload Atlas Home Experience proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-atlas-home-proof
+          path: artifacts/v019-atlas-home
+          if-no-files-found: error
+          retention-days: 30
+
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
