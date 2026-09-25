@@ -15,6 +15,83 @@ class BeastDoctor:
     def _norm(value: Any) -> str:
         return str(value or "").strip().lower().replace(" ", "_")
 
+    def _observed(self, key: str) -> tuple[bool, Any]:
+        marker = object()
+        value = self.state.get(key, marker)
+        return value is not marker, None if value is marker else value
+
+    def patient_identity(self) -> dict[str, Any]:
+        """Privacy-light technical identity for compatibility reasoning."""
+        return {
+            "model": self.state.get("system.model"),
+            "architecture": self.state.get("system.architecture"),
+            "kernel": self.state.get("system.kernel"),
+            "python_version": self.state.get("system.python.version"),
+            "os_id": self.state.get("system.os.id"),
+            "os_version_id": self.state.get("system.os.version_id"),
+            "os_build_id": self.state.get("system.os.build_id"),
+            "pwnagotchi_version": self.state.get("pwnagotchi.version"),
+        }
+
+    def diagnostic_coverage(self) -> dict[str, Any]:
+        """Report what Doctor can currently observe without implying health."""
+        rows: list[dict[str, Any]] = []
+
+        def add(area: str, keys: tuple[str, ...], *, unavailable_values: set[str] | None = None) -> None:
+            seen: list[tuple[str, Any]] = []
+            for key in keys:
+                observed, value = self._observed(key)
+                if observed:
+                    seen.append((key, value))
+            if not seen:
+                status = "unknown"
+                reason = "no diagnostic evidence is currently published"
+            else:
+                status = "covered"
+                reason = "diagnostic evidence is available"
+                unavailable = {str(x).lower() for x in (unavailable_values or set())}
+                if unavailable and any(str(value).lower() in unavailable for _, value in seen):
+                    status = "unavailable"
+                    reason = "the subsystem or specialist probe reports unavailable"
+            rows.append({
+                "area": area,
+                "status": status,
+                "observed_keys": [key for key, _ in seen],
+                "reason": reason,
+            })
+
+        add("system", ("system.kernel", "system.architecture", "system.temp.cpu_c"))
+        add("storage", ("storage.root.readonly", "storage.root.used_pct", "storage.mounts"))
+        add("display", ("display.framebuffers", "display.outputs"))
+        add(
+            "radio",
+            ("radio.primary.state", "radio.primary.name", "radio.primary.supported_channels"),
+            unavailable_values={"unavailable", "missing"},
+        )
+        add(
+            "gps",
+            ("gps.state", "gps.fix"),
+            unavailable_values={"unavailable"},
+        )
+        add("power_telemetry", ("power.telemetry.available", "power.ups.state"))
+        add("network", ("network.route.available", "network.interfaces"))
+        add("pwnagotchi_service", ("pwnagotchi.service.state",))
+        add("bettercap_service", ("bettercap.state", "bettercap.service.state"))
+        add("plugins", ("plugins.requirements_summary", "plugins.provider_summary"))
+
+        counts = {
+            "covered": sum(1 for row in rows if row["status"] == "covered"),
+            "unavailable": sum(1 for row in rows if row["status"] == "unavailable"),
+            "unknown": sum(1 for row in rows if row["status"] == "unknown"),
+        }
+        return {
+            "schema": 1,
+            "count": len(rows),
+            "counts": counts,
+            "complete": counts["unknown"] == 0,
+            "items": rows,
+        }
+
     def _decisions(self) -> dict[str, dict[str, Any]]:
         raw = self.state.get("plugins.provider_decisions", {}) or {}
         return raw if isinstance(raw, dict) else {}
@@ -203,6 +280,7 @@ class BeastDoctor:
             })
 
         items = items[:64]
+        coverage = self.diagnostic_coverage()
         return {
             "schema": self.schema,
             "state": "attention" if items else "ok",
@@ -211,13 +289,26 @@ class BeastDoctor:
             "items": items,
             "provider_summary": self.state.get("plugins.provider_summary", {}) or {},
             "support_state": self.state.get("owner.support_state", "managed"),
+            "patient": {
+                "schema": 1,
+                "identity": self.patient_identity(),
+                "coverage": coverage,
+                "privacy_class": "technical_identity_only",
+            },
         }
 
     def state_patch(self) -> dict[str, Any]:
         row = self.snapshot()
+        patient = row.get("patient", {})
+        coverage = patient.get("coverage", {}) if isinstance(patient, dict) else {}
         return {
             "doctor.state": row["state"],
             "doctor.attention_count": row["attention_count"],
             "doctor.explainable_capability_count": row["explainable_capability_count"],
             "doctor.items": row["items"],
+            "doctor.patient.identity": patient.get("identity", {}) if isinstance(patient, dict) else {},
+            "doctor.coverage": coverage,
+            "doctor.coverage.covered_count": int((coverage.get("counts") or {}).get("covered", 0) or 0),
+            "doctor.coverage.unavailable_count": int((coverage.get("counts") or {}).get("unavailable", 0) or 0),
+            "doctor.coverage.unknown_count": int((coverage.get("counts") or {}).get("unknown", 0) or 0),
         }
