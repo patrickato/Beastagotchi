@@ -23,11 +23,10 @@ class PrototypeSilhouette:
 
 PROTOTYPE_SILHOUETTES: dict[str, PrototypeSilhouette] = {
     "atlas": PrototypeSilhouette("atlas", (
-        PrototypeRegion("field_canvas", "canvas", (8, 34, 350, 278), 5),
-        PrototypeRegion("creature_marker", "creature", (24, 204, 114, 292), 2),
-        PrototypeRegion("heading", "instrument", (360, 44, 472, 112), 2),
-        PrototypeRegion("nearby", "instrument", (360, 120, 472, 196), 2),
-        PrototypeRegion("journey", "timeline", (124, 284, 470, 314), 1),
+        PrototypeRegion("field_canvas", "canvas", (0, 32, 408, 282), 7),
+        PrototypeRegion("creature_marker", "creature", (18, 210, 94, 306), 2),
+        PrototypeRegion("field_margin", "instrument", (408, 32, 479, 282), 2),
+        PrototypeRegion("expedition_ledger", "timeline", (0, 282, 480, 320), 1),
     )),
     "forge": PrototypeSilhouette("forge", (
         PrototypeRegion("chassis", "chassis", (8, 36, 472, 275), 6),
