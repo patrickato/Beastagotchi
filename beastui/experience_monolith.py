@@ -90,13 +90,11 @@ def _draw_focal(draw,meta):
     else:
         draw.line((220,186,260,186), fill=_INK, width=2)
 
-    # Identity is typography outside the sculpture; keep the face uncluttered.
-    stage = meta["stage"].upper()
-    sw = draw.textbbox((0,0), stage, font=_font(8))[2]
-    draw.text((cx-sw//2, 235), stage, fill=_MUTED, font=_font(8))
-    level = f"{meta['level']:02d}"
-    lw = draw.textbbox((0,0), level, font=_font(13))[2]
-    draw.text((cx-lw//2, 247), level, fill=_INK, font=_font(13))
+    # Identity is engraved into the lower facet so the surrounding negative
+    # space remains available for the single primary fact row.
+    identity = f"{meta['stage'].upper()[:3]}  {meta['level']:02d}"
+    iw = draw.textbbox((0,0), identity, font=_font(7))[2]
+    draw.text((cx-iw//2, 204), identity, fill=_MUTED, font=_font(7))
 
 
 def render_monolith_home(state:dict[str,Any],*,scene_runtime:SceneRuntime|None=None)->Image.Image:
