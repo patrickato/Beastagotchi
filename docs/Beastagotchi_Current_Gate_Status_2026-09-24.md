@@ -165,6 +165,20 @@ Cumulative cross-page head `4328ebab8096532adac2ce8e62997cd4dad6e051` passed CI 
 **Gate 1 remains active.** This is not owner off-screen acceptance and does not enable physical
 TRY ON TFT execution.
 
+## Visual north-star reference archive — 2026-09-25
+
+The original early concept renders and the current on-device end-vision concepts are now preserved
+as design references. See
+`docs/Beastagotchi_Visual_North_Star_Reference_Archive_2026-09-25.md`.
+
+The source images are also preserved in the persistent project Library under
+`/Beastagotchi/Visual References/`.
+
+These are inspiration / art-direction references, not pixel-perfect implementation templates.
+Actual acceptance remains based on the real 480×320 renderer and physical TFT validation.
+
+---
+
 ## Gate 1 second pixel-review checkpoint — 2026-09-25
 
 All five flagship Home Experiences have now completed a second bounded CI-rendered pixel-review
