@@ -3389,3 +3389,751 @@ It should:
 
 If added, it is a separate bounded relationship axis, not a second Level system.
 
+
+---
+
+# Layer 6 — Installation, updates, recovery, support and distribution
+
+## Current installers are deliberately development-safe, not appliance provisioning
+
+Current scripts are structurally conservative:
+
+### `install.sh`
+- requires root explicitly;
+- creates bounded Beast paths/groups;
+- stops Beast Core before replacing code;
+- preserves existing Beast config;
+- preserves existing database/state;
+- installs systemd units/tools;
+- does **not** automatically enable/start Beast Core;
+- explicitly leaves validation to the operator.
+
+### `install_bridge.sh`
+- installs only the read-only Pwnagotchi bridge;
+- backs up Pwnagotchi config before adding its section;
+- does not restart Pwnagotchi automatically.
+
+### `install_ui.sh`
+- validates the expected Pwnagotchi Python environment/Pillow;
+- preserves an existing touch calibration;
+- refuses to invent calibration when none exists;
+- installs Beast UI/Studio but leaves physical Beast UI disabled;
+- physical display ownership remains protected.
+
+### `uninstall.sh`
+- releases physical display ownership first where possible;
+- removes Beast code/services;
+- preserves `/etc/beastagotchi` and `/var/lib/beastagotchi` history/database.
+
+These are good pre-1.0 behaviors.
+
+Do not mutate them into a giant opaque installer while they remain useful development tools.
+
+## Current installer assumptions that should not become permanent platform requirements
+
+Current scripts contain environment-specific assumptions such as:
+- `/opt/.pwn/bin/python3`;
+- user/group `pi`;
+- current filesystem paths;
+- current Jayofelony/Pwnagotchi layout;
+- touch calibration pre-existence for UI install;
+- direct repository working tree as install source.
+
+A production Provisioner should obtain these from:
+- PwnagotchiAdapter/platform detection;
+- Distribution Profile;
+- actual local users/groups;
+- capability discovery.
+
+## Runtime documentation footprint
+
+Current `install.sh` installs a large number of project design/spec documents under
+`/usr/local/share/beastagotchi`.
+
+This is useful during development but unnecessary for a lean production runtime.
+
+Production package should include:
+- essential user/admin help;
+- licenses/notices;
+- exact version/build manifest;
+- local recovery/install documentation.
+
+Large historical/specification archives can remain:
+- GitHub;
+- project documentation bundle;
+- optional developer package.
+
+This keeps 16/32 GB builds tidy without sacrificing source availability.
+
+---
+
+## Provisioner — future first-class install/orchestration layer
+
+Create a **Beast Provisioner** rather than extending shell scripts indefinitely.
+
+The Provisioner may be implemented as a Python CLI/service plus small shell bootstrap.
+
+Suggested lifecycle:
+
+    DISCOVER
+       ->
+    COMPATIBILITY / PREFLIGHT
+       ->
+    PLAN
+       ->
+    BACKUP / RESCUE POINT
+       ->
+    ACQUIRE / VERIFY
+       ->
+    INSTALL
+       ->
+    CONFIGURE
+       ->
+    VALIDATE
+       ->
+    CREATE KNOWN-GOOD
+       ->
+    FIRST-RUN / GENESIS
+       ->
+    HANDOFF
+
+### Discovery
+
+Detect:
+- Pi model/RAM;
+- storage size/free space/filesystem;
+- exact upstream Pwnagotchi/Jayofelony version/build;
+- Python/runtime;
+- display/touch;
+- network;
+- hardware providers;
+- existing plugins/config;
+- existing Beast install;
+- presentation owner;
+- customization/unsupported state.
+
+### Plan
+
+Show:
+- components to install/change;
+- download bytes;
+- installed bytes;
+- temporary peak bytes;
+- protected reserve after install;
+- services affected;
+- config files touched;
+- dependency actions;
+- owner choices;
+- rollback/rescue path.
+
+### Install profiles
+
+Suggested product profiles:
+
+#### Core / Minimal
+- Beast Core;
+- UI/Studio;
+- Doctor;
+- essential fallback Experience/face;
+- required dependencies only.
+
+#### Recommended
+- Core;
+- validated common integrations;
+- standard built-in Experiences/faces;
+- common Procedures;
+- useful safe plugins/Packs installed dormant where appropriate.
+
+#### Full
+- all project-owned broadly supported optional components that fit storage;
+- larger local Pack/content selection;
+- still does not mean all optional things are enabled/running.
+
+#### Custom
+- owner chooses components/content.
+
+#### Reference / Development Monster Build
+- broad compatibility/test universe;
+- diagnostic/developer tooling;
+- not necessarily the default public image.
+
+All profiles must remain the **same Beastagotchi architecture**.
+A 16 GB Core/Recommended install is not a crippled separate edition.
+
+## One complete experience, not one gigantic archive
+
+"Complete Beastagotchi" should mean:
+> one coherent install/provision/update/recovery experience.
+
+It does not mean:
+> every optional cinematic, face, Pack, media asset and third-party project must be bundled into one
+> image.
+
+This distinction is essential for small SD cards and licensing.
+
+---
+
+## Distribution paths
+
+Support multiple delivery paths sharing one Provisioner/BOM.
+
+### A. Bootstrap installer
+For an existing supported Jayofelony/Pwnagotchi installation.
+
+Best early production path:
+- small download;
+- preserves existing user state;
+- validates exact upstream environment;
+- installs Beast incrementally.
+
+### B. Reproducible Image Builder
+Builds a Beast-ready image from a verified supported upstream image/release.
+
+Flow:
+- acquire upstream artifact from authorized source;
+- verify published digest;
+- customize in reproducible build environment;
+- inject Beast;
+- add selected dependency/profile;
+- produce image + SBOM/build manifest/checksum.
+
+Advantages:
+- avoids manually maintaining a giant binary image;
+- makes upstream updates reproducible;
+- licensing can remain clean if build tooling acquires upstream from original source.
+
+### C. Prebuilt Beast Complete Image
+Only where redistribution rights/licensing permit and maintenance burden is accepted.
+
+User experience:
+- flash;
+- boot;
+- first-run Provisioner;
+- storage resize;
+- hardware/content setup;
+- validation;
+- known-good baseline;
+- Genesis/creation flow.
+
+Do not assume permission to redistribute Jayofelony/Pwnagotchi or third-party plugins merely because
+they are available publicly.
+
+### D. Upgrade-in-place
+Existing Beast users:
+- explicit component update Transactions;
+- preserved config/content/roster;
+- migrations;
+- rollback.
+
+All four paths should share one component manifest/BOM format.
+
+---
+
+## Distribution Profile / BOM
+
+Introduce a machine-readable Bill of Materials for one supported device state.
+
+Candidate fields:
+- upstream distribution/image id/version/hash/source;
+- Beast version/commit;
+- Python/runtime requirements;
+- OS/package dependencies;
+- service versions;
+- display/hardware profile;
+- selected project components;
+- plugins/integrations;
+- Pack/component references;
+- content Collection;
+- storage profile;
+- expected configuration schema versions;
+- migration level;
+- known validation suite.
+
+This enables:
+- reproducible installs;
+- support comparison;
+- "Clone My Setup";
+- offline preparation;
+- update planning;
+- CI image builds.
+
+A Collection and a Device BOM may share lower-level references but are not identical:
+- Collection = owner content selection;
+- BOM = full reproducible platform composition.
+
+---
+
+## First boot
+
+A future Beast-ready image should use a bounded first-boot state machine.
+
+Possible stages:
+1. filesystem/storage expansion if required/supported;
+2. exact platform discovery;
+3. Pwnagotchi health check;
+4. Beast database/migration initialization;
+5. display/touch detection;
+6. network/Internet state;
+7. owner setup;
+8. install-profile/content choices;
+9. optional plugin/provider selection;
+10. full stack validation;
+11. initial backup/rescue checkpoint;
+12. Doctor Patient Chart identity/coverage;
+13. initial known-good baseline;
+14. optional Beast Genesis/creation Choreography;
+15. normal runtime handoff.
+
+First-boot state must be resumable/idempotent after power loss.
+
+Do not implement critical first boot as one giant shell script that assumes every previous line
+completed.
+
+---
+
+## Storage expansion and small cards
+
+Provisioner must:
+- determine actual partition/filesystem size;
+- expand only when safe/supported;
+- verify resulting filesystem;
+- measure actual free bytes;
+- establish protected reserve;
+- choose content/cache budgets accordingly.
+
+Never assume:
+- nominal SD label equals usable bytes;
+- root partition needs expansion;
+- expansion can safely happen on every storage topology.
+
+Pwnagotchi/upstream image adapter owns knowledge of supported storage layout.
+
+---
+
+## Dependency management
+
+Separate dependency classes:
+
+### OS/platform packages
+Installed through a bounded adapter with explicit package list/version constraints.
+
+### Beast Python dependencies
+Prefer Beast-owned environment/path where practical rather than polluting Pwnagotchi's Python
+environment.
+
+Current QR acceptance flow is a good example:
+- pinned dependency;
+- Beast-owned target path;
+- hash provenance;
+- explicit removal.
+
+### Pwnagotchi/plugin dependencies
+Managed through plugin/integration adapters.
+Do not silently mutate upstream Python/package state merely because a Pack asks.
+
+### Media/content dependencies
+Handled by Content Store/Pack resolver, not OS package manager.
+
+Dependency changes that can break runtime should use Transactions.
+
+---
+
+## Update architecture
+
+Current update design has strong boundaries.
+
+### Existing good behavior
+- trusted source policy;
+- GitHub release discovery;
+- SHA-256 verification;
+- bounded staging;
+- explicit policy: manual / notify / auto_stage / auto_install;
+- inert Beast Pack transactional update;
+- probation;
+- rollback payload/history;
+- one remote artifact per automation pass;
+- dock/Internet gating;
+- Beast Core/Pwnagotchi/Theme Manager remain stage-only until dedicated adapters exist.
+
+Protect this.
+
+## Component-specific UpdateAdapter
+
+A shared Transaction Engine should call component-specific adapters.
+
+Examples:
+- Beast Pack UpdateAdapter;
+- Beast Core UpdateAdapter;
+- Beast UI/Studio UpdateAdapter;
+- Theme Manager UpdateAdapter;
+- Pwnagotchi Platform UpdateAdapter;
+- plugin/integration UpdateAdapter.
+
+Each knows:
+- rescue snapshot;
+- install/stage;
+- restart/quiesce;
+- verification;
+- probation;
+- rollback.
+
+Do not pretend one generic "replace directory and restart" algorithm safely updates everything.
+
+## Upstream Jayofelony/Pwnagotchi update
+
+Treat upstream platform update as a special platform transaction.
+
+Requirements:
+- supported-source/version check;
+- preservation of user config/data;
+- adapter compatibility check;
+- Beast compatibility;
+- post-update migrations;
+- Pwnagotchi/Bettercap validation;
+- Beast bridge validation;
+- presentation validation;
+- rollback/recovery plan appropriate to image/platform update.
+
+For major image replacement, safest recovery may be:
+- external backup/export + re-provision,
+rather than pretending a whole-image rollback is a normal file transaction.
+
+---
+
+## Recovery Vault
+
+Current BackupManager is a strong base.
+
+### Existing strengths
+- SQLite online backup API;
+- bounded known source paths;
+- private archive permissions;
+- retention;
+- safe archive inspection;
+- path traversal/link rejection;
+- manifest format check;
+- SQLite `PRAGMA quick_check`;
+- isolated restore staging;
+- dry-run restore diff;
+- explicit acknowledgement that live restore requires service quiesce/rescue backup/rollback.
+
+This is exactly the right attitude.
+
+## Missing major piece: Restore Transaction
+
+Current code intentionally stops before live restore.
+
+Build a first-class Recovery/Restore Transaction:
+1. inspect;
+2. stage;
+3. dry-run diff;
+4. owner confirmation;
+5. create rescue backup;
+6. quiesce affected services;
+7. validate staging again;
+8. apply atomically where possible;
+9. migrate if required;
+10. restart;
+11. verify Core/Pwnagotchi/UI/database;
+12. commit or rollback to rescue state;
+13. Doctor interprets result.
+
+Recovery must not depend exclusively on the subsystem being restored.
+Provide CLI/rescue path where Studio/UI is unavailable.
+
+## Backup scopes
+
+Future backup should distinguish:
+- essential Beast state;
+- Pwnagotchi config;
+- presentation preferences;
+- roster/progression/identity;
+- owner-created content;
+- installed content manifests;
+- Content Store bytes;
+- reproducible cache.
+
+Default backup need not copy every reacquirable media object.
+It should contain enough manifests/hashes/sources to reconstruct them.
+
+Offer:
+- Essential Backup;
+- Full Offline Backup;
+- Device Clone Manifest.
+
+This matters for small cards and large content libraries.
+
+---
+
+## Support Bundle
+
+Current SupportBundleManager is a strong privacy boundary.
+
+Default bundle deliberately excludes:
+- credentials;
+- raw Pwnagotchi config;
+- raw logs;
+- SSIDs/BSSIDs/client ids;
+- GPS coordinates;
+- IP/MAC addresses.
+
+Includes bounded:
+- platform health/state;
+- incidents;
+- action summaries;
+- job summaries;
+- Doctor/owner support state.
+
+Protect sanitized-by-default behavior.
+
+Future Procedure:
+**Gather Everything I Need for Support**
+- generate bundle;
+- run Doctor;
+- summarize findings;
+- show privacy manifest;
+- owner previews;
+- save/share/open contribution flow.
+
+Expert owner may intentionally add deeper evidence with explicit consent.
+
+---
+
+## Contribution highway
+
+The project should make useful contribution easy without requiring Git expertise from every owner.
+
+Potential Studio actions:
+- Report a Problem;
+- Suggest a Feature;
+- Submit Compatibility Result;
+- Submit Physical Validation;
+- Export Experience/Pack;
+- Share Procedure;
+- Build Support Bundle for Issue;
+- Open GitHub issue template;
+- Copy sanitized report;
+- Generate PR-ready manifest/data where appropriate.
+
+### Sanitized issue context
+May include:
+- Beast version/build;
+- upstream Pwnagotchi version;
+- platform/display profile;
+- relevant Doctor state;
+- Pack/plugin/provider versions;
+- error signature;
+- selected non-sensitive logs/evidence;
+- transaction/action ids.
+
+Exclude private network/location/capture data by default.
+
+## GitHub authentication
+
+Do not require storing a GitHub personal access token on every Pi just to participate.
+
+Early contribution flow can:
+- open/copy prefilled issue URLs/text in Studio;
+- download support bundle/report;
+- let user authenticate to GitHub in their normal browser.
+
+A future companion/service integration can add authenticated submission with explicit opt-in.
+
+---
+
+## Plugin / integration universe
+
+The future "complete" Beast experience can expose a much larger plugin/integration catalog without
+bundling or enabling everything.
+
+For each integration, track:
+- source/project;
+- license;
+- compatibility;
+- install recipe;
+- config schema;
+- dependencies;
+- capabilities;
+- risk/privilege;
+- enabled state;
+- health;
+- Doctor runbook;
+- update source.
+
+Where redistribution is not permitted:
+- catalog still knows about it;
+- Provisioner may obtain from original source if allowed;
+- or guide the owner through acquisition.
+
+Install != enable.
+Enable != healthy.
+Available != installed.
+
+This is central to the desired large ecosystem / lean runtime model.
+
+---
+
+## Uninstall / detach
+
+Current uninstall correctly preserves owner/history data.
+
+Future Provisioner should offer:
+- remove runtime only;
+- remove Beast UI only / return to Native Pwnagotchi;
+- remove optional content;
+- export then remove;
+- full purge with explicit confirmation.
+
+Always restore/verify presentation ownership before removing the current display owner.
+
+---
+
+## Release artifact discipline
+
+Current release process already requires:
+- frozen milestone;
+- tests/compile/shell;
+- privacy/reference audit;
+- clean release archive;
+- SHA-256;
+- target install from release artifact;
+- physical gate when relevant;
+- release docs/tag.
+
+Extend with:
+- generated component/BOM manifest;
+- SBOM/license inventory where practical;
+- exact upstream compatibility;
+- migration schema level;
+- artifact signatures/provenance if project distribution matures;
+- reproducible image/build evidence for official images.
+
+Release artifact is what was tested.
+Do not treat an arbitrary working-tree `git pull` as a field-device release strategy.
+
+---
+
+# Layer 6 structural verdict
+
+The current project already has the right instincts:
+- staged install;
+- explicit ownership;
+- verified update inputs;
+- limited automatic mutation;
+- rollback-first Pack updates;
+- staged restore;
+- sanitized support;
+- preserved state on uninstall.
+
+The missing product layer is **orchestration**.
+
+Preferred future structure:
+
+    Distribution Source / Upstream
+              |
+          Provisioner
+              |
+      Device BOM / Profile
+              |
+       Transaction Engine
+        /      |       \
+   Install   Update   Restore
+       |       |        |
+     Verify / Doctor / Known-Good
+              |
+         Normal Runtime
+
+This can produce a one-download/one-experience product without turning Beastagotchi into one giant,
+fragile, legally ambiguous binary bundle.
+
+---
+
+# Structure Deep Dive — consolidated outcome
+
+The deep review does **not** indicate that Beastagotchi needs a foundational rewrite.
+
+It indicates a good foundation whose first implementation is beginning to outgrow several explicit
+lists, duplicated managers, hand-written loops and large coordinators.
+
+## Structural principles to protect
+
+- Pwnagotchi remains an upstream/protected substrate.
+- One canonical StateRegistry.
+- Signals add semantics; Events carry transitions.
+- Capabilities/providers remain read-only until explicit Action/Transaction activation.
+- Doctor interprets and remembers; it does not secretly mutate.
+- Managed mutation goes through ActionBroker/Transaction.
+- Packs do not gain authority merely by installation.
+- Declarative content is the normal ecosystem path.
+- executable extensions are rarer/trusted.
+- one physical presentation owner.
+- UI/Studio are clients of Core truth.
+- owner retains local sovereignty.
+- small SD cards remain first-class.
+- huge available ecosystem, small active working set.
+
+## Highest-leverage structural improvements identified
+
+### Correctness / near-term
+1. Fix SQLite connection/thread-affinity on Action worker paths.
+2. Inject Core-owned roster/global-sync/memory objects into ActionBroker.
+3. Fix bridge event-sequence reset/restart handling.
+4. Review bridge state-file permissions/privacy.
+5. Remove duplicated preference/schema/version sources.
+
+### Foundation scaling
+6. Action Registry.
+7. first-class Transaction Engine/journal.
+8. Module Runtime/Scheduler.
+9. SignalSpec/EventSpec registries.
+10. PwnagotchiAdapter.
+11. Surface Registry + SurfaceStack/InputRouter.
+12. shared PresentationPreferenceStore / PresentationSession.
+13. Progression Catalog/Rule Engine.
+14. Content Store + storage budget manager.
+15. Page/Experience declarative Scene compilation.
+16. Provisioner + BOM/Distribution Profiles.
+17. Restore Transaction.
+
+### Efficiency
+18. WebSocket state patches for BeastUI normal operation.
+19. byte-budgeted asset/Scene caches.
+20. governor-aware module/preview scheduling.
+21. optional content/components remain cold/dormant until used.
+
+## Things not to overengineer
+
+- keep SQLite;
+- keep one local Core process unless measurement requires otherwise;
+- do not build a distributed message broker;
+- do not make every operation a heavyweight Transaction;
+- do not make every Pack executable;
+- do not require every content Pack to be componentized;
+- do not force every available Surface into primary navigation;
+- do not require USB/NAS/cloud for a complete system;
+- do not rewrite visually successful Experience renderers solely for architectural purity before
+  equivalent declarative fidelity exists.
+
+## Next phase after owner input
+
+With Structure sufficiently mapped, the next deep conversation should turn these structural
+decisions into an **Architecture Contract Review**:
+
+- exact stable kernel concepts;
+- registry contracts;
+- ownership and authority rules;
+- versioning/compatibility;
+- extension SDK boundaries;
+- transactions/procedures;
+- resource budgets;
+- content/storage contracts;
+- lifecycle/progression contracts;
+- migration path from current implementation without a flag-day rewrite.
+
+That architecture review should incorporate:
+- owner feedback;
+- this Structure Deep Dive;
+- Claude's completed independent review;
+- measured Pi constraints;
+- established Linux/Python/Raspberry-Pi practices.
+
