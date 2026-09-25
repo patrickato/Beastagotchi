@@ -140,6 +140,31 @@ At the current verified staging checkpoint:
 
 The next meaningful truth is first the actual generated renderer after the visual-scene rebuild; the Pi/TFT remains the following physical truth gate.
 
+## Gate 1 visual fidelity checkpoint — 2026-09-25
+
+Actual CI-rendered 480×320 output was reviewed and iterated rather than accepting structural
+tests alone.
+
+Retained Home changes:
+- Atlas: field notebook/canvas; no repeated sidebar cards;
+- Forge: continuous machine chassis; no module-card wall;
+- Observatory: open measurement station; no boxed plot/provenance stack;
+- Habitat: layered organic focal creature rather than circle mascot;
+- Monolith: sculptural premium focal creature while preserving negative space.
+
+Retained translation-page changes:
+- Atlas Recon -> field-notebook survey;
+- Forge System -> service chassis;
+- Observatory Spectrum -> open lab surface;
+- Habitat Beast -> matching layered creature language;
+- Monolith Overview already remained visually consistent.
+
+Cumulative cross-page head `4328ebab8096532adac2ce8e62997cd4dad6e051` passed CI and generated
+`v019-experience-page-translations`.
+
+**Gate 1 remains active.** This is not owner off-screen acceptance and does not enable physical
+TRY ON TFT execution.
+
 ## Experience Compiler integration checkpoint — 2026-09-25
 
 The Experience architecture has advanced without changing Gate 1's acceptance status:
