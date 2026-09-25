@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
@@ -97,7 +98,7 @@ def _draw_focal(draw,meta):
     draw.text((cx-iw//2, 204), identity, fill=_MUTED, font=_font(7))
 
 
-def render_monolith_home(state:dict[str,Any],*,scene_runtime:SceneRuntime|None=None)->Image.Image:
+def render_monolith_home(state:dict[str,Any],*,phase:float=0.0,scene_runtime:SceneRuntime|None=None)->Image.Image:
     state=dict(state or {})
     meta=monolith_home_metadata(state)
     rt=scene_runtime
@@ -121,6 +122,20 @@ def render_monolith_home(state:dict[str,Any],*,scene_runtime:SceneRuntime|None=N
         "monolith.focal","creature",(146,40,334,232),
         signals=("progression.stage","progression.level","pwnagotchi.mood","beast.expression"),
         update_class="live",
+    ))
+
+    # Quiet decorative breath around the focal sculpture only.
+    pulse=0.5+0.5*math.sin(float(phase)*1.25)
+    halo=(
+        int(_LINE[0]+(_ACCENT[0]-_LINE[0])*pulse),
+        int(_LINE[1]+(_ACCENT[1]-_LINE[1])*pulse),
+        int(_LINE[2]+(_ACCENT[2]-_LINE[2])*pulse),
+    )
+    d.arc((142,44,338,240),205,335,fill=halo,width=1)
+    d.arc((156,58,324,226),25,155,fill=halo,width=1)
+    _register(rt,SceneLayerSpec(
+        "monolith.ambient_halo","ambient",(138,40,342,244),
+        update_class="ambient",reduced_motion="static",decorative=True,
     ))
 
     # Exactly one primary fact row.
