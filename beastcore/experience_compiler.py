@@ -96,6 +96,67 @@ def _capability_resolution(
     return row
 
 
+def compile_scene_target(
+    platform_profile: dict[str, Any] | None,
+    *,
+    native_target_classes: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    """Describe target geometry/support without pretending scaling is native reflow."""
+    profile = dict(platform_profile or {})
+    display_class = str(profile.get("display_class") or "unknown").strip().lower()
+    primary = profile.get("primary_display") if isinstance(profile.get("primary_display"), dict) else {}
+    try:
+        width = int(primary.get("width")) if primary.get("width") else None
+        height = int(primary.get("height")) if primary.get("height") else None
+    except (TypeError, ValueError):
+        width, height = None, None
+    if width and height:
+        orientation = "landscape" if width >= height else "portrait"
+    else:
+        orientation = "unknown"
+
+    native = tuple(dict.fromkeys(
+        str(x).strip().lower()
+        for x in (native_target_classes or ("reference",))
+        if str(x).strip()
+    ))
+    exact_reference = (width, height) == (480, 320)
+    class_only_reference = display_class == "reference" and not (width and height)
+    native_supported = display_class in native and (
+        display_class != "reference" or exact_reference or class_only_reference
+    )
+    if native_supported:
+        mode = "native_reference" if display_class == "reference" else "native_variant"
+    elif display_class == "unknown":
+        mode = "target_unknown"
+    else:
+        mode = "native_variant_required"
+
+    scale = None
+    if width and height:
+        scale = min(width / 480.0, height / 320.0)
+
+    return {
+        "schema": 1,
+        "display_class": display_class,
+        "requested_size": [width, height],
+        "orientation": orientation,
+        "reference_size": [480, 320],
+        "native_target_classes": list(native),
+        "native_supported": bool(native_supported),
+        "render_mode": mode,
+        "reflow_required": not bool(native_supported),
+        "compatibility_scaling_is_native": False,
+        "scale_hint": None if scale is None else round(float(scale), 3),
+        "evidence": (
+            "exact_dimensions" if width and height
+            else "display_class_only" if display_class != "unknown"
+            else "unknown"
+        ),
+    }
+
+
+
 def compile_experience_definition(
     dna: ExperienceDNA,
     platform_profile: dict[str, Any] | None,
@@ -105,6 +166,7 @@ def compile_experience_definition(
     renderer_pages: list[str] | tuple[str, ...] | None = None,
     policy: ExperienceComponentPolicy | None = None,
     source: dict[str, Any] | None = None,
+    native_target_classes: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Compile any validated Experience DNA definition without mutation."""
     errors = dna.validate()
@@ -120,6 +182,10 @@ def compile_experience_definition(
     preferred = tuple(policy.preferred_pages)
     missing_preferred = [page for page in preferred if page not in implemented]
     capability = _capability_resolution(dna.id, policy, resolver)
+    target = compile_scene_target(
+        platform_profile,
+        native_target_classes=native_target_classes,
+    )
     optional_missing = [
         row.get("requirement")
         for row in capability.get("optional_results", [])
@@ -147,11 +213,15 @@ def compile_experience_definition(
             "optional_missing": [x for x in optional_missing if x],
         },
         "doctor_visibility": variant["doctor_visibility"],
+        "render_target": target,
+        "ready_for_native_target": bool(implemented) and bool(target["native_supported"]),
         "writes_preferences": False,
         "installs_dependencies": False,
         "selects_providers": False,
         "ready_for_preview": "home" in implemented,
-        "ready_for_production_navigation": bool(implemented) and not missing_preferred,
+        "ready_for_production_navigation": (
+            bool(implemented) and not missing_preferred and bool(target["native_supported"])
+        ),
     }
 
 
@@ -169,6 +239,7 @@ def compile_pack_experience(
     context: str | None = None,
     resolver: DependencyCapabilityResolver | None = None,
     renderer_pages: list[str] | tuple[str, ...] | None = None,
+    renderer_native_targets: list[str] | tuple[str, ...] | None = None,
     source_pack: str | None = None,
     source_file: str | None = None,
 ) -> dict[str, Any]:
@@ -192,6 +263,7 @@ def compile_pack_experience(
             "pack_id": str(source_pack or ""),
             "source_file": str(source_file or ""),
         },
+        native_target_classes=renderer_native_targets,
     )
 
 
@@ -203,6 +275,7 @@ def compile_experience(
     context: str | None = None,
     resolver: DependencyCapabilityResolver | None = None,
     renderer_pages: list[str] | tuple[str, ...] | None = None,
+    renderer_native_targets: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     """Compile Experience intent into a bounded, non-mutating runtime plan.
 
@@ -228,6 +301,7 @@ def compile_experience(
         renderer_pages=renderer_pages,
         policy=policy,
         source={"kind": "builtin"},
+        native_target_classes=renderer_native_targets,
     )
 
 
