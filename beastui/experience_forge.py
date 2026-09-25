@@ -272,7 +272,7 @@ def render_forge_system(
     *,
     scene_runtime: SceneRuntime | None = None,
 ) -> Image.Image:
-    """Forge translation of System: machine subsystems + Doctor/governor context."""
+    """Forge System as a deeper view into the same continuous machine chassis."""
     state = dict(state or {})
     meta = forge_home_metadata(state)
     rt = scene_runtime
@@ -282,90 +282,106 @@ def render_forge_system(
 
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
-
-    d.rectangle((0, 0, 479, 30), fill=(35, 33, 29))
-    d.text((10, 7), "FORGE", fill=_AMBER, font=_font(15))
-    d.text((68, 9), "SYSTEM BAY", fill=_MUTED, font=_font(9))
     health = meta["core_state"].upper()
-    d.text((394, 9), health, fill=_OK if health == "HEALTHY" else _WARN, font=_font(9))
+    health_col = _OK if health == "HEALTHY" else _WARN
+
+    d.rectangle((0,0,479,29), fill=(31,30,27))
+    d.rectangle((0,28,479,30), fill=_EDGE)
+    d.text((10,6),"FORGE",fill=_AMBER,font=_font(15))
+    d.text((70,9),"SYSTEM BAY // SERVICE CHASSIS",fill=_MUTED,font=_font(8))
+    d.ellipse((445,9,455,19),fill=health_col)
+    d.text((386,9),health,fill=health_col,font=_font(8))
     _register(rt, SceneLayerSpec(
-        "forge_system.header", "text", (0, 0, 480, 31),
-        signals=("health.core.state",), update_class="live",
+        "forge_system.header","text",(0,0,480,31),
+        signals=("health.core.state",),update_class="live",
     ))
 
-    # Left powertrain: compute and memory are shown as one physical subsystem.
-    _module(
-        d, (12, 42, 224, 126), "COMPUTE CORE",
-        f"CPU {meta['cpu_pct']:.0f}% · {meta['temp_c']:.0f} C",
-        f"MEMORY {meta['memory_pct']:.1f}%",
-        status="ok" if meta["temp_c"] < 75 else "warn",
-    )
+    # One chassis, split into two service bays.
+    d.rectangle((8,36,471,274),fill=(35,34,30),outline=_EDGE,width=2)
+    d.rectangle((12,53,467,263),fill=(27,27,24),outline=_METAL_2)
+    d.rectangle((238,52,242,263),fill=_METAL_2)
+    for y in (62,132,205,252):
+        d.ellipse((236,y-2,244,y+6),fill=_EDGE,outline=_BG)
+
+    # Compute service bay: gauge + thermal/memory rails.
+    _bay_title(d,14,236,"COMPUTE SERVICE",f"{meta['temp_c']:.0f}C",
+               state_color=_OK if meta["temp_c"] < 75 else _WARN)
+    _dial(d,(76,104),42,meta["cpu_pct"],label="CPU LOAD",unit="%",warn=meta["temp_c"]>=75)
+    mem=max(0.0,min(100.0,meta["memory_pct"]))
+    d.text((132,72),"MEMORY BUS",fill=_MUTED,font=_font(7))
+    d.rectangle((132,88,213,101),outline=_EDGE)
+    d.rectangle((134,90,134+int(77*mem/100.0),99),fill=_AMBER)
+    d.text((132,108),f"{mem:.1f}% USED",fill=_INK,font=_font(9))
+    d.text((132,128),f"THERMAL {meta['temp_c']:.0f} C",fill=_OK if meta["temp_c"]<75 else _WARN,font=_font(8))
     _register(rt, SceneLayerSpec(
-        "forge_system.compute", "instrument", (12, 42, 224, 126),
-        signals=("system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct"),
+        "forge_system.compute","instrument",(14,34,236,150),
+        signals=("system.cpu.total","system.temp.cpu_c","system.memory.used_pct"),
         update_class="live",
     ))
 
-    # Right I/O module: connectivity/capabilities without pretending at detailed topology.
-    ethernet = "LINK UP" if meta["ethernet"] else "NO LINK"
-    _module(
-        d, (244, 42, 468, 126), "I/O FABRIC",
-        ethernet,
-        f"{meta['capabilities']} CAPABILITIES · RADIO CH {meta['channel']}",
-        status="ok" if meta["ethernet"] else "normal",
-    )
+    # I/O service bay: ports + radio/capability fabric.
+    ethernet=bool(meta["ethernet"])
+    _bay_title(d,244,465,"I/O FABRIC","LINK UP" if ethernet else "NO LINK",
+               state_color=_OK if ethernet else _MUTED)
+    for idx,active in enumerate((ethernet,meta["channel"]>0,meta["capabilities"]>0,meta["power_available"])):
+        _port(d,258+idx*42,82,active=active)
+    d.text((258,108),f"{meta['capabilities']} CAPABILITIES",fill=_INK,font=_font(11))
+    d.text((258,127),f"RADIO CH {meta['channel']} // {meta['band']}",fill=_AMBER,font=_font(8))
+    d.text((370,127),"ETH UP" if ethernet else "ETH DOWN",fill=_OK if ethernet else _MUTED,font=_font(8))
     _register(rt, SceneLayerSpec(
-        "forge_system.io", "instrument", (244, 42, 468, 126),
-        signals=("network.ethernet.carrier", "capabilities.count", "radio.primary.channel"),
+        "forge_system.io","instrument",(244,34,466,150),
+        signals=("network.ethernet.carrier","capabilities.count","radio.primary.channel"),
         update_class="live",
     ))
 
-    # Central machine bus visually joins the subsystems.
-    d.line((44, 151, 436, 151), fill=_EDGE, width=4)
-    for x in (82, 238, 394):
-        d.ellipse((x-6,145,x+6,157), fill=_AMBER, outline=_BG)
-    d.text((197, 137), "MACHINE BUS", fill=_MUTED, font=_font(8))
+    # Shared bus physically connects both service bays.
+    d.rectangle((26,157,454,165),fill=_METAL_2)
+    d.line((26,161,454,161),fill=_AMBER,width=2)
+    for x in (58,130,202,278,350,422):
+        d.ellipse((x-5,156,x+5,166),fill=_AMBER,outline=_BG)
+    d.text((198,146),"MACHINE BUS",fill=_MUTED,font=_font(7))
     _register(rt, SceneLayerSpec(
-        "forge_system.bus", "shape", (40, 134, 440, 160),
-        signals=(), update_class="static", decorative=True,
+        "forge_system.bus","shape",(22,142,458,176),
+        signals=(),update_class="static",decorative=True,
     ))
 
-    # Power/telemetry is explicit about absence.
-    power_primary = "TELEMETRY ONLINE" if meta["power_available"] else "NO POWER SENSOR"
-    _module(
-        d, (12, 174, 224, 258), "POWER TRAIN",
-        power_primary,
-        meta["ups_state"].replace("_", " ").upper(),
-        status="ok" if meta["power_available"] else "normal",
-    )
+    # Lower power train is an exposed mechanism, not a module card.
+    power_col=_OK if meta["power_available"] else _EDGE
+    d.text((18,181),"POWER TRAIN",fill=_MUTED,font=_font(8))
+    d.line((22,204,22,252),fill=power_col,width=3)
+    for y in (206,220,234,248):
+        d.line((16,y,28,y),fill=power_col,width=2)
+    d.text((42,197),"TELEMETRY",fill=_MUTED,font=_font(7))
+    d.text((42,214),"ONLINE" if meta["power_available"] else "NO SENSOR",fill=power_col,font=_font(12))
+    d.text((42,235),meta["ups_state"].replace("_"," ").upper()[:22],fill=_AMBER,font=_font(8))
     _register(rt, SceneLayerSpec(
-        "forge_system.power", "instrument", (12, 174, 224, 258),
-        signals=("power.telemetry.available", "power.ups.state"),
-        update_class="live",
+        "forge_system.power","instrument",(14,178,226,260),
+        signals=("power.telemetry.available","power.ups.state"),update_class="live",
     ))
 
-    attention = meta["attention_count"]
-    doctor_primary = "NO ACTIVE FAULTS" if attention == 0 and health == "HEALTHY" else f"{attention} ATTENTION"
-    _module(
-        d, (244, 174, 468, 258), "DOCTOR / GOVERNOR",
-        doctor_primary,
-        f"GOVERNOR {meta['governor'].upper()}",
-        status="ok" if doctor_primary == "NO ACTIVE FAULTS" else "warn",
-    )
+    # Doctor/governor fault stack is mounted in the right lower bay.
+    attention=meta["attention_count"]
+    doctor_primary="NO ACTIVE FAULTS" if attention==0 and health=="HEALTHY" else f"{attention} ATTENTION"
+    d.line((244,178,244,260),fill=_METAL_2,width=2)
+    d.text((258,181),"DOCTOR / GOVERNOR",fill=_MUTED,font=_font(8))
+    d.ellipse((258,207,274,223),fill=_OK if doctor_primary=="NO ACTIVE FAULTS" else _WARN)
+    d.text((286,202),doctor_primary,fill=_INK,font=_font(11))
+    d.text((286,222),f"GOVERNOR {meta['governor'].upper()}",fill=_AMBER,font=_font(8))
+    d.text((286,240),"POLICY GUARDS ACTIVE",fill=_MUTED,font=_font(7))
     _register(rt, SceneLayerSpec(
-        "forge_system.doctor", "instrument", (244, 174, 468, 258),
-        signals=("overview.attention", "health.core.state", "governor.mode"),
-        update_class="live",
+        "forge_system.doctor","instrument",(244,178,466,260),
+        signals=("overview.attention","health.core.state","governor.mode"),update_class="live",
     ))
 
-    # Bottom rail is machine context, not page navigation.
-    d.rectangle((12, 278, 468, 309), fill=_METAL_2)
-    d.text((22, 288), f"CORE {health}", fill=_OK if health == "HEALTHY" else _WARN, font=_font(8))
-    d.text((154, 288), f"GOV {meta['governor'].upper()}", fill=_AMBER, font=_font(8))
-    d.text((286, 288), f"POWER {'KNOWN' if meta['power_available'] else 'UNKNOWN'}", fill=_MUTED, font=_font(8))
+    d.rectangle((8,282,471,311),fill=_METAL)
+    d.rectangle((8,282,471,284),fill=_EDGE)
+    d.text((18,291),f"CORE {health}",fill=health_col,font=_font(8))
+    d.text((164,291),f"GOV {meta['governor'].upper()}",fill=_AMBER,font=_font(8))
+    d.text((302,291),f"POWER {'KNOWN' if meta['power_available'] else 'UNKNOWN'}",fill=_MUTED,font=_font(8))
     _register(rt, SceneLayerSpec(
-        "forge_system.rail", "text", (12, 278, 468, 310),
-        signals=("health.core.state", "governor.mode", "power.telemetry.available"),
+        "forge_system.rail","text",(8,282,472,312),
+        signals=("health.core.state","governor.mode","power.telemetry.available"),
         update_class="live",
     ))
     return im
+
