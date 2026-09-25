@@ -7,6 +7,8 @@ from pathlib import Path
 from beastui.experience_atlas import render_atlas_home
 from beastui.experience_forge import render_forge_home
 from beastui.experience_observatory import render_observatory_home
+from beastui.experience_habitat import render_habitat_home
+from beastui.experience_monolith import render_monolith_home
 from beastui.scene_runtime import SceneRuntime
 
 
@@ -14,6 +16,8 @@ RENDERERS = {
     "atlas": render_atlas_home,
     "forge": render_forge_home,
     "observatory": render_observatory_home,
+    "habitat": render_habitat_home,
+    "monolith": render_monolith_home,
 }
 
 
@@ -28,7 +32,7 @@ def main() -> int:
     root.mkdir(parents=True, exist_ok=True)
 
     manifest = {
-        "purpose": "first three non-legacy Experience-DNA Home proofs from sanitized real target state",
+        "purpose": "first five non-legacy Experience-DNA Home proofs from sanitized real target state",
         "source_state_kind": (state.get("_beast_capture") or {}).get("kind"),
         "experiences": {},
     }
