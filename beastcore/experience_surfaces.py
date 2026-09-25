@@ -13,6 +13,7 @@ BUILTIN_EXPERIENCE_SURFACES: dict[str, dict[str, str]] = {
     },
     "forge": {
         "home": "prototype",
+        "system": "prototype",
     },
     "observatory": {
         "home": "prototype",
@@ -24,6 +25,7 @@ BUILTIN_EXPERIENCE_SURFACES: dict[str, dict[str, str]] = {
     },
     "monolith": {
         "home": "prototype",
+        "overview": "prototype",
     },
 }
 
