@@ -21,6 +21,7 @@ class LocalAPI:
         self.backup_manager = None
         self.template_tokens = None
         self.integration_catalog = None
+        self.experience_plans = None
         self.signals = None
         self.doctor = None
         self.capsules = None
@@ -47,6 +48,26 @@ class LocalAPI:
         if self.template_tokens is None:
             return {"schema": 1, "count": 0, "known_count": 0, "live_count": 0, "items": []}
         return self.template_tokens.snapshot(names)
+
+    def experience_bundle(self) -> dict[str, Any]:
+        """Return the Core-owned read-only Experience Compiler publication."""
+        published = self.state.get("experience.compiler.plan", {}) or {}
+        if isinstance(published, dict) and published.get("schema"):
+            return published
+        if self.experience_plans is not None:
+            return self.experience_plans.snapshot()
+        return {
+            "schema": 1,
+            "mode": "unavailable",
+            "count": 0,
+            "preview_ready_count": 0,
+            "production_navigation_ready_count": 0,
+            "items": [],
+            "writes_preferences": False,
+            "installs_dependencies": False,
+            "selects_providers": False,
+            "tft_activation_enabled": False,
+        }
 
     def platform_bundle(self) -> dict[str, Any]:
         """Return the high-value whole-platform snapshot used by Beast Studio.
@@ -165,6 +186,14 @@ class LocalAPI:
             "thermal": thermal,
             "governor": governor,
             "presentation": presentation,
+            "experiences": {
+                "schema": self.experience_bundle().get("schema", 1),
+                "mode": self.experience_bundle().get("mode", "unavailable"),
+                "count": int(self.experience_bundle().get("count", 0) or 0),
+                "preview_ready_count": int(self.experience_bundle().get("preview_ready_count", 0) or 0),
+                "production_navigation_ready_count": int(self.experience_bundle().get("production_navigation_ready_count", 0) or 0),
+                "tft_activation_enabled": bool(self.experience_bundle().get("tft_activation_enabled", False)),
+            },
             "integrations": self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]},
             "dependencies": {
                 "execution_enabled": False,
@@ -422,6 +451,8 @@ class LocalAPI:
                     body["catalog"] = self.template_tokens.catalog()
             elif parsed.path == "/platform-profile":
                 body = self.state.get("platform.profile", {}) or {}
+            elif parsed.path == "/experiences":
+                body = self.experience_bundle()
             elif parsed.path == "/signals":
                 q = urllib.parse.parse_qs(parsed.query)
                 raw = str(q.get("names", [""])[0])
@@ -531,7 +562,7 @@ class LocalAPI:
                 if body is None:
                     return await self._reply(writer, 404, {"error":"expedition not found"})
             else:
-                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/capsule/export","/capsule/types","/template-tokens","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
+                return await self._reply(writer, 404, {"error":"not found","endpoints":["/health","/state","/live","/events","/history","/history-batch","/telemetry","/platform-bundle","/library","/library-item","/incidents","/jobs","/search","/backup-inspect","/operator-policy","/operator-tools","/owner-mode","/provider-preferences","/doctor","/explain","/capsule/export","/capsule/types","/template-tokens","/experiences","/dependencies","/plugins","/actions","/encounters","/beastdex","/capture-vault","/achievements","/expeditions","/expedition","/ws"]})
             await self._reply(writer, 200, body)
         except Exception:
             try: await self._reply(writer, 400, {"error":"bad request"})
