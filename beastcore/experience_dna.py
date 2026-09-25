@@ -256,6 +256,60 @@ LEGACY_REFERENCE_IDENTITIES = {
 }
 
 
+def _tuple_strings(value: Any, *, limit: int = 32, width: int = 96) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    return tuple(
+        str(x).strip()[:width]
+        for x in value[:limit]
+        if str(x).strip()
+    )
+
+
+def experience_dna_from_dict(
+    raw: dict[str, Any],
+    *,
+    experience_id: str | None = None,
+    label: str | None = None,
+) -> ExperienceDNA:
+    """Parse an untrusted declarative Experience DNA object.
+
+    Packs may extend presentation vocabularies only through namespaced values.
+    Core semantic axes remain closed so the compiler/resource governor can reason
+    about them consistently.
+    """
+    if not isinstance(raw, dict):
+        raise ValueError("experience_dna must be an object")
+    eid = str(experience_id or raw.get("id") or "").strip().lower()[:64]
+    row = ExperienceDNA(
+        id=eid,
+        label=str(label or raw.get("label") or eid).strip()[:80],
+        visual_family=str(raw.get("visual_family") or "").strip().lower()[:96],
+        layout_family=str(raw.get("layout_family") or "").strip().lower()[:96],
+        density=str(raw.get("density") or "balanced").strip().lower()[:32],
+        motion_profile=str(raw.get("motion_profile") or "subtle").strip().lower()[:96],
+        creature_presence=str(raw.get("creature_presence") or "prominent").strip().lower()[:32],
+        utility_bias=str(raw.get("utility_bias") or "balanced").strip().lower()[:32],
+        playfulness=str(raw.get("playfulness") or "moderate").strip().lower()[:32],
+        alert_style=str(raw.get("alert_style") or "field").strip().lower()[:96],
+        hardware_fit=_tuple_strings(
+            raw.get("hardware_fit") or ("reference", "medium", "large", "desktop"),
+            limit=16, width=32,
+        ),
+        input_model=str(raw.get("input_model") or "touch_first").strip().lower()[:32],
+        doctor_visibility=str(raw.get("doctor_visibility") or "contextual").strip().lower()[:32],
+        mystery_level=str(raw.get("mystery_level") or "subtle").strip().lower()[:32],
+        mission_bias=_tuple_strings(raw.get("mission_bias"), limit=32, width=64),
+        tags=_tuple_strings(raw.get("tags"), limit=32, width=64),
+        description=str(raw.get("description") or "").strip()[:320],
+    )
+    errors = row.validate()
+    if errors:
+        raise ValueError("; ".join(errors))
+    return row
+
+
+
 def get_experience_dna(experience_id: str) -> ExperienceDNA | None:
     return BUILTIN_EXPERIENCE_DNA.get(str(experience_id or "").strip().lower())
 
