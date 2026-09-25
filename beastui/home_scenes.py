@@ -14,19 +14,43 @@ def _scene_layer(ui, layer_id, kind, bounds, **kwargs):
     if runtime is None:return nullcontext()
     return runtime.layer(layer_id,kind,bounds,**kwargs)
 
-def _paste_concept_creature(canvas, name, box, phase: float, *, opacity=255, scale_pulse=.018):
+def _paste_concept_creature(
+    canvas, name, box, phase: float, *, opacity=255, scale_pulse=.018,
+    allow_upscale=True, edge_feather=10,
+):
+    """Composite concept art as scene-scale creature art, not a tiny icon."""
     art=concept_creature(name)
     if art is None:return False
     x1,y1,x2,y2=[int(v) for v in box]
     max_w=max(1,x2-x1);max_h=max(1,y2-y1)
     img=art.copy()
-    img.thumbnail((max_w,max_h),Image.Resampling.LANCZOS)
+    scale=min(max_w/max(1,img.width),max_h/max(1,img.height))
+    if not allow_upscale:scale=min(1.0,scale)
+    target=(max(1,int(round(img.width*scale))),max(1,int(round(img.height*scale))))
+    if target!=img.size:
+        img=img.resize(target,Image.Resampling.LANCZOS)
+
     pulse=1.0+float(scale_pulse)*math.sin(float(phase)*1.37)
     if abs(pulse-1.0)>.001:
         img=ImageEnhance.Brightness(img).enhance(max(.75,pulse))
+
+    alpha=img.getchannel('A')
+    feather=max(0,min(int(edge_feather),img.width//3,img.height//3))
+    if feather:
+        mask=Image.new('L',img.size,255)
+        mp=mask.load();w,h=img.size
+        for yy in range(h):
+            dy=min(yy,h-1-yy)
+            for xx in range(w):
+                dist=min(xx,w-1-xx,dy)
+                if dist<feather:
+                    mp[xx,yy]=int(255*dist/max(1,feather))
+        alpha=ImageChops.multiply(alpha,mask)
+
     if opacity<255:
-        a=img.getchannel('A').point(lambda v:int(v*max(0,min(255,int(opacity)))/255))
-        img.putalpha(a)
+        alpha=alpha.point(lambda v:int(v*max(0,min(255,int(opacity)))/255))
+    img.putalpha(alpha)
+
     px=x1+(max_w-img.width)//2;py=y1+(max_h-img.height)//2
     base=canvas.convert('RGBA');base.alpha_composite(img,(px,py));canvas.paste(base.convert('RGB'))
     return True
@@ -283,12 +307,12 @@ def _concept_hero_scene(d,state,ui, *, style='classic'):
                 d.line((12,scan_y,468,scan_y),fill=_mix(t.c('bg'),t.c('primary'),.34))
             d.line((14,46,14,268),fill=t.c('primary'),width=2)
             for y in range(56,258,20):d.line((7,y,20,y),fill=t.c('secondary'))
-            for x in (270,348,468):d.line((x,48,x,226),fill=t.c('edge'))
+            for x in (266,348,468):d.line((x,48,x,226),fill=t.c('edge'))
             # subtle arc/range marks around the creature
             for r in (74,102,132):
                 d.arc((142-r,142-r,142+r,142+r),205,335,fill=_mix(t.c('bg'),t.c('primary'),.55),width=1)
 
-    creature_box=(24,58,260,226) if style!='blackice' else (72,55,318,222)
+    creature_box=(8,48,258,230) if style=='classic' else (10,47,256,228) if style=='cyberpunk' else (58,47,326,229)
     with _scene_layer(
         ui,'home.creature.art','creature',creature_box,z=20,
         signals=('pwnagotchi.mood','beast.expression'),update_class='ambient',
@@ -321,14 +345,14 @@ def _concept_hero_scene(d,state,ui, *, style='classic'):
                 _text_right(d,462,yy+7,val,f['medium'],col)
             d.text((350,194),gps,font=f['tiny'],fill=t.c('dim'))
         elif style=='cyberpunk':
-            d.text((268,55),'NEON RECON',font=f['medium'],fill=t.c('secondary'))
-            d.text((269,77),f'{mode}  //  CH {ch}',font=f['tiny'],fill=t.c('info'))
+            d.text((262,55),'NEON RECON',font=f['medium'],fill=t.c('secondary'))
+            d.text((263,77),f'{mode}  //  CH {ch}',font=f['tiny'],fill=t.c('info'))
             rows=(('NETWORKS',aps,t.c('primary')),('CLIENTS',clients,t.c('info')),
                   ('HANDSHAKES',hs,t.c('accent')),('PMKIDS',pmkid,t.c('secondary')))
             yy=103
             for lab,val,col in rows:
-                d.text((270,yy),lab,font=f['tiny'],fill=t.c('dim'))
-                _text_right(d,390,yy-2,val,f['medium'],col);yy+=27
+                d.text((264,yy),lab,font=f['tiny'],fill=t.c('dim'))
+                _text_right(d,392,yy-2,val,f['medium'],col);yy+=27
             d.line((404,56,404,205),fill=t.c('edge'))
             for i,(lab,val,col) in enumerate((('CPU',cpu,t.c('primary')),('MEM',mem,t.c('secondary')),('TEMP',temp,t.c('accent')))):
                 yy=67+i*44;d.text((415,yy),lab,font=f['micro'],fill=t.c('dim'));d.text((415,yy+12),val,font=f['small'],fill=col)
