@@ -23,6 +23,8 @@ This repository snapshot is intended to let an external developer or AI resume o
 18. `docs/Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`
 19. `docs/Beastagotchi_Doctor_Knowledge_Runtime_CrossPollination_2026-09-24.md`
 20. `docs/Beastagotchi_Adaptive_Platform_DeepLinks_Unified_Doctor_RecoveryVault_2026-09-24.md`
+21. `docs/Beastagotchi_Experience_DNA_Abundant_Taxonomy_2026-09-24.md`
+22. `docs/Beastagotchi_Experience_Prototype_Briefs_v0.19_2026-09-24.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
@@ -73,3 +75,13 @@ Please distinguish architectural critique from personal preferences and cite fil
 - Capsule integrity is not authentication. Current BC1 SHA-256/CRC checks detect corruption but do not prove sender identity; remote lineage/trophy trust must wait for explicit signature semantics.
 - Do not move Beast progression/UI/lineage logic into Pwnagotchi plugins merely because plugin hooks exist. Keep plugins thin and canonical Beast concerns in Beast Core/Packs/Apps.
 - Offline/sneakernet exchange is protected scope; do not make cloud/network access a prerequisite for Capsule sharing.
+
+## Experience-DNA visual direction
+
+Do not collapse future visual work back into the old Classic/Cyberpunk/Black-Ice/WOPR/LCARS/Hunter loop.
+
+Those identities remain useful presets/references only. The top-level architecture now uses Experience DNA with broad visual/layout/density/motion/creature/utility/input/Doctor/mystery axes.
+
+First prototype order: Atlas, Forge, Observatory, Habitat, Monolith.
+
+Each must differ in grayscale silhouette, content hierarchy, creature presence, motion language and Doctor relationship before palette is considered.
