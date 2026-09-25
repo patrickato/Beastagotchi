@@ -3,10 +3,10 @@ from __future__ import annotations
 from contextlib import nullcontext
 import math
 from pathlib import Path
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
-from .concept_creatures import concept_creature
+from .concept_creatures import concept_creature, concept_creature_scene
 
 
 def _scene_layer(ui, layer_id, kind, bounds, **kwargs):
@@ -18,43 +18,34 @@ def _paste_concept_creature(
     canvas, name, box, phase: float, *, opacity=255, scale_pulse=.018,
     allow_upscale=True, edge_feather=10,
 ):
-    """Composite concept art as scene-scale creature art, not a tiny icon."""
+    """Composite cached scene-scale concept art with only cheap per-frame work."""
     art=concept_creature(name)
     if art is None:return False
     x1,y1,x2,y2=[int(v) for v in box]
     max_w=max(1,x2-x1);max_h=max(1,y2-y1)
-    img=art.copy()
-    scale=min(max_w/max(1,img.width),max_h/max(1,img.height))
-    if not allow_upscale:scale=min(1.0,scale)
-    target=(max(1,int(round(img.width*scale))),max(1,int(round(img.height*scale))))
-    if target!=img.size:
-        img=img.resize(target,Image.Resampling.LANCZOS)
+
+    if allow_upscale:
+        prepared=concept_creature_scene(name,max_w,max_h,edge_feather)
+    else:
+        prepared=concept_creature_scene(
+            name,min(max_w,art.width),min(max_h,art.height),edge_feather
+        )
+    if prepared is None:return False
+    img=prepared.copy()
 
     pulse=1.0+float(scale_pulse)*math.sin(float(phase)*1.37)
     if abs(pulse-1.0)>.001:
         img=ImageEnhance.Brightness(img).enhance(max(.75,pulse))
 
-    alpha=img.getchannel('A')
-    feather=max(0,min(int(edge_feather),img.width//3,img.height//3))
-    if feather:
-        mask=Image.new('L',img.size,255)
-        mp=mask.load();w,h=img.size
-        for yy in range(h):
-            dy=min(yy,h-1-yy)
-            for xx in range(w):
-                dist=min(xx,w-1-xx,dy)
-                if dist<feather:
-                    mp[xx,yy]=int(255*dist/max(1,feather))
-        alpha=ImageChops.multiply(alpha,mask)
-
     if opacity<255:
-        alpha=alpha.point(lambda v:int(v*max(0,min(255,int(opacity)))/255))
-    img.putalpha(alpha)
+        alpha=img.getchannel('A').point(
+            lambda v:int(v*max(0,min(255,int(opacity)))/255)
+        )
+        img.putalpha(alpha)
 
     px=x1+(max_w-img.width)//2;py=y1+(max_h-img.height)//2
     base=canvas.convert('RGBA');base.alpha_composite(img,(px,py));canvas.paste(base.convert('RGB'))
     return True
-
 
 def _metric(d,x,y,label,value,font_label,font_value,label_col,value_col,*,right=None):
     d.text((x,y),str(label),font=font_label,fill=label_col)
