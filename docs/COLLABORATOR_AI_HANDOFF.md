@@ -27,6 +27,7 @@ This repository snapshot is intended to let an external developer or AI resume o
 22. `docs/Beastagotchi_Experience_Prototype_Briefs_v0.19_2026-09-24.md`
 23. `docs/Beastagotchi_Visual_North_Star_Reference_Archive_2026-09-25.md`
 24. `docs/Beastagotchi_Foundation_Principles_Open_Architecture_2026-09-25.md`
+25. `docs/Beastagotchi_Progression_Content_Procedures_Doctor_Interaction_2026-09-25.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
