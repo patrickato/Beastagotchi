@@ -113,14 +113,55 @@ def _draw_rf_observations(draw: ImageDraw.ImageDraw, state: dict[str, Any]) -> N
 
 
 def _draw_beast_marker(draw: ImageDraw.ImageDraw, meta: dict[str, Any]) -> None:
-    """Small supporting companion marker; Atlas is field-first, not portrait-first."""
-    x, y = 22, 220
-    draw.ellipse((x, y, x+66, y+62), fill=(43, 47, 39), outline=_ACCENT, width=2)
-    draw.polygon([(x+10, y+10), (x+18, y-2), (x+25, y+12)], fill=(43, 47, 39), outline=_ACCENT)
-    draw.polygon([(x+41, y+12), (x+49, y-2), (x+57, y+10)], fill=(43, 47, 39), outline=_ACCENT)
-    draw.ellipse((x+21, y+27, x+25, y+31), fill=_INK)
-    draw.ellipse((x+43, y+27, x+47, y+31), fill=_INK)
-    draw.text((x+3, y+67), f"{meta['stage'].upper()} · LV {meta['level']}", fill=_INK, font=_font(9))
+    """Small field-sketch companion; Atlas remains field-first, never portrait-first."""
+    x, y = 28, 214
+    mood = str(meta.get("expression") or "awake").lower()
+    alert = mood in {"focused", "hunting", "intense", "angry"}
+
+    # Ground stroke + loose field-note construction lines. These read as a sketch
+    # made in the notebook, not a UI badge floating over the map.
+    draw.line((x-6, y+54, x+68, y+54), fill=(105, 108, 78), width=1)
+    draw.line((x-3, y+57, x+51, y+57), fill=(72, 77, 55), width=1)
+
+    # Seated/alert companion silhouette with asymmetry and a visible chest/haunch.
+    body = [
+        (x+28,y+18),(x+40,y+16),(x+52,y+22),(x+58,y+34),
+        (x+55,y+48),(x+45,y+54),(x+29,y+53),(x+18,y+48),
+        (x+15,y+36),(x+19,y+26),
+    ]
+    draw.polygon(body, fill=(40,44,36), outline=_PAPER)
+    draw.line(body + [body[0]], fill=_PAPER, width=1, joint="curve")
+
+    # Ears and face plane are drawn as notebook ink rather than filled cartoon parts.
+    draw.polygon([(x+20,y+25),(x+20,y+8),(x+30,y+19)], fill=(40,44,36), outline=_ACCENT)
+    draw.polygon([(x+42,y+18),(x+51,y+7),(x+53,y+25)], fill=(40,44,36), outline=_ACCENT)
+    draw.line((x+23,y+12,x+27,y+20), fill=(120,111,72))
+    draw.line((x+49,y+12,x+46,y+20), fill=(120,111,72))
+
+    # Directional gaze: tiny and purposeful, never an emoji face.
+    eye = _ALERT if alert else _INK
+    draw.line((x+28,y+29,x+34,y+28), fill=eye, width=2)
+    draw.line((x+42,y+28,x+47,y+29), fill=eye, width=2)
+    draw.line((x+37,y+31,x+38,y+35), fill=_ACCENT)
+    if mood in {"sad","bored"}:
+        draw.arc((x+31,y+34,x+45,y+44), 205, 335, fill=_MUTED)
+    elif alert:
+        draw.line((x+31,y+40,x+46,y+40), fill=_ACCENT)
+    else:
+        draw.arc((x+31,y+34,x+46,y+43), 15, 165, fill=_MUTED)
+
+    # Cross-hatching and contour ticks sell the hand-rendered field-journal language.
+    for off in (0,6,12):
+        draw.line((x+20+off,y+45,x+29+off,y+51), fill=(88,91,66), width=1)
+    draw.line((x+15,y+34,x+10,y+32), fill=(112,113,80))
+    draw.line((x+55,y+34,x+62,y+31), fill=(112,113,80))
+
+    # Notebook callout instead of a badge caption.
+    label = f"{meta['stage'].upper()} / LV {meta['level']}"
+    draw.line((x+62,y+24,x+78,y+16), fill=_ACCENT)
+    draw.line((x+78,y+16,x+120,y+16), fill=_ACCENT)
+    draw.text((x+79,y+5), label, fill=_INK, font=_font(8))
+    draw.text((x+79,y+19), mood.upper()[:10], fill=_MUTED, font=_font(7))
 
 
 def _edge_metric(draw, y, label, primary, secondary="", *, accent=False):
