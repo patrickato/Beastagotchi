@@ -145,3 +145,67 @@ def test_flagship_concept_creatures_decode_with_alpha():
         assert image.width >= 60 and image.height >= 60
         assert image.width * image.height >= 4500
         assert image.getchannel("A").getbbox() is not None
+
+
+def test_scene_runtime_signal_dirty_layers_are_semantic_not_global():
+    rt = SceneRuntime()
+    rt.begin(page_id="home", scene_id="home:hero", theme_id="classic")
+    rt.register(SceneLayerSpec(
+        "env", "environment", (0, 34, 480, 278),
+        update_class="ambient", decorative=True,
+    ))
+    rt.register(SceneLayerSpec(
+        "hud", "instrument", (280, 40, 470, 216),
+        signals=("wifi.ap_count", "radio.primary.channel"),
+        update_class="live",
+    ))
+    rt.register(SceneLayerSpec(
+        "status", "text", (10, 230, 470, 270),
+        signals=("pwnagotchi.status",),
+        update_class="live",
+    ))
+    rt.register(SceneLayerSpec(
+        "static", "shape", (0, 0, 20, 20),
+        update_class="static",
+    ))
+
+    assert rt.update_signals({"wifi.ap_count": 5, "pwnagotchi.status": "ready"}) == {
+        "wifi.ap_count", "pwnagotchi.status"
+    }
+    dirty = rt.dirty_layer_ids(include_ambient=False, include_interaction=False)
+    assert dirty == ["hud", "status"]
+    assert rt.dirty_bounds(include_ambient=False, include_interaction=False) == [
+        (280, 40, 470, 216), (10, 230, 470, 270)
+    ]
+
+    assert rt.update_signals({"wifi.ap_count": 5, "pwnagotchi.status": "ready"}) == set()
+    assert rt.dirty_layer_ids(include_ambient=False, include_interaction=False) == []
+    assert rt.dirty_layer_ids(include_ambient=True, include_interaction=False) == ["env"]
+
+
+def test_scene_runtime_partial_signal_snapshot_does_not_dirty_missing_keys():
+    rt = SceneRuntime()
+    rt.begin(page_id="home")
+    rt.register(SceneLayerSpec(
+        "hud", "instrument", (0, 0, 100, 100),
+        signals=("wifi.ap_count", "system.cpu.total"),
+        update_class="live",
+    ))
+    rt.update_signals({"wifi.ap_count": 3, "system.cpu.total": 20})
+    rt.update_signals({"wifi.ap_count": 3})
+    assert rt.dirty_layer_ids(include_ambient=False, include_interaction=False) == []
+
+
+def test_scene_runtime_snapshot_exposes_truthful_dirty_metadata():
+    rt = SceneRuntime()
+    rt.begin(page_id="home")
+    rt.register(SceneLayerSpec(
+        "hud", "instrument", (5, 5, 100, 80),
+        signals=("wifi.ap_count",),
+        update_class="live",
+    ))
+    rt.update_signals({"wifi.ap_count": 9})
+    snap = rt.snapshot()
+    assert snap["changed_signals"] == ["wifi.ap_count"]
+    assert snap["dirty_layers"] == ["hud"]
+    assert snap["dirty_bounds"] == [[5, 5, 100, 80]]
