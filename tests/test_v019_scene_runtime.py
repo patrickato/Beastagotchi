@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-from beastui.home_scenes import render_home_scene
+from beastui.home_scenes import render_home_scene, _paste_concept_creature
 from beastui.concept_creatures import concept_creature
 from beastui.scene_compositor import (
     ambient_glow,
@@ -209,3 +209,21 @@ def test_scene_runtime_snapshot_exposes_truthful_dirty_metadata():
     assert snap["changed_signals"] == ["wifi.ap_count"]
     assert snap["dirty_layers"] == ["hud"]
     assert snap["dirty_bounds"] == [[5, 5, 100, 80]]
+
+
+def test_concept_creature_is_upscaled_to_scene_scale_not_native_thumbnail():
+    base = Image.new("RGB", (480, 320), (0, 0, 0))
+    before = base.copy()
+    assert _paste_concept_creature(
+        base, "classic", (8, 48, 258, 230), phase=0.0,
+        opacity=255, edge_feather=0,
+    ) is True
+    diff = ImageChops.difference(before, base)
+    bbox = diff.getbbox()
+    assert bbox is not None
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
+    # The prior thumbnail() bug left the compact source near native size.
+    # Flagship concept art must materially own its assigned scene region.
+    assert width >= 150
+    assert height >= 120
