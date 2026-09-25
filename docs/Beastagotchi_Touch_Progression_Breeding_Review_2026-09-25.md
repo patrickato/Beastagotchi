@@ -935,3 +935,201 @@ It is:
 A technically skilled owner can always fork/remove the system.
 That is acceptable and should be acknowledged rather than fought indefinitely.
 
+
+---
+
+## 16. Integrity Easter eggs: deliberate depth, not accidental file access
+
+The integrity system may contain hidden rewards for owners who deliberately explore and understand
+the progression/provenance machinery.
+
+Do **not** trigger these simply because a file was opened or viewed.
+
+Reading source/config/database files is normal owner behavior and should not be treated as tampering.
+
+### Trigger ladder
+
+Use increasingly intentional, state-changing actions.
+
+#### Tier 0 — observation
+Examples:
+- opening source files;
+- viewing the SQLite DB;
+- reading ledger/checkpoint data;
+- inspecting validator code;
+- dumping progression state.
+
+Result:
+- no Easter egg;
+- no penalty;
+- this is normal tinkering.
+
+#### Tier 1 — harmless edit attempt
+Examples:
+- edit cached XP/level and save;
+- alter one derived progression value;
+- restart Beast and trigger automatic reconciliation.
+
+Possible hidden event:
+- playful Doctor/temporal anomaly response;
+- no major reward;
+- optional small secret marker.
+
+#### Tier 2 — ledger tamper
+Examples:
+- modify one or more Life Ledger entries;
+- attempt to repair/recompute a broken chain;
+- alter checkpoint state to match edited ledger.
+
+Possible hidden reward:
+- rare secret/Achievement if the system can clearly distinguish deliberate tamper/recovery from
+  accidental corruption.
+
+#### Tier 3 — validator bypass attempt
+Examples:
+- alter or replace progression-integrity validation logic;
+- intentionally force a custom ruleset;
+- override the managed integrity policy;
+- use an advanced developer-only path to accept a modified validator.
+
+Candidate Easter egg:
+- **THE AUDITOR BLINKED**
+  - flavor: "You checked the checker."
+
+This should require evidence of intentional validator-level modification, not merely a corrupt file.
+
+#### Tier 4 — full owner override / deliberate customized timeline
+Examples:
+- modify rules;
+- modify ledger;
+- modify/checkpoint provenance;
+- explicitly adopt the resulting custom timeline through Expert/developer flow;
+- successfully return Beast to internally self-consistent customized state.
+
+Candidate Easter egg:
+- **ROOT OF ALL EVIL**
+  - flavor: "Reality is whatever you compile it to be."
+
+This should be extremely rare and tied to deliberate owner sovereignty, not normal progression.
+
+### Multiple-attempt logic
+
+Do not require repeated destructive edits merely to obtain an Easter egg.
+
+The trigger should be based on **depth/type of system understanding**, not number of files corrupted.
+
+Repeated invalid attempts may produce different humorous messages, but should not increase reward
+indefinitely.
+
+### Hidden developer path
+
+A cleaner final implementation may include an undocumented-but-discoverable developer challenge
+rather than relying on actual corruption.
+
+Example:
+- integrity subsystem exposes clues/log messages;
+- owner discovers how provenance layers interlock;
+- owner performs a bounded sequence of Expert-mode actions;
+- system recognizes successful intentional traversal.
+
+This preserves the fun without encouraging reckless database destruction.
+
+---
+
+## 17. Discovery depth and reward magnitude
+
+General principle:
+
+> The rarer, deeper, more intentional and more difficult a discovery is, the more meaningful its
+> reward may be.
+
+Reward magnitude may scale across dimensions rather than only XP.
+
+Potential rewards:
+- substantial but bounded XP;
+- unique Achievement/Trophy;
+- permanent cosmetic/aura;
+- hidden face/form;
+- secret Surface;
+- rare Choreography;
+- Mastery mark;
+- lineage legacy marker;
+- breeding/synthesis resonance modifier;
+- morph/Ascension weighting modifier;
+- special title/rank;
+- unique Memory.
+
+Avoid making every secret simply "more XP."
+
+### Reward tiers
+
+A possible internal reward-depth scale:
+- minor secret;
+- uncommon discovery;
+- rare discovery;
+- epic secret;
+- legendary secret;
+- mythic/singular event;
+- developer/root-tier Easter egg.
+
+Names are presentation-level and may vary by Experience.
+
+### Outcome influence
+
+High-tier discoveries may modestly influence later systems such as:
+- synthesis/breeding rarity weighting;
+- mutation weighting;
+- special lineage resonance;
+- Ascension form weighting;
+- hidden Morph availability;
+- rare Choreography selection.
+
+Design constraints:
+- influence should usually bend probability/eligibility rather than guarantee top-tier outcomes;
+- no single secret should be mandatory for a strong Beast/Monster;
+- bonuses should be bounded to avoid compounding into guaranteed God-tier outcomes;
+- provenance should record which modifiers contributed to a result;
+- hidden modifiers may stay secret in normal UI while remaining inspectable in Expert/debug tools.
+
+### Diminishing stacking
+
+If several rare modifiers stack, use bounded/diminishing combination rather than raw addition.
+
+For example:
+- strongest modifier contributes fully;
+- second contributes partially;
+- later modifiers contribute progressively less;
+- hard cap preserves uncertainty.
+
+This keeps rare discoveries meaningful without making one heavily decorated bloodline mathematically
+unstoppable.
+
+---
+
+## 18. Owner-input boundary during implementation
+
+When implementation resumes, owner input should be requested selectively.
+
+### Ask/confirm with the owner when:
+- selecting final product-facing thresholds or timings;
+- choosing between multiple materially different experience directions;
+- naming major systems/forms/tiers where tone matters;
+- fixing irreversible/public compatibility contracts;
+- choosing end-state progression/breeding/Ascension balance;
+- selecting major visual/interaction behavior visible to all users;
+- resolving a tradeoff where technical best practice does not clearly determine the answer.
+
+### Do not interrupt the owner for:
+- routine code organization;
+- ordinary tests;
+- internal helper names;
+- straightforward bug fixes;
+- standard schema migrations;
+- mechanical registry wiring;
+- obvious best-practice security/privacy fixes;
+- low-level refactors that preserve agreed behavior.
+
+Default rule:
+> Keep implementation moving autonomously; surface only consequential design choices, irreversible
+> compatibility decisions, or final owner-facing values that genuinely benefit from owner judgment.
+
