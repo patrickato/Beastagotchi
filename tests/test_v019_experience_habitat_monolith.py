@@ -26,6 +26,7 @@ def test_habitat_is_creature_first_and_uses_real_progression():
     snap = rt.snapshot()
     assert snap["scene"] == "experience:habitat:home"
     rows = {row["id"]: row for row in snap["layers"]}
+    assert rows["monolith.ambient_halo"]["decorative"] is True
     assert rows["habitat.beast"]["bounds"] == [130, 40, 350, 260]
     assert rows["habitat.environment"]["decorative"] is True
 
@@ -53,7 +54,7 @@ def test_monolith_keeps_primary_information_intentionally_sparse():
     assert im.size == (480, 320)
     snap = rt.snapshot()
     assert snap["scene"] == "experience:monolith:home"
-    assert snap["layer_count"] == 4
+    assert snap["layer_count"] == 5
 
 
 def test_habitat_and_monolith_are_visually_distinct():
