@@ -260,3 +260,160 @@ implementation detail.
 - What should Doctor be allowed to repair automatically versus only recommend?
 - How do owner manual edits get detected and incorporated into known-good/customized state?
 
+
+---
+
+# Layer 2A — Canonical truth: StateRegistry, Signals and Events
+
+## StateRegistry — protect this foundation
+
+`StateRegistry` is currently one of the strongest structural components.
+
+It provides:
+- one canonical flat-key truth surface;
+- source identity;
+- freshness timestamp;
+- quality state;
+- error metadata;
+- global sequence;
+- source priority;
+- thread-safe read/write;
+- deep-copy isolation.
+
+This allows collectors/providers to compete for the same semantic key without making UI/Doctor know
+collector internals.
+
+### Keep
+- single canonical registry;
+- flat semantic keys;
+- metadata beside value;
+- priority arbitration;
+- stale/unavailable distinction;
+- sequence/change tracking.
+
+### Improve
+1. **Explicit authority metadata**
+   Numeric priority works, but important Signals should eventually declare intended authoritative
+   provider/fallback semantics rather than making priority numbers the only documentation.
+
+2. **Error arbitration**
+   `set_error()` currently does not apply the same priority arbitration as `update_many()`.
+   It is not a major active Core path today, but before broad adoption it should be hardened so a
+   lower-priority provider error cannot incorrectly replace a healthy higher-priority source.
+
+3. **Provenance/ownership introspection**
+   Studio/Doctor should be able to answer:
+   - who currently owns this key;
+   - who else could provide it;
+   - why this source won;
+   - when fallback occurred.
+
+Do not replace StateRegistry with a more elaborate database/event-sourcing system merely because
+the project is growing.
+
+## Signal — correct abstraction, metadata needs a registry
+
+Signal v1 is structurally sound:
+- it does not collect;
+- it does not persist;
+- it describes canonical StateRegistry values for presentation/integration consumers.
+
+Current metadata is split between:
+- `TelemetryCatalog.EXPLICIT/PREFIXES`;
+- `SignalCatalog._PRIVACY_PREFIXES`;
+- history prefixes;
+- structured hints.
+
+That is acceptable v1 but becomes a future extension choke point.
+
+### Direction: SignalSpec registry
+
+A SignalSpec may eventually declare:
+- id/pattern/namespace;
+- label/category;
+- value type/structure;
+- unit;
+- cadence expectation;
+- privacy class;
+- publication policy;
+- history policy;
+- formatting hints;
+- semantic bounds;
+- authoritative/fallback provider semantics.
+
+Core/built-ins register built-in specs.
+Trusted extension contracts can register namespaced specs.
+StateRegistry remains the actual value owner.
+
+Telemetry Inspector, Studio, Scenes, Packs, Doctor and API should eventually consume one shared
+Signal semantic source rather than growing independent metadata tables.
+
+## Event — keep it light, make meaning explicit
+
+Current `EventBus` is intentionally small:
+- UUID;
+- timestamp;
+- type;
+- source;
+- severity;
+- data;
+- bounded recent history;
+- async subscriber queues.
+
+That is a good hot-path shape.
+
+Current structural limitations:
+- transient/durable semantics are partly hard-coded outside the Event contract;
+- durability requires callers to remember to also write to Store;
+- subscriber queue overflow is silently dropped;
+- event payload shape is not registered/validated;
+- there is no correlation/causation;
+- privacy/publication semantics are absent from the event itself.
+
+### Direction: EventSpec / Event envelope v2
+
+Keep the EventBus fast, but allow an EventSpec registry to declare:
+- type;
+- default severity;
+- transient/durable class;
+- expected data keys/schema;
+- privacy/publication class;
+- retention expectation.
+
+Add optional event envelope fields:
+- correlation_id;
+- causation_id;
+- schema/version;
+- privacy class.
+
+Add delivery observability:
+- dropped-event counter by subscriber/event type;
+- lag/queue depth where useful.
+
+Do **not** turn EventBus into a heavyweight message broker.
+
+## SemanticEngine
+
+The SemanticEngine is correctly observational:
+- turns high-frequency state into low-volume meaningful transitions;
+- debounces noisy GPS state;
+- generates temperature-band transitions;
+- distinguishes device-first from Beast-first discovery.
+
+This belongs above StateRegistry and below progression/experience consumers.
+
+Long-term semantic/event rules may become registrable, but physical thresholds/debounce logic
+should remain deliberately boring and stable where possible.
+
+## TelemetryCatalog vs SignalCatalog
+
+They are not wrong, but they currently represent overlapping semantic layers.
+
+Preferred future shape:
+- StateRegistry: values + source/freshness/quality;
+- SignalSpecRegistry: semantic metadata/policy;
+- SignalCatalog/API: resolved public view over StateRegistry + SignalSpec;
+- Telemetry Inspector: consumer of SignalCatalog.
+
+Avoid two independent growing metadata vocabularies.
+
