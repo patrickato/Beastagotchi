@@ -119,7 +119,7 @@ def _core_emblem(draw, state):
     draw.text((cx-17, cy-5), "BEAST", fill=_INK, font=_font(8))
 
 
-def render_forge_home(state: dict[str, Any], *, scene_runtime: SceneRuntime | None = None) -> Image.Image:
+def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
     """Forge Home as one continuous machine-bay scene, not a card dashboard."""
     state = dict(state or {})
     meta = forge_home_metadata(state)
@@ -218,6 +218,23 @@ def render_forge_home(state: dict[str, Any], *, scene_runtime: SceneRuntime | No
     _register(rt, SceneLayerSpec(
         "forge.beast_core", "creature", (214, 130, 266, 188),
         signals=("progression.level", "pwnagotchi.mood", "beast.expression"), update_class="live",
+    ))
+
+    # Decorative machine-life pulse: this never moves gauges, channel markers,
+    # power truth or any other measured state.
+    pulse = 0.5 + 0.5 * math.sin(float(phase) * 2.2)
+    ambient_col = (
+        int(_EDGE[0] + (_AMBER[0] - _EDGE[0]) * pulse),
+        int(_EDGE[1] + (_AMBER[1] - _EDGE[1]) * pulse),
+        int(_EDGE[2] + (_AMBER[2] - _EDGE[2]) * pulse),
+    )
+    for x in (53, 127, 353, 427):
+        r = 2 + int(round(pulse))
+        d.ellipse((x-r, 159-r, x+r, 159+r), outline=ambient_col)
+    d.arc((cx-31, cy-31, cx+31, cy+31), 205, 335, fill=ambient_col, width=1)
+    _register(rt, SceneLayerSpec(
+        "forge.ambient_chassis", "ambient", (20, 128, 460, 190),
+        update_class="ambient", reduced_motion="static", decorative=True,
     ))
 
     # Lower machine bay: ports/capabilities on the left, fault/governor stack on right.
