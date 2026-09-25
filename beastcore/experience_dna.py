@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import re
 from typing import Any, Iterable
 
 
@@ -107,6 +108,12 @@ DOCTOR_VISIBILITY = {"background", "contextual", "prominent", "operations_first"
 MYSTERY_LEVELS = {"none", "subtle", "discoverable", "deep"}
 QUALITY_VARIANTS = {"constrained", "compact", "full", "enhanced"}
 
+_NAMESPACED_EXTENSION = re.compile(r"^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)+$")
+
+def _known_or_namespaced(value: str, known: set[str] | dict[str, Any]) -> bool:
+    """Allow stable core vocabulary plus namespaced Pack/community extensions."""
+    return value in known or bool(_NAMESPACED_EXTENSION.fullmatch(str(value or "")))
+
 
 @dataclass(frozen=True)
 class ExperienceDNA:
@@ -132,23 +139,32 @@ class ExperienceDNA:
         errors: list[str] = []
         if not self.id or self.id.lower() != self.id:
             errors.append("id must be non-empty lowercase")
-        if self.visual_family not in VISUAL_FAMILIES:
-            errors.append(f"unknown visual_family: {self.visual_family}")
-        if self.layout_family not in LAYOUT_FAMILIES:
-            errors.append(f"unknown layout_family: {self.layout_family}")
+        if not _known_or_namespaced(self.visual_family, VISUAL_FAMILIES):
+            errors.append(f"unknown or unnamespaced visual_family: {self.visual_family}")
+        if not _known_or_namespaced(self.layout_family, LAYOUT_FAMILIES):
+            errors.append(f"unknown or unnamespaced layout_family: {self.layout_family}")
+        # These core semantic axes stay closed so Experience Compiler, Doctor,
+        # accessibility and Resource Governor can reason about them portably.
         for value, allowed, field in (
             (self.density, DENSITIES, "density"),
-            (self.motion_profile, MOTION_PROFILES, "motion_profile"),
             (self.creature_presence, CREATURE_PRESENCE, "creature_presence"),
             (self.utility_bias, UTILITY_BIAS, "utility_bias"),
             (self.playfulness, PLAYFULNESS, "playfulness"),
-            (self.alert_style, ALERT_STYLES, "alert_style"),
             (self.input_model, INPUT_MODELS, "input_model"),
             (self.doctor_visibility, DOCTOR_VISIBILITY, "doctor_visibility"),
             (self.mystery_level, MYSTERY_LEVELS, "mystery_level"),
         ):
             if value not in allowed:
                 errors.append(f"unknown {field}: {value}")
+
+        # Presentation vocabularies may be extended by Packs, but custom values
+        # must be namespaced (for example "acme.biomech") to avoid collisions.
+        for value, allowed, field in (
+            (self.motion_profile, MOTION_PROFILES, "motion_profile"),
+            (self.alert_style, ALERT_STYLES, "alert_style"),
+        ):
+            if not _known_or_namespaced(value, allowed):
+                errors.append(f"unknown or unnamespaced {field}: {value}")
         return tuple(errors)
 
     def as_dict(self) -> dict[str, Any]:
