@@ -46,56 +46,95 @@ def _register(rt,spec):
 
 
 def _draw_focal(draw,meta):
-    """Premium sculptural Beast: restrained geometry with depth, not a circle face."""
+    """Premium sculptural Beast bust: dimensional, restrained, never logo-like."""
     cx = 240
-    shadow = (24, 24, 23)
-    facet = (29, 29, 27)
-    facet_2 = (35, 34, 31)
+    shadow = (22, 22, 21)
+    shadow_2 = (26, 26, 24)
+    facet = (31, 31, 29)
+    facet_2 = (38, 37, 34)
+    facet_hi = (45, 43, 38)
+    health_col = _OK if meta["health"].lower()=="healthy" else _ACCENT
 
-    # Quiet halo/depth rings; no panel and no decorative grid.
-    draw.arc((148, 48, 332, 236), 205, 335, fill=_LINE, width=1)
-    draw.arc((160, 60, 320, 224), 25, 155, fill=(44,44,42), width=1)
+    # Quiet halo establishes depth behind the sculpture. Broken arcs avoid a badge/ring read.
+    draw.arc((146, 47, 334, 238), 212, 326, fill=_LINE, width=1)
+    draw.arc((154, 55, 326, 230), 30, 148, fill=(43,43,41), width=1)
+    draw.arc((167, 68, 313, 218), 188, 246, fill=(34,34,33), width=1)
+    draw.arc((167, 68, 313, 218), 294, 352, fill=(34,34,33), width=1)
 
-    # Sculpted head silhouette with tall ears and tapered jaw.
+    # Neck / plinth anchors the Beast as a sculptural bust rather than a floating mask.
+    draw.polygon([(215,204),(265,204),(281,230),(267,242),(213,242),(199,230)],
+                 fill=shadow, outline=(54,53,49))
+    draw.polygon([(220,205),(260,205),(269,225),(258,233),(222,233),(211,225)],
+                 fill=shadow_2, outline=_LINE)
+
+    # Slightly asymmetric head silhouette with ears integrated into the skull.
     head = [
-        (169, 105), (176, 78), (190, 86), (202, 50), (218, 81),
-        (240, 72),
-        (262, 81), (278, 50), (290, 86), (304, 78), (311, 105),
-        (314, 149), (302, 184), (278, 214), (240, 230),
-        (202, 214), (178, 184), (166, 149),
+        (168, 111), (174, 82), (188, 88), (201, 51), (219, 83),
+        (239, 74), (262, 81), (279, 52), (292, 88), (305, 80),
+        (311, 110), (314, 148), (305, 178), (286, 205),
+        (259, 223), (239, 229), (217, 222), (194, 207),
+        (176, 181), (166, 151),
     ]
     draw.polygon(head, fill=shadow, outline=_ACCENT)
     draw.line(head + [head[0]], fill=_ACCENT, width=2, joint="curve")
 
-    # Minimal planar facets catch the eye without making a busy illustration.
-    draw.polygon([(177,109),(207,91),(224,126),(205,168),(178,151)], fill=facet, outline=_LINE)
-    draw.polygon([(303,109),(273,91),(256,126),(275,168),(302,151)], fill=facet, outline=_LINE)
-    draw.polygon([(207,91),(240,78),(273,91),(256,126),(224,126)], fill=facet_2, outline=_LINE)
-    draw.polygon([(205,168),(240,151),(275,168),(260,203),(240,218),(220,203)], fill=facet, outline=_LINE)
+    # Ear recesses and temple shelves create actual volume.
+    draw.polygon([(178,86),(201,56),(214,88),(198,105)], fill=(27,27,25), outline=_LINE)
+    draw.polygon([(266,88),(279,57),(301,88),(283,105)], fill=(27,27,25), outline=_LINE)
+    draw.line((185,84,199,66,207,88), fill=(72,69,59))
+    draw.line((273,88,280,67,294,86), fill=(72,69,59))
 
-    # Fine eye slits / pupils: premium and expression-neutral.
-    eye_col = _INK
-    draw.line((192,133,222,130), fill=eye_col, width=2)
-    draw.line((258,130,288,133), fill=eye_col, width=2)
-    draw.ellipse((206,130,211,135), fill=_OK if meta["health"].lower()=="healthy" else _ACCENT)
-    draw.ellipse((269,130,274,135), fill=_OK if meta["health"].lower()=="healthy" else _ACCENT)
+    # Major facial planes. The center plane is narrow/high; cheeks fall away to darker values.
+    draw.polygon([(206,92),(239,77),(274,91),(260,126),(241,142),(222,126)],
+                 fill=facet_hi, outline=(55,54,50))
+    draw.polygon([(176,112),(206,92),(222,126),(208,168),(182,184),(169,150)],
+                 fill=facet, outline=_LINE)
+    draw.polygon([(305,110),(274,91),(260,126),(274,167),(299,181),(313,148)],
+                 fill=facet, outline=_LINE)
+    draw.polygon([(208,168),(241,142),(274,167),(262,202),(240,216),(218,202)],
+                 fill=facet_2, outline=(56,55,51))
 
-    # Center seam + small muzzle.
-    draw.line((240,84,240,164), fill=_LINE)
-    draw.polygon([(233,160),(247,160),(240,168)], fill=_ACCENT)
+    # Lower cheek planes add mass while leaving the central muzzle clean.
+    draw.polygon([(181,184),(208,168),(218,202),(204,214),(188,202)],
+                 fill=(28,28,26), outline=(48,48,45))
+    draw.polygon([(299,181),(274,167),(262,202),(277,213),(291,201)],
+                 fill=(28,28,26), outline=(48,48,45))
+
+    # Brow shelves / recessed eyes. Eyes remain tiny; health is a subtle glint, not an LED face.
+    draw.line((190,130,219,126), fill=_INK, width=2)
+    draw.line((261,126,289,131), fill=_INK, width=2)
+    draw.polygon([(194,132),(219,129),(213,140),(198,140)], fill=(17,17,17))
+    draw.polygon([(261,129),(286,132),(281,140),(266,140)], fill=(17,17,17))
+    draw.ellipse((205,132,210,137), fill=health_col)
+    draw.ellipse((270,132,275,137), fill=health_col)
+    draw.point((207,132), fill=_INK)
+    draw.point((272,132), fill=_INK)
+
+    # Nose/muzzle bridge breaks the old symmetric-mask silhouette.
+    draw.polygon([(230,156),(250,156),(246,166),(240,171),(234,166)],
+                 fill=_ACCENT)
+    draw.line((240,171,240,180), fill=(88,85,74), width=1)
+    draw.arc((217,166,241,192), 20, 108, fill=(172,168,149), width=1)
+    draw.arc((239,166,264,192), 72, 160, fill=(172,168,149), width=1)
+
     mood = meta["mood"].lower()
     if mood in {"awake","happy","excited"}:
-        draw.arc((216,166,264,194), 18, 162, fill=_INK, width=2)
+        draw.arc((220,174,260,195), 18, 162, fill=_INK, width=2)
     elif mood in {"sad","bored"}:
-        draw.arc((216,176,264,202), 200, 340, fill=_INK, width=2)
+        draw.arc((220,181,260,201), 200, 340, fill=_INK, width=2)
     else:
-        draw.line((220,186,260,186), fill=_INK, width=2)
+        draw.line((223,190,257,190), fill=_INK, width=2)
 
-    # Identity is engraved into the lower facet so the surrounding negative
-    # space remains available for the single primary fact row.
-    identity = f"{meta['stage'].upper()[:3]}  {meta['level']:02d}"
+    # Sparse highlight edges sell the sculptural planes without adding ornament.
+    draw.line((202,105,214,94,229,86), fill=(85,81,69), width=1)
+    draw.line((277,98,289,111,299,140), fill=(74,71,61), width=1)
+    draw.line((197,203,217,218,239,224), fill=(66,64,57), width=1)
+
+    # Engraved identity on the plinth: quiet and deliberately separate from the face.
+    identity = f"{meta['stage'].upper()[:3]} / {meta['level']:02d}"
     iw = draw.textbbox((0,0), identity, font=_font(7))[2]
-    draw.text((cx-iw//2, 204), identity, fill=_MUTED, font=_font(7))
+    draw.line((cx-30, 225, cx+30, 225), fill=(59,58,53), width=1)
+    draw.text((cx-iw//2, 231), identity, fill=_MUTED, font=_font(7))
 
 
 def render_monolith_home(state:dict[str,Any],*,phase:float=0.0,scene_runtime:SceneRuntime|None=None)->Image.Image:
