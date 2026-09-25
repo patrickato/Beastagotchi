@@ -14,6 +14,7 @@ from .pack_intake import PackIntakeManager, PackIntakeError
 from .pack_install import PackInstallManager, PackInstallError
 from .update_downloads import VerifiedUpdateStager, UpdateStageError
 from .presentation_transition import PresentationTransitionPlanner
+from .experience_try_on import ExperienceTryOnPlanner
 from .update_orchestrator import PackUpdateOrchestrator, UpdateOrchestrationError
 from .pack_activation import PackActivationManager, PackActivationError
 from .roster import BeastRoster, BeastRosterError
@@ -45,6 +46,7 @@ class ActionBroker:
         self.pack_installer = PackInstallManager(state)
         self.update_stager = VerifiedUpdateStager(state)
         self.presentation_planner = PresentationTransitionPlanner(state)
+        self.experience_try_on = ExperienceTryOnPlanner(state)
         self.update_orchestrator = PackUpdateOrchestrator(state, stager=self.update_stager, intake=self.pack_intake, installer=self.pack_installer)
         self.pack_activation = PackActivationManager(state)
         self.roster = BeastRoster(store)
@@ -194,6 +196,12 @@ class ActionBroker:
             return self.update_stager.plan(str(payload.get("component") or ""),asset_name=str(payload.get("asset_name") or ""))
         if action == "presentation.plan":
             return self.presentation_planner.plan(str(payload.get("target") or ""))
+        if action == "experience.try_on_tft_plan":
+            return self.experience_try_on.plan(
+                str(payload.get("id") or ""),
+                page_id=str(payload.get("page") or "home"),
+                duration_sec=int(payload.get("duration_sec") or 90),
+            )
         if action == "update.pack_apply":
             return self.update_orchestrator.plan(str(payload.get("component") or ""))
         if action == "update.auto_candidates":
