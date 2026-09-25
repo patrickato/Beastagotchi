@@ -25,7 +25,9 @@ from beastui.customization import (
 )
 from beastui.apps import AppRegistry
 from beastui.qr_render import draw_qr, qr_backend_status
-from beastui.experience_registry import experience_renderer_catalog, experience_renderer_summary
+from beastui.experience_registry import (
+    experience_renderer_catalog, experience_renderer_summary, render_experience_page,
+)
 from PIL import Image, ImageDraw
 from .action_client import BeastActionClient
 from .library_files import LibraryFileManager, LibraryFileError
@@ -569,6 +571,23 @@ class StudioState:
         if not fp.is_file():raise ValueError('variant not found')
         fp.unlink();return {'ok':True,'id':slug}
 
+    def experience_preview(self,obj: dict)->bytes:
+        experience_id=str(obj.get("id") or "").strip().lower()
+        page_id=str(obj.get("page") or "home").strip().lower()
+        if not experience_id:
+            raise ExperienceDraftError("Experience id required")
+        live=self.api.live(24)
+        state=live.get("state") if isinstance(live,dict) else {}
+        if not isinstance(state,dict):
+            state={}
+        try:
+            im=render_experience_page(experience_id,page_id,state)
+        except KeyError as exc:
+            raise ExperienceDraftError(str(exc))
+        bio=io.BytesIO()
+        im.save(bio,format="PNG")
+        return bio.getvalue()
+
     def experience_draft(self,obj: dict)->dict:
         mission_id=str(obj.get('id') or '')
         platform=self.platform();missions=((platform or {}).get('missions') or {}).get('items') or []
@@ -851,7 +870,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/experience-preview','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/capsule-preview':return self._send(200,self.st.capsule_preview(obj))
             if path=='/api/capsule-qr':return self._send(200,self.st.capsule_qr_png(obj),'image/png')
@@ -882,6 +901,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/update-stage':return self._send(200,self.st.update_stage(obj))
             if path=='/api/update-pack-plan':return self._send(200,self.st.update_pack_plan(obj))
             if path=='/api/update-pack-apply':return self._send(200,self.st.update_pack_apply(obj))
+            if path=='/api/experience-preview':return self._send(200,self.st.experience_preview(obj),'image/png')
             if path=='/api/experience-draft':return self._send(200,self.st.experience_draft(obj))
             if path=='/api/global-policy':return self._send(200,self.st.global_policy_set(obj))
             if path=='/api/roster-switch':return self._send(200,self.st.roster_switch(obj))
