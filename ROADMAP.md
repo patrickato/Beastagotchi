@@ -33,6 +33,8 @@ The first capability-first `PlatformProfile` is implemented in Core and exposed
 at `/platform-profile`; board names refine defaults but do not define the product
 boundary.
 
+Experience DNA is implemented in `beastcore/experience_dna.py` with 16 broad visual families, independent layout/density/motion/creature/Doctor/mystery axes, adaptive platform variants, and Studio schema exposure. See `docs/Beastagotchi_Experience_DNA_Abundant_Taxonomy_2026-09-24.md` and `docs/Beastagotchi_Experience_Prototype_Briefs_v0.19_2026-09-24.md`.
+
 PwnDoctor cross-pollination and the on-demand Doctor Knowledge/Skill Cache direction are preserved in
 `docs/Beastagotchi_Doctor_Knowledge_Runtime_CrossPollination_2026-09-24.md`.
 The Doctor should remain a small trusted kernel that resolves versioned condition/runbook/probe knowledge on demand; downloaded knowledge does not automatically gain Action authority.
@@ -526,3 +528,5 @@ rollback.
 
 The detailed recovered rationale is preserved in
 `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`.
+
+- Experience DNA expansion: prototype **Atlas -> Forge -> Observatory -> Habitat -> Monolith** as deliberately different whole-product experience families; legacy theme identities remain presets/references rather than the main taxonomy.
