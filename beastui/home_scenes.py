@@ -220,6 +220,7 @@ def _concept_hero_scene(d,state,ui, *, style='classic'):
     status=str(_v(state,'pwnagotchi.status',_v(state,'beast.status_text','SCANNING THE FIELD'))).strip()
     if not status or status=='--':status='SCANNING THE FIELD'
 
+    opts=ui.render_options_for_theme(ui.theme.id) if hasattr(ui,'render_options_for_theme') else {}
     with _scene_layer(
         ui,'home.environment','environment',(0,34,480,278),z=10,
         update_class='ambient',resource_class='moderate',
@@ -268,9 +269,18 @@ def _concept_hero_scene(d,state,ui, *, style='classic'):
         else:
             # Classic evolved: restrained instrumentation behind a real creature,
             # closer to the approved concept than the old framed pixel portrait.
-            ambient_glow(canvas,(150,137),160,t.c('primary'),strength=.24)
+            pulse_mode=str(opts.get('pulse_level','subtle')).lower()
+            glow_strength={'off':.14,'subtle':.24,'active':.34}.get(pulse_mode,.24)
+            ambient_glow(canvas,(150,137),160,t.c('primary'),strength=glow_strength)
             d=ImageDraw.Draw(canvas)
-            for y in range(46,270,18):d.line((12,y,468,y),fill=_mix(t.c('bg'),t.c('grid'),.72))
+            grid_mode=str(opts.get('grid_density','normal')).lower()
+            grid_step={'off':0,'light':32,'normal':18,'dense':10}.get(grid_mode,18)
+            if grid_step:
+                for y in range(46,270,grid_step):
+                    d.line((12,y,468,y),fill=_mix(t.c('bg'),t.c('grid'),.72))
+            if str(opts.get('scanline','on')).lower() not in {'off','false','0'}:
+                scan_y=46+int((float(ui.phase)*31.0)%216)
+                d.line((12,scan_y,468,scan_y),fill=_mix(t.c('bg'),t.c('primary'),.34))
             d.line((14,46,14,268),fill=t.c('primary'),width=2)
             for y in range(56,258,20):d.line((7,y,20,y),fill=t.c('secondary'))
             for x in (270,348,468):d.line((x,48,x,226),fill=t.c('edge'))
