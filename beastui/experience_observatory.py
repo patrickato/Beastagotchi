@@ -215,3 +215,119 @@ def render_observatory_home(state: dict[str, Any], *, scene_runtime: SceneRuntim
         signals=(), update_class="static",
     ))
     return im
+
+
+
+def render_observatory_spectrum(
+    state: dict[str, Any],
+    *,
+    scene_runtime: SceneRuntime | None = None,
+) -> Image.Image:
+    """Observatory translation of Spectrum: measured occupancy + source quality."""
+    state = dict(state or {})
+    meta = observatory_home_metadata(state)
+    rt = scene_runtime
+    if rt is not None:
+        rt.begin(page_id="spectrum", scene_id="experience:observatory:spectrum",
+                 theme_id="experience.observatory")
+        rt.update_signals(state)
+
+    im = Image.new("RGB", SIZE, _BG)
+    d = ImageDraw.Draw(im)
+
+    d.rectangle((0,0,479,30), fill=(23,28,30))
+    d.text((10,7),"OBSERVATORY",fill=_TRACE,font=_font(14))
+    d.text((112,9),"SPECTRUM LAB",fill=_MUTED,font=_font(8))
+    d.text((408,9),f"CH {meta['channel']}",fill=_WARN,font=_font(9))
+    _register(rt, SceneLayerSpec(
+        "observatory_spectrum.header","text",(0,0,480,31),
+        signals=("radio.primary.channel",),update_class="live",
+    ))
+
+    aps=[x for x in (state.get("wifi.aps") or []) if isinstance(x,dict)]
+    by_channel={}
+    for row in aps:
+        try:
+            ch=int(row.get("channel") or 0)
+            rssi=float(row.get("rssi") or -100)
+        except Exception:
+            continue
+        bucket=by_channel.setdefault(ch,{"count":0,"peak":-100.0,"handshakes":0})
+        bucket["count"]+=1
+        bucket["peak"]=max(bucket["peak"],rssi)
+        if bool(row.get("handshake")): bucket["handshakes"]+=1
+
+    # Main occupancy spectrum.
+    box=(10,42,390,222)
+    d.rectangle(box,fill=_PANEL,outline=_EDGE)
+    d.text((20,51),"OBSERVED CHANNEL OCCUPANCY",fill=_MUTED,font=_font(8))
+    x1,y1,x2,y2=34,72,378,201
+    d.line((x1,y2,x2,y2),fill=_EDGE)
+    d.line((x1,y1,x1,y2),fill=_EDGE)
+    channels=sorted(by_channel)
+    if channels:
+        max_count=max(1,max(by_channel[ch]["count"] for ch in channels))
+        for ch in channels:
+            x=x1+int(max(0,min(165,ch))/165.0*(x2-x1))
+            row=by_channel[ch]
+            h=max(3,int(row["count"]/max_count*(y2-y1-18)))
+            color=_TRACE_2 if row["handshakes"] else _TRACE
+            d.rectangle((x-4,y2-h,x+4,y2),fill=color)
+            d.text((x-5,y2+4),str(ch),fill=_MUTED,font=_font(6))
+            if row["peak"] > -50:
+                d.ellipse((x-3,y2-h-9,x+3,y2-h-3),outline=_WARN)
+    tuned=meta["channel"]
+    tx=x1+int(max(0,min(165,tuned))/165.0*(x2-x1))
+    d.line((tx,y1,tx,y2),fill=_WARN,width=1)
+    d.text((max(x1,tx-13),y1-12),f"TUNE {tuned}",fill=_WARN,font=_font(7))
+    _register(rt, SceneLayerSpec(
+        "observatory_spectrum.occupancy","graph",box,
+        signals=("wifi.aps","radio.primary.channel"),update_class="live",
+    ))
+
+    # Measurement table column.
+    side=(400,42,470,222)
+    d.rectangle(side,fill=_PANEL_2,outline=_EDGE)
+    d.text((409,51),"MEASURE",fill=_MUTED,font=_font(7))
+    d.text((409,70),f"APS {meta['ap_count']}",fill=_INK,font=_font(9))
+    d.text((409,88),f"CHS {len(channels)}",fill=_INK,font=_font(9))
+    if meta["rssi_max"] is None:
+        peak="?"
+    else:
+        peak=f"{meta['rssi_max']:.0f}"
+    d.text((409,106),f"PEAK {peak}",fill=_INK,font=_font(8))
+    d.text((409,132),"QUALITY",fill=_MUTED,font=_font(7))
+    d.text((409,148),"CAPTURED",fill=_TRACE,font=_font(8))
+    gps="GPS FIX" if meta["gps_fix"] else "GPS NO"
+    d.text((409,166),gps,fill=_TRACE if meta["gps_fix"] else _WARN,font=_font(7))
+    d.text((409,190),str(meta["capture_date"] or "")[:10],fill=_MUTED,font=_font(7))
+    _register(rt, SceneLayerSpec(
+        "observatory_spectrum.measure","instrument",side,
+        signals=("wifi.aps","gps.fix"),update_class="live",
+    ))
+
+    # Lower correlation/readout area only shows derived facts from current observations.
+    lower=(10,234,470,286)
+    d.rectangle(lower,fill=_PANEL,outline=_EDGE)
+    d.text((20,242),"CURRENT OBSERVATION SUMMARY",fill=_MUTED,font=_font(8))
+    strongest = max(
+        aps,
+        key=lambda row: float(row.get("rssi") or -100),
+        default=None,
+    )
+    if strongest:
+        d.text((20,259),f"STRONGEST  CH {int(strongest.get('channel') or 0)}  {float(strongest.get('rssi') or -100):.0f} dBm",
+               fill=_INK,font=_font(9))
+    d.text((244,259),f"HANDSHAKE APS  {_i(state,'wifi.handshake_ap_count')}",
+           fill=_INK,font=_font(9))
+    _register(rt, SceneLayerSpec(
+        "observatory_spectrum.summary","instrument",lower,
+        signals=("wifi.aps","wifi.handshake_ap_count"),update_class="live",
+    ))
+
+    d.text((12,302),"LIVE/CAPTURED SPECTRUM · NO INVENTED TIME SERIES",fill=_MUTED,font=_font(8))
+    _register(rt, SceneLayerSpec(
+        "observatory_spectrum.truth","text",(10,294,470,318),
+        signals=(),update_class="static",
+    ))
+    return im
