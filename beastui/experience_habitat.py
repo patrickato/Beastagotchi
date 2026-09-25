@@ -169,3 +169,93 @@ def render_habitat_home(state: dict[str, Any], *, phase: float = 0.0,
         signals=("pwnagotchi.mood","captures.total","beast.expression"), update_class="live",
     ))
     return im
+
+
+
+def render_habitat_beast(
+    state: dict[str, Any],
+    *,
+    phase: float = 0.0,
+    scene_runtime: SceneRuntime | None = None,
+) -> Image.Image:
+    """Habitat translation of the Beast page: growth/memory as a living space."""
+    state = dict(state or {})
+    meta = habitat_home_metadata(state)
+    rt = scene_runtime
+    if rt is not None:
+        rt.begin(page_id="beast", scene_id="experience:habitat:beast", theme_id="experience.habitat")
+        rt.update_signals(state)
+
+    im = Image.new("RGB", SIZE, _BG)
+    d = ImageDraw.Draw(im)
+    _draw_habitat(d, phase)
+    _register(rt, SceneLayerSpec(
+        "habitat_beast.environment", "environment", (0,0,480,320),
+        update_class="ambient", decorative=True,
+    ))
+
+    d.text((12,10),"HABITAT",fill=_LEAF_2,font=_font(14))
+    d.text((79,12),"GROWTH + MEMORY",fill=_MUTED,font=_font(8))
+
+    # Creature remains primary but shifts left to make room for its history.
+    cx, cy = 152, 150
+    d.ellipse((65,62,239,238),fill=(46,48,39),outline=_WARM,width=3)
+    d.polygon([(82,91),(104,47),(123,94)],fill=(46,48,39),outline=_WARM)
+    d.polygon([(180,94),(200,47),(222,91)],fill=(46,48,39),outline=_WARM)
+    d.ellipse((118,130,131,143),fill=_INK)
+    d.ellipse((174,130,187,143),fill=_INK)
+    d.arc((130,144,178,180),18,162,fill=_LEAF_2,width=3)
+    d.text((111,194),meta["stage"].upper(),fill=_INK,font=_font(13))
+    d.text((133,213),f"LV {meta['level']}",fill=_WARM,font=_font(10))
+    _register(rt, SceneLayerSpec(
+        "habitat_beast.creature","creature",(62,44,242,242),
+        signals=("progression.stage","progression.level","pwnagotchi.mood","beast.expression"),
+        update_class="live",
+    ))
+
+    # Growth path is a single organic vertical journey rather than a progress card.
+    pct=max(0.0,min(100.0,meta["progress_pct"]))
+    path_x=278
+    d.line((path_x,62,path_x,250),fill=_LEAF,width=5)
+    for idx,level in enumerate((0,25,50,75,100)):
+        y=250-int((level/100.0)*188)
+        r=7 if pct>=level else 4
+        col=_WARM if pct>=level else _SOIL
+        d.ellipse((path_x-r,y-r,path_x+r,y+r),fill=col,outline=_LEAF_2)
+        d.text((294,y-5),f"{level}%",fill=_MUTED,font=_font(7))
+    marker_y=250-int((pct/100.0)*188)
+    d.ellipse((path_x-11,marker_y-11,path_x+11,marker_y+11),outline=_INK,width=2)
+    d.text((254,264),f"CURRENT {pct:.0f}%",fill=_INK,font=_font(8))
+    _register(rt, SceneLayerSpec(
+        "habitat_beast.growth","instrument",(250,52,326,286),
+        signals=("progression.level_progress_pct",),update_class="live",
+    ))
+
+    # Memory stones contain only real counters currently available.
+    memories=[
+        ("ENCOUNTERS",meta["lifetime"]),
+        ("CAPTURES",meta["captures"]),
+        ("EXP AP",_i(state,"expedition.ap_unique")),
+    ]
+    y=68
+    for title,value in memories:
+        d.ellipse((342,y,458,y+58),fill=(51,50,41),outline=_LEAF)
+        d.text((365,y+10),title,fill=_MUTED,font=_font(7))
+        d.text((385,y+27),str(value),fill=_INK,font=_font(15))
+        y+=68
+    _register(rt, SceneLayerSpec(
+        "habitat_beast.memories","instrument",(340,66,460,262),
+        signals=("wifi.encounters.lifetime_unique","captures.total","expedition.ap_unique"),
+        update_class="live",
+    ))
+
+    d.rounded_rectangle((88,277,392,309),radius=12,fill=(48,47,39),outline=_SOIL)
+    roaming="ROAMING" if meta["expedition_active"] else "HOME"
+    d.text((106,287),meta["mood"].upper(),fill=_INK,font=_font(8))
+    d.text((190,287),roaming,fill=_WARM,font=_font(8))
+    d.text((280,287),meta["health"].upper(),fill=_HEALTH,font=_font(8))
+    _register(rt, SceneLayerSpec(
+        "habitat_beast.context","text",(88,277,392,309),
+        signals=("pwnagotchi.mood","expedition.active","health.core.state"),update_class="live",
+    ))
+    return im
