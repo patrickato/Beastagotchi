@@ -102,3 +102,81 @@ def render_monolith_home(state:dict[str,Any],*,scene_runtime:SceneRuntime|None=N
         signals=("dock.state","pwnagotchi.mood","health.core.state"),update_class="live",
     ))
     return im
+
+
+
+def render_monolith_overview(
+    state: dict[str, Any],
+    *,
+    scene_runtime: SceneRuntime | None = None,
+) -> Image.Image:
+    """Monolith translation of Overview: deliberately sparse, high-value status only."""
+    state = dict(state or {})
+    meta = monolith_home_metadata(state)
+    rt = scene_runtime
+    if rt is not None:
+        rt.begin(page_id="overview", scene_id="experience:monolith:overview",
+                 theme_id="experience.monolith")
+        rt.update_signals(state)
+
+    im = Image.new("RGB", SIZE, _BG)
+    d = ImageDraw.Draw(im)
+
+    # Tiny identity/header; negative space is part of the Experience contract.
+    d.text((18, 16), "OVERVIEW", fill=_MUTED, font=_font(8))
+    health = meta["health"].upper()
+    d.ellipse((449,17,456,24), fill=_OK if health == "HEALTHY" else _ACCENT)
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.status", "text", (12,10,466,30),
+        signals=("health.core.state",), update_class="live",
+    ))
+
+    # One focal status statement rather than a module grid.
+    primary = "SYSTEM READY" if health == "HEALTHY" else health
+    d.text((145, 82), primary, fill=_INK, font=_font(24))
+    d.line((145, 116, 335, 116), fill=_LINE)
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.primary", "text", (138,72,342,122),
+        signals=("health.core.state",), update_class="live",
+    ))
+
+    # Only three compact facts: compute, field context, nearby environment.
+    cpu = _i(state, "system.cpu.total")
+    temp = _i(state, "system.temp.cpu_c")
+    nearby = meta["nearby"]
+    d.text((154, 148), f"{cpu:02d}%", fill=_INK, font=_font(20))
+    d.text((154, 174), "COMPUTE", fill=_MUTED, font=_font(8))
+    d.line((224,146,224,190), fill=_LINE)
+
+    d.text((246, 148), f"{temp:02d}°", fill=_INK, font=_font(20))
+    d.text((246, 174), "THERMAL", fill=_MUTED, font=_font(8))
+    d.line((314,146,314,190), fill=_LINE)
+
+    d.text((336, 148), f"{nearby:02d}", fill=_INK, font=_font(20))
+    d.text((336, 174), "NEARBY", fill=_MUTED, font=_font(8))
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.facts", "instrument", (145,140,390,192),
+        signals=("system.cpu.total", "system.temp.cpu_c", "wifi.ap_count"),
+        update_class="live",
+    ))
+
+    # Context line stays quiet and readable.
+    expedition = "EXPEDITION" if bool(state.get("expedition.active")) else meta["field"].upper()
+    governor = str(state.get("governor.mode") or "unknown").upper()
+    d.text((170, 232), expedition, fill=_ACCENT, font=_font(9))
+    d.text((246, 232), "·", fill=_LINE, font=_font(9))
+    d.text((260, 232), governor, fill=_MUTED, font=_font(9))
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.context", "text", (166,224,330,248),
+        signals=("expedition.active", "dock.state", "governor.mode"),
+        update_class="live",
+    ))
+
+    # Universal depth hint: detail is intentionally drill-in rather than always visible.
+    d.line((188, 283, 292, 283), fill=_LINE)
+    d.text((200, 291), "HOLD FOR DETAIL", fill=_MUTED, font=_font(7))
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.inspect_hint", "interaction", (184,276,296,312),
+        action_id="inspect.current", update_class="interaction",
+    ))
+    return im
