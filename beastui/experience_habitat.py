@@ -250,16 +250,41 @@ def render_habitat_beast(
     d.text((12,10),"HABITAT",fill=_LEAF_2,font=_font(14))
     d.text((79,12),"GROWTH + MEMORY",fill=_MUTED,font=_font(8))
 
-    # Creature remains primary but shifts left to make room for its history.
-    cx, cy = 152, 150
-    d.ellipse((65,62,239,238),fill=(46,48,39),outline=_WARM,width=3)
-    d.polygon([(82,91),(104,47),(123,94)],fill=(46,48,39),outline=_WARM)
-    d.polygon([(180,94),(200,47),(222,91)],fill=(46,48,39),outline=_WARM)
-    d.ellipse((118,130,131,143),fill=_INK)
-    d.ellipse((174,130,187,143),fill=_INK)
-    d.arc((130,144,178,180),18,162,fill=_LEAF_2,width=3)
-    d.text((111,194),meta["stage"].upper(),fill=_INK,font=_font(13))
-    d.text((133,213),f"LV {meta['level']}",fill=_WARM,font=_font(10))
+    # Creature remains primary but uses the same layered organic language as Home.
+    cx = 152
+    coat=(46,48,39);coat_2=(54,58,45);shadow=(37,40,34)
+    d.ellipse((92,174,216,258),fill=shadow,outline=_SOIL,width=2)
+    head=[
+        (82,109),(88,83),(100,88),(109,55),(126,82),
+        (152,73),(178,82),(195,55),(204,90),(216,84),(222,110),
+        (224,149),(214,181),(191,211),(152,226),(113,211),(90,181),(80,149),
+    ]
+    d.polygon(head,fill=coat,outline=_WARM)
+    d.line(head+[head[0]],fill=_WARM,width=3,joint="curve")
+    d.polygon([(94,91),(109,62),(123,91),(110,106)],fill=coat_2,outline=_LEAF)
+    d.polygon([(181,91),(195,62),(210,92),(195,106)],fill=coat_2,outline=_LEAF)
+    d.polygon([(88,146),(111,135),(124,169),(108,199),(88,181)],fill=coat_2,outline=_SOIL)
+    d.polygon([(216,146),(193,135),(180,169),(196,199),(216,181)],fill=coat_2,outline=_SOIL)
+    alert=meta["mood"].lower() in {"angry","intense","focused","hunting"}
+    eye_col=_WARM if alert else _INK
+    d.polygon([(104,132),(132,135),(125,148),(110,147)],fill=(34,37,31),outline=eye_col)
+    d.polygon([(172,135),(200,132),(194,147),(179,148)],fill=(34,37,31),outline=eye_col)
+    d.ellipse((116,137,121,142),fill=_LEAF_2)
+    d.ellipse((183,137,188,142),fill=_LEAF_2)
+    d.polygon([(145,158),(159,158),(152,166)],fill=_WARM)
+    mood=meta["mood"].lower()
+    if mood in {"awake","happy","excited"}:
+        d.arc((126,166,153,191),5,100,fill=_LEAF_2,width=2)
+        d.arc((151,166,178,191),80,175,fill=_LEAF_2,width=2)
+    elif mood in {"sad","bored"}:
+        d.arc((128,176,176,199),200,340,fill=_LEAF_2,width=2)
+    else:
+        d.line((130,187,174,187),fill=_LEAF_2,width=2)
+    d.line((126,202,152,214,178,202),fill=_LEAF,width=2)
+    d.ellipse((143,207,161,225),fill=_SOIL,outline=_WARM)
+    label=f"{meta['stage'].upper()[:3]} {meta['level']:02d}"
+    tw=d.textbbox((0,0),label,font=_font(7))[2]
+    d.text((cx-tw//2,230),label,fill=_MUTED,font=_font(7))
     _register(rt, SceneLayerSpec(
         "habitat_beast.creature","creature",(62,44,242,242),
         signals=("progression.stage","progression.level","pwnagotchi.mood","beast.expression"),
