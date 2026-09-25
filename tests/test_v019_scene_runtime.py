@@ -238,3 +238,12 @@ def test_scene_scale_concept_creature_preprocessing_is_cached():
     assert a is not c
     assert a.width <= 250 and a.height <= 182
     assert a.width >= 150 and a.height >= 120
+
+
+def test_flagship_concept_source_art_retains_scene_fidelity_dimensions():
+    classic = concept_creature("classic")
+    cyber = concept_creature("cyberpunk")
+    assert classic is not None and cyber is not None
+    # These are concept-derived scene assets, not icon sprites.
+    assert classic.width >= 200 and classic.height >= 200
+    assert cyber.width >= 180 and cyber.height >= 200
