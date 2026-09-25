@@ -29,6 +29,19 @@ def _mission_pack(root: Path,enabled=True):
         "deck":"field",
         "apps":["home","map","expedition"],
         "capabilities":["display"],
+        "experience_renderer":"atlas",
+        "experience_dna":{
+            "visual_family":"expedition","layout_family":"map_first",
+            "density":"balanced","motion_profile":"calm_ambient",
+            "creature_presence":"supporting","utility_bias":"instrument",
+            "playfulness":"low","alert_style":"field",
+            "doctor_visibility":"contextual","mystery_level":"discoverable"
+        },
+        "experience_policy":{
+            "requires":["display.primary"],
+            "optional_requirements":["location.position"],
+            "preferred_pages":["home","recon","map"]
+        },
         "checklist":["Check GPS","Start Expedition"]
     }))
     return p
@@ -47,6 +60,10 @@ def test_enabled_mission_pack_discovers_namespaced_experience(tmp_path: Path):
     assert rows[0]["id"].startswith("pack_field-experience_")
     assert rows[0]["experience"] is True
     assert rows[0]["theme"]=="orchard_example"
+    assert rows[0]["experience_dna_valid"] is True
+    assert rows[0]["experience_dna"]["visual_family"]=="expedition"
+    assert rows[0]["experience_renderer"]=="atlas"
+    assert rows[0]["experience_policy"]["preferred_pages"]==["home","recon","map"]
     assert rows[0]["requirements_met"] is True
     assert patch["missions.experience_apply_enabled"] is False
 
@@ -74,3 +91,19 @@ def test_pack_requirements_flow_into_experience_readiness(tmp_path: Path):
     row=next(r for r in MissionPackEngine(state,root=str(tmp_path/"missions"),pack_root=str(root)).tick()["missions.items"] if r.get("source_pack"))
     assert row["requirements_met"] is False
     assert row["pack_requirements_met"] is False
+
+
+def test_invalid_pack_experience_dna_is_preserved_as_explicit_error(tmp_path: Path):
+    root=tmp_path/"installed";p=_mission_pack(root)
+    fp=p/"missions"/"field.json"
+    obj=json.loads(fp.read_text())
+    obj["experience_dna"]["visual_family"]="unnamespaced_custom"
+    fp.write_text(json.dumps(obj))
+    state=State({
+        "capabilities.present":["display"],
+        "packs.items":[{"id":"field-experience","origin":"installed","enabled":True,"requirements_met":True}]
+    })
+    row=next(r for r in MissionPackEngine(state,root=str(tmp_path/"missions"),pack_root=str(root)).tick()["missions.items"] if r.get("source_pack"))
+    assert row["experience"] is True
+    assert row["experience_dna_valid"] is False
+    assert "visual_family" in row["experience_dna_error"]
