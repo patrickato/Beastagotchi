@@ -73,6 +73,19 @@ jobs:
           retention-days: 30
 
 
+      - name: Render v0.19 Experience structural silhouettes
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_silhouettes.py
+
+      - name: Upload v0.19 Experience structural silhouettes
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-silhouettes
+          path: artifacts/v019-experience-silhouettes
+          if-no-files-found: error
+          retention-days: 30
+
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
