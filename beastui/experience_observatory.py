@@ -179,8 +179,13 @@ def _observer(draw, state):
 
     # Optical glint and a tiny mode label anchor the observer to the lab margin.
     draw.ellipse((cx+11,cy-20,cx+14,cy-17), fill=_INK)
-    draw.text((cx-30, cy+48), "OBSERVER", fill=_MUTED, font=_font(7))
-    draw.text((cx+5, cy+48), mood.upper()[:8], fill=eye_col, font=_font(7))
+    observer_label = "OBSERVER"
+    observer_font = _font(7)
+    observer_w = draw.textbbox((0,0), observer_label, font=observer_font)[2]
+    mood_label = mood.upper()[:8]
+    mood_w = draw.textbbox((0,0), mood_label, font=observer_font)[2]
+    draw.text((cx-observer_w//2, cy+44), observer_label, fill=_MUTED, font=observer_font)
+    draw.text((cx-mood_w//2, cy+54), mood_label, fill=eye_col, font=observer_font)
 
 
 def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
