@@ -2126,6 +2126,7 @@ class BeastUI:
         self.phase=float(self.phase_override) if self.phase_override is not None else time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
         page_id=self.pages.IDS[page_idx];title=self.pages.TITLES[page_id]
         self.scene_runtime.begin(page_id=page_id,scene_id=f'page:{page_id}',theme_id=self.theme.id)
+        self.scene_runtime.update_signals(self.state)
         if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),title)
         self._header(d,title);getattr(self.pages,page_id)(d,self.state,self);self.scene_runtime.end()
         im=draw_foreground_effects(im,self.theme,self.phase,self.render_options_for_theme(self.theme.id));d=ImageDraw.Draw(im)
