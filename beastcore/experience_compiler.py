@@ -8,6 +8,7 @@ from .experience_dna import (
     BUILTIN_EXPERIENCE_DNA,
     ExperienceDNA,
     compile_experience_variant,
+    experience_dna_from_dict,
     get_experience_dna,
 )
 
@@ -95,6 +96,106 @@ def _capability_resolution(
     return row
 
 
+def compile_experience_definition(
+    dna: ExperienceDNA,
+    platform_profile: dict[str, Any] | None,
+    *,
+    context: str | None = None,
+    resolver: DependencyCapabilityResolver | None = None,
+    renderer_pages: list[str] | tuple[str, ...] | None = None,
+    policy: ExperienceComponentPolicy | None = None,
+    source: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compile any validated Experience DNA definition without mutation."""
+    errors = dna.validate()
+    if errors:
+        raise ExperienceCompileError("; ".join(errors))
+    policy = policy or ExperienceComponentPolicy()
+    variant = compile_experience_variant(dna, platform_profile or {}, context=context)
+    implemented = tuple(dict.fromkeys(
+        str(x).strip().lower()
+        for x in (renderer_pages or ())
+        if str(x).strip()
+    ))
+    preferred = tuple(policy.preferred_pages)
+    missing_preferred = [page for page in preferred if page not in implemented]
+    capability = _capability_resolution(dna.id, policy, resolver)
+    optional_missing = [
+        row.get("requirement")
+        for row in capability.get("optional_results", [])
+        if isinstance(row, dict) and not bool(row.get("satisfied"))
+    ]
+    return {
+        "schema": 1,
+        "experience_id": dna.id,
+        "label": dna.label,
+        "dna": dna.as_dict(),
+        "variant": variant,
+        "presentation_engine": policy.presentation_engine,
+        "fallback_policy": policy.fallback_policy,
+        "source": dict(source or {"kind": "builtin"}),
+        "page_coverage": {
+            "implemented": list(implemented),
+            "preferred": list(preferred),
+            "missing_preferred": missing_preferred,
+            "complete_for_preferred": not missing_preferred,
+        },
+        "capabilities": {
+            "requires": list(policy.requires),
+            "optional": list(policy.optional_requirements),
+            "resolution": capability,
+            "optional_missing": [x for x in optional_missing if x],
+        },
+        "doctor_visibility": variant["doctor_visibility"],
+        "writes_preferences": False,
+        "installs_dependencies": False,
+        "selects_providers": False,
+        "ready_for_preview": "home" in implemented,
+        "ready_for_production_navigation": bool(implemented) and not missing_preferred,
+    }
+
+
+def compile_pack_experience(
+    runtime_id: str,
+    raw_dna: dict[str, Any],
+    platform_profile: dict[str, Any] | None,
+    *,
+    label: str | None = None,
+    requires: list[str] | tuple[str, ...] | None = None,
+    optional_requirements: list[str] | tuple[str, ...] | None = None,
+    preferred_pages: list[str] | tuple[str, ...] | None = None,
+    presentation_engine: str = "beast_scene",
+    fallback_policy: str = "identity_preserving",
+    context: str | None = None,
+    resolver: DependencyCapabilityResolver | None = None,
+    renderer_pages: list[str] | tuple[str, ...] | None = None,
+    source_pack: str | None = None,
+    source_file: str | None = None,
+) -> dict[str, Any]:
+    dna = experience_dna_from_dict(raw_dna, experience_id=runtime_id, label=label)
+    policy = ExperienceComponentPolicy(
+        requires=tuple(str(x) for x in (requires or ()) if str(x)),
+        optional_requirements=tuple(str(x) for x in (optional_requirements or ()) if str(x)),
+        preferred_pages=tuple(str(x).strip().lower() for x in (preferred_pages or ("home",)) if str(x).strip()),
+        presentation_engine=str(presentation_engine or "beast_scene"),
+        fallback_policy=str(fallback_policy or "identity_preserving"),
+    )
+    return compile_experience_definition(
+        dna,
+        platform_profile,
+        context=context,
+        resolver=resolver,
+        renderer_pages=renderer_pages,
+        policy=policy,
+        source={
+            "kind": "pack",
+            "pack_id": str(source_pack or ""),
+            "source_file": str(source_file or ""),
+        },
+    )
+
+
+
 def compile_experience(
     experience_id: str,
     platform_profile: dict[str, Any] | None,
@@ -119,46 +220,15 @@ def compile_experience(
         raise ExperienceCompileError("; ".join(errors))
 
     policy = BUILTIN_EXPERIENCE_POLICIES.get(eid, ExperienceComponentPolicy())
-    variant = compile_experience_variant(dna, platform_profile or {}, context=context)
-
-    implemented = tuple(dict.fromkeys(str(x).strip().lower() for x in (renderer_pages or ()) if str(x).strip()))
-    preferred = tuple(policy.preferred_pages)
-    missing_preferred = [page for page in preferred if page not in implemented]
-    capability = _capability_resolution(eid, policy, resolver)
-
-    optional_missing = [
-        row.get("requirement")
-        for row in capability.get("optional_results", [])
-        if isinstance(row, dict) and not bool(row.get("satisfied"))
-    ]
-
-    return {
-        "schema": 1,
-        "experience_id": eid,
-        "label": dna.label,
-        "dna": dna.as_dict(),
-        "variant": variant,
-        "presentation_engine": policy.presentation_engine,
-        "fallback_policy": policy.fallback_policy,
-        "page_coverage": {
-            "implemented": list(implemented),
-            "preferred": list(preferred),
-            "missing_preferred": missing_preferred,
-            "complete_for_preferred": not missing_preferred,
-        },
-        "capabilities": {
-            "requires": list(policy.requires),
-            "optional": list(policy.optional_requirements),
-            "resolution": capability,
-            "optional_missing": [x for x in optional_missing if x],
-        },
-        "doctor_visibility": variant["doctor_visibility"],
-        "writes_preferences": False,
-        "installs_dependencies": False,
-        "selects_providers": False,
-        "ready_for_preview": "home" in implemented,
-        "ready_for_production_navigation": bool(implemented) and not missing_preferred,
-    }
+    return compile_experience_definition(
+        dna,
+        platform_profile,
+        context=context,
+        resolver=resolver,
+        renderer_pages=renderer_pages,
+        policy=policy,
+        source={"kind": "builtin"},
+    )
 
 
 def compile_builtin_catalog(
