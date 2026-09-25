@@ -1177,3 +1177,393 @@ A lightweight read-route registry can eventually map:
 Do not introduce a heavy web framework merely to remove an if-chain unless there is another strong
 reason.
 
+
+---
+
+# Layer 3A — Packs, content and executable trust boundaries
+
+## Pack is a delivery envelope, not runtime authority
+
+This distinction should become explicit.
+
+A Beast Pack is a versioned/distributable envelope that may contain one or more logical things:
+- themes;
+- faces;
+- animations;
+- audio;
+- layout/board definitions;
+- missions/Experiences;
+- lifecycle choreography;
+- maps/data;
+- apps;
+- Procedures;
+- hardware/provider declarations;
+- trusted executable extensions.
+
+Being delivered inside a Pack does **not** itself grant execution or mutation authority.
+
+Pack lifecycle and content/runtime lifecycle must remain separate concepts.
+
+## Current Pack intake is a strong security foundation
+
+Current `PackIntakeManager` already:
+- limits archive size;
+- limits expanded size/member count;
+- rejects path traversal;
+- rejects links/devices;
+- requires exactly one root manifest;
+- stages before install;
+- executes nothing.
+
+Current `PackInstallManager`:
+- installs verified content transactionally;
+- snapshots previous versions;
+- journals installs;
+- verifies;
+- rolls back;
+- does not automatically activate services/plugins/code.
+
+Current `PackActivationManager` for content-only Packs:
+- allows only inert content classes;
+- rejects Python/shell/shared libraries/executables/systemd units;
+- rejects executable permission bits;
+- rejects background services;
+- rejects privileged permissions/service changes.
+
+**Protect this separation.**
+
+## Activation tiers
+
+Formalize activation tiers instead of treating all Pack types equally.
+
+Suggested model:
+
+### Tier 0 — metadata/catalog only
+- discoverable;
+- previews/manifest;
+- not installed;
+- no runtime effect.
+
+### Tier 1 — inert content
+Examples:
+- theme;
+- face;
+- animation recipe;
+- audio/media;
+- layout/board;
+- mission data;
+- map/data;
+- lifecycle choreography data.
+
+Properties:
+- no executable code;
+- no service mutation;
+- no package installation;
+- safe declarative parsing;
+- can usually be enabled/disabled without restart.
+
+### Tier 2 — declarative integration
+Examples:
+- Signal/Capability declarations;
+- Procedure definitions composed from already-registered Actions;
+- Experience Scene definitions using approved primitives;
+- hardware profiles pointing at existing provider adapters.
+
+Properties:
+- still does not execute arbitrary code;
+- may register declarative platform objects;
+- validated against schemas/contracts.
+
+### Tier 3 — trusted executable extension
+Examples:
+- genuinely new renderer primitive;
+- hardware/provider adapter;
+- new collector/module;
+- specialized integration requiring Python/native code.
+
+Properties:
+- explicit trust/source;
+- code review/signature/provenance policy;
+- declared permissions;
+- activation Transaction;
+- resource/health contract;
+- potentially service/package changes;
+- never enabled merely because installation succeeded.
+
+This tier should be comparatively rare.
+
+## Current manifest strengths
+
+Existing manifest already understands:
+- identity/version/type;
+- author/license/homepage/source;
+- dependencies/conflicts;
+- capabilities;
+- permissions;
+- services/restarts;
+- display support;
+- resource/thermal class;
+- content roles;
+- Signals provided/consumed;
+- companion relationships;
+- Beast/Pwnagotchi compatibility.
+
+That is a good base.
+
+## Missing manifest concepts for a large ecosystem
+
+Add/version over time:
+- **download_bytes**;
+- **installed_bytes**;
+- **temporary_install_bytes**;
+- **decoded/working_set estimate** where meaningful;
+- **components** / optional subpackages;
+- object/content hashes;
+- target/display variants;
+- local/offline requirement;
+- license per component/object where needed;
+- content provenance;
+- preview assets;
+- cacheability/eviction policy;
+- trust/activation tier;
+- executable entrypoints only for trusted tier;
+- Scene/App/Procedure registrations;
+- lifecycle/choreography registrations.
+
+These are necessary for 16/32 GB devices and accurate install planning.
+
+## Current size ceilings need to become policy by tier
+
+Pack intake currently defaults to roughly:
+- 128 MiB compressed archive;
+- 512 MiB expanded;
+- 2048 members.
+
+These are sensible anti-abuse defaults for today's Pack model.
+
+They should not accidentally become the permanent maximum size of optional cinematic/map/media
+content.
+
+Future large media should preferably use:
+- component/object downloads;
+- Content Store objects;
+- bounded per-object validation;
+- streaming/staged acquisition;
+- explicit storage planning;
+
+rather than simply raising one monolithic archive limit to many gigabytes.
+
+## Validation by content type
+
+Current content-only activation performs useful type-specific validation for themes/faces/
+animations/layouts/boards/missions.
+
+As content grows, each declarative content role should have a schema validator.
+
+Do not rely only on "contains no .py" as proof that data is valid.
+
+Examples:
+- audio: supported codec/duration/size;
+- image: format/dimensions/decompression bounds;
+- video/cinematic: codec/resolution/duration/decoder requirements;
+- map/data: schema/version/size;
+- Scene definition: allowed primitives/Signals/touch/Actions;
+- Procedure definition: registered steps only;
+- lifecycle choreography: bounded stage/event grammar.
+
+---
+
+# Layer 3B — Experiences, Pages and Scenes
+
+## Hidden ceiling confirmed: Experience metadata is open; rendering is not yet fully open
+
+Current strengths:
+- ExperienceDNA allows built-in or namespaced extension vocabulary;
+- Pack Mission/Experience definitions can provide DNA/policy;
+- Experience Compiler is read-only and capability/platform aware;
+- it honestly reports missing page coverage/native target support;
+- built-in renderer lookup already uses a registry.
+
+Current limitation:
+- Pack Experiences ultimately reference renderer coverage known by the core;
+- a new Pack may define new DNA, but it cannot yet invent a truly new safe renderer/Scene grammar
+  without trusted Python/core code;
+- built-in Experience surfaces are duplicated between
+  `beastcore/experience_surfaces.py` and `beastui/experience_registry.py`;
+- built-ins are imperative Python renderers while Pack Experiences are pushed toward declarative
+  composition.
+
+Therefore the architecture is **open in intent but still partially privileged in implementation**.
+
+## Convergence target: data-first Scene definitions
+
+Preferred long-term path:
+
+    Experience DNA
+          +
+    Page/Surface declarations
+          +
+    Scene definitions
+          +
+    approved render primitives
+          +
+    Signal bindings
+          +
+    assets/content
+          ↓
+    Experience Compiler
+          ↓
+    compiled Scene target
+          ↓
+    Scene Runtime / compositor
+
+Most new community Experiences should be possible as **data/content**, not arbitrary Python.
+
+A Scene definition can declare:
+- layer id;
+- primitive/component kind;
+- bounds/layout constraints;
+- z;
+- Signal bindings;
+- update class;
+- resource class;
+- touch/action binding;
+- reduced-motion behavior;
+- privacy;
+- assets;
+- formatting/transforms;
+- fallback behavior.
+
+The renderer executes only approved primitives/components.
+
+## Built-ins should dogfood the same path where practical
+
+Claude independently highlighted this and the fresh review agrees.
+
+Atlas/Forge/Observatory/Habitat/Monolith can remain hand-tuned during Gate 1, but the target should be
+that first-party Experiences eventually compile through the same Scene contracts available to
+third-party declarative content.
+
+Benefits:
+- community Experiences are not second-class;
+- Studio can fork/edit built-ins;
+- exact preview uses the same compiler;
+- Pack validation is meaningful because first-party code exercises it;
+- page/surface registration becomes data-driven;
+- render optimization applies consistently.
+
+This migration should be incremental; do not sacrifice current visual fidelity merely to achieve
+architectural purity quickly.
+
+## Trusted renderer extensions remain possible
+
+Data-first Scenes cannot predict every future visual idea.
+
+A trusted executable extension tier may register:
+- new approved primitive;
+- new renderer/component;
+- specialized visualization.
+
+Then declarative Scenes can use that primitive by namespaced id.
+
+This preserves:
+- open-ended creativity;
+- safe default content path;
+- rare escape hatch for genuinely new rendering capabilities.
+
+## Page Registry
+
+Current:
+- primary page list remains fixed;
+- Apps have a registry, but built-in definitions are still static;
+- Experience page surfaces are explicit tables;
+- UI Pages class still implements hard-coded page methods.
+
+Future PageSpec should declare:
+- id;
+- label;
+- semantic group;
+- renderer/Scene;
+- required Signals/Capabilities;
+- input model;
+- visibility/context rules;
+- navigation priority;
+- source Pack/App;
+- supported render targets;
+- availability state;
+- Doctor/help hooks.
+
+Sources may include:
+- core;
+- App;
+- Experience;
+- Pack;
+- trusted extension;
+- temporary/event surface.
+
+Primary carousel is a curated view over the Page Registry, not the complete universe.
+
+## App Registry
+
+An App Registry already exists, which is good.
+
+Extend its registration source rather than replacing it:
+- built-in;
+- Pack declarative App;
+- trusted extension;
+- optional capability.
+
+Apps may open:
+- page;
+- overlay;
+- workspace;
+- Procedure;
+- external/Studio deep-link where allowed.
+
+Avoid requiring every new capability to become a primary swipe page.
+
+## SceneRuntime is good but currently descriptive, not the complete renderer
+
+Current SceneRuntime tracks:
+- semantic layers;
+- Signal dependencies;
+- dirty layers/bounds;
+- cost;
+- cacheability;
+- resource class;
+- touch/privacy/reduced-motion metadata.
+
+This is excellent.
+
+But today imperative renderers still draw pixels directly and SceneRuntime records what happened.
+
+Long-term architecture should become:
+
+    SceneSpec
+       ->
+    SceneCompiler
+       ->
+    SceneRuntime/Scheduler
+       ->
+    Renderer/Compositor
+       ->
+    framebuffer
+
+This turns dirty-region metadata from an inspection tool into a true execution optimization.
+
+## Scene cache budgets
+
+Current compositor caches are count-limited (24 entries), not memory-budgeted.
+
+For a large asset ecosystem:
+- track bytes;
+- active/inactive references;
+- decode cost;
+- last use;
+- pinned state;
+- governor pressure.
+
+Cache eviction should be byte/resource-budget based.
+
+The active Experience plus nearby/likely-needed surfaces can remain warm; the rest should be cold.
+
