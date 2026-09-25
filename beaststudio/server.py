@@ -210,6 +210,12 @@ async function previewCompiledExperience(plan,page,btn){btn.disabled=true;try{
   $('status').textContent='Previewing '+(plan.label||id)+' / '+page+(src.kind==='pack'?' from Pack '+(src.pack_id||''):'')+'. Nothing was applied and TFT ownership remains unchanged.';
 }catch(e){$('status').textContent='Compiled Experience preview failed: '+e}finally{btn.disabled=false}}
 
+async function planTryOnTft(plan,page,btn){btn.disabled=true;try{
+  let x=await jfetch('/api/experience-try-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:plan.experience_id,page,duration_sec:90})});
+  let blockers=x.blockers||[],warnings=x.warnings||[];
+  $('status').textContent=(x.plan_ready?'TRY ON TFT plan ready':'TRY ON TFT remains locked')+' · '+(blockers.length?blockers.join(' · '):'no planning blockers')+(warnings.length?' · '+warnings[0]:'');
+}catch(e){$('status').textContent='TRY ON TFT plan failed: '+e}finally{btn.disabled=false}}
+
 function renderBuiltinExperiences(plan){
   let box=$('builtinExperienceList');if(!box)return;box.innerHTML='';
   let rows=(plan&&plan.items)||[];
@@ -220,6 +226,7 @@ function renderBuiltinExperiences(plan){
     let pages=document.createElement('div');pages.className='mini';pages.textContent='Implemented: '+((cov.implemented||[]).join(', ')||'none')+' · Missing preferred: '+((cov.missing_preferred||[]).join(', ')||'none');d.append(pages);
     let missing=(caps.optional_missing||[]);if(missing.length){let m=document.createElement('div');m.className='status';m.textContent='Optional enrichments unavailable: '+missing.join(', ');d.append(m)}
     (cov.implemented||[]).forEach(page=>{let b=document.createElement('button');b.textContent='PREVIEW '+String(page).toUpperCase();b.onclick=()=>previewCompiledExperience(r,page,b);d.append(b)});
+    if((cov.implemented||[]).includes('home')){let t=document.createElement('button');t.textContent='TRY ON TFT PLAN';t.onclick=()=>planTryOnTft(r,'home',t);d.append(t)}
     box.append(d)});
   if(!rows.length)box.innerHTML='<div class="status">Core Experience plans are not available yet.</div>';
 }
@@ -807,6 +814,13 @@ class StudioState:
     def presentation_plan(self,obj: dict)->dict:
         return self.actions.plan('presentation.plan',{'target':str(obj.get('target') or '')})
 
+    def experience_try_plan(self,obj: dict)->dict:
+        return self.actions.plan('experience.try_on_tft_plan',{
+            'id':str(obj.get('id') or ''),
+            'page':str(obj.get('page') or 'home'),
+            'duration_sec':int(obj.get('duration_sec') or 90),
+        })
+
     def update_stage_plan(self,obj: dict)->dict:
         return self.actions.plan('update.stage',{'component':str(obj.get('component') or ''),'asset_name':str(obj.get('asset_name') or '')})
 
@@ -899,7 +913,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/experience-preview','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/experience-preview','/api/experience-try-plan','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/capsule-preview':return self._send(200,self.st.capsule_preview(obj))
             if path=='/api/capsule-qr':return self._send(200,self.st.capsule_qr_png(obj),'image/png')
@@ -932,6 +946,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/update-pack-apply':return self._send(200,self.st.update_pack_apply(obj))
             if path=='/api/experience-preview':return self._send(200,self.st.experience_preview(obj),'image/png')
             if path=='/api/experience-draft':return self._send(200,self.st.experience_draft(obj))
+            if path=='/api/experience-try-plan':return self._send(200,self.st.experience_try_plan(obj))
             if path=='/api/global-policy':return self._send(200,self.st.global_policy_set(obj))
             if path=='/api/roster-switch':return self._send(200,self.st.roster_switch(obj))
             if path=='/api/roster-synthesis-plan':return self._send(200,self.st.roster_synthesis_plan(obj))
