@@ -250,7 +250,7 @@ def render_atlas_recon(
     *,
     scene_runtime: SceneRuntime | None = None,
 ) -> Image.Image:
-    """Atlas translation of Recon: a field survey, never a target/radar fiction."""
+    """Atlas Recon translated into the same field-notebook language as Home."""
     state = dict(state or {})
     meta = atlas_home_metadata(state)
     rt = scene_runtime
@@ -261,27 +261,29 @@ def render_atlas_recon(
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
 
-    d.rectangle((0, 0, 479, 31), fill=(35, 39, 31))
+    d.rectangle((0, 0, 479, 31), fill=(34, 38, 30))
     d.text((10, 7), "ATLAS", fill=_ACCENT, font=_font(15))
-    d.text((70, 9), "FIELD SURVEY", fill=_MUTED, font=_font(10))
-    d.text((393, 9), f"{_ival(state, 'wifi.ap_count')} OBS", fill=_INK, font=_font(9))
+    d.text((70, 9), "FIELD SURVEY // RELATIVE RF NOTEBOOK", fill=_MUTED, font=_font(7))
+    d.text((438, 9), f"{_ival(state, 'wifi.ap_count')} OBS", fill=_INK, font=_font(8))
     _register(rt, SceneLayerSpec(
         "atlas_recon.header", "text", (0, 0, 480, 32),
         signals=("wifi.ap_count",), update_class="live",
     ))
 
-    # Large survey field. Position is diagrammatic: channel determines bearing,
-    # RSSI determines radius. It is explicitly not a geographic/radar claim.
-    field = (10, 42, 352, 276)
-    d.rounded_rectangle(field, radius=12, fill=_FIELD, outline=(92, 94, 67))
-    d.text((20, 51), "NEARBY RF SURVEY", fill=_PAPER, font=_font(10))
-    d.text((20, 66), "RELATIVE SIGNAL DIAGRAM · NOT RANGE OR POSITION", fill=_MUTED, font=_font(8))
-    cx, cy = 180, 168
-    for radius in (38, 72, 108):
-        d.ellipse((cx-radius, cy-int(radius*.66), cx+radius, cy+int(radius*.66)),
+    # Same full field + ruled margin structure as Atlas Home.
+    d.rectangle((0, 32, 407, 281), fill=_FIELD)
+    d.line((407, 32, 407, 281), fill=_ACCENT)
+    d.text((14, 43), "NEARBY RF SURVEY", fill=_PAPER, font=_font(9))
+    d.text((14, 57), "RELATIVE SIGNAL DIAGRAM // NOT RANGE OR POSITION", fill=_MUTED, font=_font(7))
+
+    cx, cy = 205, 160
+    for radius in (42, 82, 124):
+        d.ellipse((cx-radius, cy-int(radius*.64), cx+radius, cy+int(radius*.64)),
                   outline=(82, 86, 61), width=1)
-    d.line((cx-120, cy, cx+120, cy), fill=(82, 86, 61))
-    d.line((cx, cy-78, cx, cy+78), fill=(82, 86, 61))
+    d.line((cx-142, cy, cx+142, cy), fill=(82,86,61))
+    d.line((cx, cy-88, cx, cy+88), fill=(82,86,61))
+    d.line((cx-100,cy-62,cx+100,cy+62),fill=(68,72,54))
+    d.line((cx-100,cy+62,cx+100,cy-62),fill=(68,72,54))
 
     aps = [x for x in (state.get("wifi.aps") or []) if isinstance(x, dict)]
     band_counts = {"2.4": 0, "5": 0}
@@ -293,54 +295,53 @@ def render_atlas_recon(
             continue
         band_counts["2.4" if ch <= 14 else "5"] += 1
         angle = math.radians((ch * 19 + idx * 31) % 360)
-        radius = max(18, min(108, int((abs(rssi) - 26) * 1.42)))
+        radius = max(18, min(120, int((abs(rssi) - 26) * 1.5)))
         x = int(cx + math.cos(angle) * radius)
-        y = int(cy + math.sin(angle) * radius * .66)
+        y = int(cy + math.sin(angle) * radius * .64)
         color = _WATER if bool(ap.get("handshake")) else _PAPER
-        d.ellipse((x-5, y-5, x+5, y+5), fill=_BG, outline=color, width=2)
+        d.ellipse((x-5, y-5, x+5, y+5), fill=_FIELD, outline=color, width=2)
         d.text((x+6, y-5), str(ch), fill=_MUTED, font=_font(7))
 
-    d.ellipse((cx-6, cy-6, cx+6, cy+6), fill=_ACCENT)
-    d.text((cx-19, cy+12), "BEAST", fill=_INK, font=_font(8))
+    # Beast is the survey origin/companion, not a target.
+    d.ellipse((cx-7, cy-7, cx+7, cy+7), fill=_ACCENT)
+    d.text((cx-20, cy+13), "BEAST", fill=_INK, font=_font(7))
+    d.text((14, 260), "CHANNEL→BEARING // RSSI→RADIUS", fill=_MUTED, font=_font(7))
     _register(rt, SceneLayerSpec(
-        "atlas_recon.survey", "graph", field,
+        "atlas_recon.survey", "graph", (0,32,408,282),
         signals=("wifi.aps", "wifi.ap_count"), update_class="live", decorative=False,
     ))
 
-    # Field notebook strip uses real counts and truth states.
-    d.rounded_rectangle((362, 44, 470, 112), radius=8, fill=(38,43,35), outline=(87,89,65))
-    d.text((372, 53), "BANDS", fill=_MUTED, font=_font(8))
-    d.text((372, 72), f"2.4  {band_counts['2.4']}", fill=_INK, font=_font(11))
-    d.text((372, 91), f"5G   {band_counts['5']}", fill=_INK, font=_font(11))
+    # Notebook margin annotations instead of three rounded cards.
+    d.rectangle((408, 32, 479, 281), fill=(31,35,29))
+    _edge_metric(d, 46, "BANDS", f"2.4  {band_counts['2.4']}", f"5G   {band_counts['5']}")
+    _edge_metric(d, 112, "SURVEY", f"HS {_ival(state, 'wifi.handshake_ap_count')}", f"HID {_ival(state, 'wifi.hidden_count')}")
+    _edge_metric(d, 178, "POSITION", meta["gps_status"], f"SATS {_ival(state, 'gps.satellites_used')}", accent=meta["gps_fix"])
+    d.line((412, 244, 470, 244), fill=(82,84,62))
+    d.text((414, 251), "TUNED", fill=_MUTED, font=_font(7))
+    d.text((414, 264), f"CH {meta['channel']}", fill=_ACCENT, font=_font(10))
+
     _register(rt, SceneLayerSpec(
-        "atlas_recon.bands", "instrument", (362,44,470,112),
+        "atlas_recon.bands", "instrument", (408,46,479,108),
         signals=("wifi.aps",), update_class="live",
     ))
-
-    d.rounded_rectangle((362, 122, 470, 190), radius=8, fill=(38,43,35), outline=(87,89,65))
-    d.text((372, 131), "SURVEY", fill=_MUTED, font=_font(8))
-    d.text((372, 150), f"HS  {_ival(state, 'wifi.handshake_ap_count')}", fill=_INK, font=_font(11))
-    d.text((372, 169), f"HID {_ival(state, 'wifi.hidden_count')}", fill=_INK, font=_font(11))
     _register(rt, SceneLayerSpec(
-        "atlas_recon.summary", "instrument", (362,122,470,190),
+        "atlas_recon.summary", "instrument", (408,112,479,174),
         signals=("wifi.handshake_ap_count", "wifi.hidden_count"), update_class="live",
     ))
-
-    d.rounded_rectangle((362, 200, 470, 268), radius=8, fill=(38,43,35), outline=(87,89,65))
-    d.text((372, 209), "POSITION", fill=_MUTED, font=_font(8))
-    d.text((372, 228), meta["gps_status"], fill=_ACCENT if meta["gps_fix"] else _ALERT, font=_font(9))
-    d.text((372, 246), f"SATS {_ival(state, 'gps.satellites_used')}", fill=_INK, font=_font(9))
     _register(rt, SceneLayerSpec(
-        "atlas_recon.position", "instrument", (362,200,470,268),
+        "atlas_recon.position", "instrument", (408,178,479,242),
         signals=("gps.fix", "gps.satellites_used"), update_class="live",
     ))
 
-    d.rectangle((10, 287, 470, 312), fill=(38,43,35))
-    d.text((20, 295), f"FIELD SESSION · {meta['ap_unique']} UNIQUE · CH {meta['channel']} · {meta['band']}",
-           fill=_MUTED, font=_font(8))
+    d.rectangle((0, 282, 479, 319), fill=(34,38,30))
+    d.line((0,282,479,282), fill=_ACCENT)
+    d.text((14, 291), f"FIELD SESSION // {meta['ap_unique']} UNIQUE", fill=_ACCENT, font=_font(8))
+    d.text((196, 291), f"CH {meta['channel']} // {meta['band']}", fill=_INK, font=_font(8))
+    d.text((14, 306), "OBSERVATIONS ARE RELATIVE RF CONTEXT // NOT GEOGRAPHIC POSITION", fill=_MUTED, font=_font(7))
     _register(rt, SceneLayerSpec(
-        "atlas_recon.footer", "text", (10,287,470,312),
+        "atlas_recon.footer", "text", (0,282,480,320),
         signals=("expedition.ap_unique", "radio.primary.channel", "radio.primary.band"),
         update_class="live",
     ))
     return im
+
