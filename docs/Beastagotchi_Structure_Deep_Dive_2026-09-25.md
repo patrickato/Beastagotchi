@@ -996,3 +996,184 @@ Future additions worth considering:
 
 Do not turn Patient Chart into a full duplicate event database.
 
+
+---
+
+# Layer 2F — Persistence and API boundaries
+
+## SQLite is the right persistence technology
+
+Keep one local SQLite database.
+
+Current good choices:
+- WAL mode;
+- synchronous=NORMAL;
+- batched sample writes;
+- bounded history queries;
+- pruning;
+- FTS5 with graceful fallback;
+- durable event/action/job/incident/roster data;
+- low-frequency indexing where appropriate.
+
+Do not replace SQLite with a network database, Redis or an ORM merely because Beastagotchi becomes
+feature-rich.
+
+## High-priority correctness issue: SQLite thread affinity
+
+Confirmed structural issue:
+
+- `Store.__init__` creates `self.conn = sqlite3.connect(self.path)` with default
+  `check_same_thread=True`;
+- `LocalActionServer` runs `ActionBroker.plan/perform` using `asyncio.to_thread()`;
+- ActionBroker roster/global/memory objects are backed by the Core-owned Store/connection;
+- `BeastRoster` directly holds `store.conn` and performs SQL through it.
+
+The project already recognized thread affinity for:
+- `Store.add_action()`;
+- `Store.upsert_job()`;
+
+and uses short-lived worker-thread connections there.
+
+But roster/synthesis/presentation-preference/global/memory Action paths may still access the
+event-loop-created connection from an Action worker thread.
+
+### Priority
+**High. Fix before expanding breeding/roster/Procedure mutations.**
+
+### Preferred architectural remedies to evaluate
+
+Do not simply set `check_same_thread=False` and hope concurrency is safe.
+
+Better candidates:
+1. **connection-per-thread / connection factory** for repository operations;
+2. dedicated SQLite writer/DB worker with queued mutations;
+3. async Action orchestration that delegates only filesystem/subprocess blocking work to threads
+   while DB mutations remain on the owning thread;
+4. repository-specific short-lived connections for mutation paths.
+
+Selection should consider:
+- WAL concurrency;
+- transaction atomicity;
+- current direct `store.conn` consumers;
+- performance on Pi;
+- testability.
+
+Add explicit tests that execute representative roster/synthesis/memory Actions through
+`LocalActionServer` / worker-thread execution against a real SQLite file.
+
+## Schema migrations need a real version ladder
+
+Current `_migrate()` is forward-only/ad-hoc column inspection.
+
+This is acceptable during rapid prototyping but should not become the long-term database contract.
+
+Add:
+- `PRAGMA user_version`;
+- ordered migrations;
+- idempotent migration tests from representative historical schemas;
+- backup/checkpoint before risky future migrations;
+- Doctor visibility for migration failure.
+
+Keep migrations additive/boring where possible.
+
+## WAL management
+
+WAL mode is appropriate.
+
+Consider measured periodic checkpoint policy:
+- not every transaction;
+- checkpoint when WAL exceeds a threshold or during safe idle/dock windows;
+- `wal_checkpoint(PASSIVE)` / `TRUNCATE` based on measured behavior;
+- expose DB/WAL sizes to Performance/Doctor.
+
+Do not over-optimize before measuring actual SD/write behavior.
+
+## Repository boundaries
+
+`db.py` is becoming a large multi-domain file.
+
+Long-term, keep one Store/DB but expose domain repositories/facades:
+- EventRepository;
+- HistoryRepository;
+- RosterRepository;
+- IncidentRepository;
+- ExpeditionRepository;
+- ActionJournalRepository;
+- LibraryRepository;
+- DoctorRepository.
+
+This is code organization and concurrency ownership—not a reason for multiple databases.
+
+## HTTP API boundary is excellent
+
+Current split should be preserved:
+
+### Loopback HTTP/WebSocket
+Read-only:
+- state;
+- Signals/telemetry;
+- events/history;
+- Doctor;
+- Experiences;
+- platform bundle;
+- library/search;
+- records.
+
+### Unix-domain Action socket
+Mutation:
+- root-owned;
+- dedicated local group;
+- filesystem permissions;
+- peer credentials;
+- allow-listed ActionBroker;
+- no generic shell primitive.
+
+This is a strong security/ownership boundary.
+
+Beast Studio/browser should continue to talk through its authenticated boundary rather than
+directly receiving privileged socket access.
+
+## WebSocket should become the normal live UI transport
+
+The API already sends:
+- initial full state snapshot;
+- subsequent `state.changed` patches;
+- Events;
+- heartbeat with state sequence.
+
+BeastUI currently still polls full `/live` snapshots every 0.5 seconds.
+
+Preferred future data path:
+1. full snapshot on connect/reconnect;
+2. WebSocket state patches/events during normal operation;
+3. batched HTTP for slower history/bulk resources;
+4. sequence-gap detection;
+5. resync snapshot on gap/reconnect.
+
+Benefits:
+- less JSON serialization;
+- less copying;
+- less localhost connection churn;
+- lower CPU/heat;
+- more immediate updates;
+- clear resynchronization semantics.
+
+The existing polling path can remain as fallback/recovery.
+
+## API route growth
+
+`LocalAPI` is accumulating a long route `if/elif` chain.
+
+Like Actions/Pages, this is a future registry/router cleanup rather than an urgent architectural
+failure.
+
+A lightweight read-route registry can eventually map:
+- path;
+- handler;
+- query schema;
+- privacy/publication policy;
+- cache class.
+
+Do not introduce a heavy web framework merely to remove an if-chain unless there is another strong
+reason.
+
