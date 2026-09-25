@@ -76,3 +76,32 @@ Subsequent roadmap/gate-document synchronization is documentation-only and does 
 ## Truth boundary
 
 Decorative particles, glows, skyline, perspective grids, scan passes and creature luminance are visual activity only. They must remain marked decorative/ambient and must never imply measured RF/GPS/system activity.
+## Follow-up validation — final green head
+
+After the initial scene-scale checkpoint:
+
+- scene-scale concept preprocessing was moved behind an LRU cache so decode/resample/edge-feather work is not repeated every frame;
+- a higher-resolution concept-raster import was experimentally attempted, failed the payload-integrity gate, and was **reverted cleanly** rather than carried forward on a red branch;
+- the last-green compact concept assets remain, now rendered at correct scene scale and cached;
+- the Home motion proof now classifies semantic dirtiness into changed canonical Signals, live layers, ambient layers and interaction layers without injecting synthetic telemetry.
+
+Final evidence at commit `b76f25cabf567ec6480c28a51847881f45bf0384`:
+
+- CI run **475**: success;
+- **437 tests passed**;
+- motion-proof artifact: `v019-home-motion-proof`;
+- Classic/Cyberpunk/Black-Ice frame 0 establishes captured-state truth; later frames show **0 live-dirty frames** and ambient-only motion;
+- `synthetic_telemetry_injected = false`;
+- WOPR remains structurally distinct and does not claim ambient layer motion where its current semantic contract does not publish one.
+
+This closes the composition/caching/truth-dirtiness sub-block. It does **not** close Gate 1.
+
+### Current visual assessment
+
+Classic and Cyberpunk now materially avoid the original thumbnail-mascot failure: the creature occupies the intended left-side visual stage and the live HUD is spatially subordinate to the scene.
+
+Remaining visual work is primarily:
+1. richer project-owned source-art fidelity;
+2. more depth/lighting/foreground layering where themes need it;
+3. extending the Scene language to Recon/Spectrum/Expedition without copying Home geometry;
+4. owner acceptance of actual off-screen renderer output.
