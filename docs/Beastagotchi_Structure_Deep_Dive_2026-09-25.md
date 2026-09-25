@@ -2482,3 +2482,294 @@ Feature-specific Surfaces own their own:
 
 The shell coordinates; it does not accumulate every feature's fields forever.
 
+
+---
+
+# Layer 4B — Beast Studio
+
+## Studio is now a second major composition root
+
+Current `beaststudio/server.py` is approximately:
+- 1,000 lines;
+- 136 KiB source;
+- browser HTML/CSS/JavaScript embedded directly in Python;
+- HTTP routing, authentication, orchestration, rendering and many domain controls in one module.
+
+Studio remains useful and coherent from the owner's perspective, but continued feature accumulation in
+this file will become difficult to reason about.
+
+## Preserve the product role
+
+Beast Studio should remain:
+- responsive PC/phone browser control surface;
+- exact/off-screen visual editor;
+- richer Doctor/operations workspace;
+- Depot/content manager;
+- backup/update/recovery interface;
+- long-form history/detail surface.
+
+Do **not** force everything onto the 3.5-inch TFT merely because Studio can do it.
+
+Likewise, do not make Studio a second source of platform truth.
+It remains a client/orchestrator over Beast Core + registered managed file/content stores.
+
+## Decompose by domain, not by arbitrary file size
+
+Suggested internal server domains:
+- Presentation / Studio drafts;
+- Experiences / Surfaces;
+- Doctor / Operations;
+- Packs / Depot / Content;
+- Roster / progression;
+- Capsules / sharing;
+- Library / search;
+- Updates / backup / support.
+
+Each domain can expose route registrations/handlers.
+
+A lightweight router registry is enough; do not require Flask/FastAPI solely to avoid `if path`
+chains unless another need justifies the dependency.
+
+## Static browser assets
+
+Move large HTML/CSS/JavaScript out of the Python source over time.
+
+Benefits:
+- browser code can be linted/tested independently;
+- caching/versioning becomes easier;
+- smaller Python review diffs;
+- easier future PWA/mobile-wrapper work;
+- UI contributors need not edit a giant Python string.
+
+This does not require a Node build system.
+Plain static files are sufficient initially.
+
+## ThreadingHTTPServer and shared StudioState
+
+Studio uses `ThreadingHTTPServer`, so one `StudioState` instance can serve concurrent requests.
+
+Most read paths are naturally safe enough, and atomic rename protects preference readers from
+partial files.
+
+However, future multiple clients / overlapping requests require explicit mutation coordination for:
+- preferences Apply;
+- variant create/delete;
+- local policy files;
+- file intake;
+- any other direct managed-file store.
+
+Use:
+- per-store locks/version checks;
+- atomic writes;
+- optionally ETag/generation conflict detection.
+
+Do not assume one browser tab forever.
+
+## Presentation editor is not privileged mutation
+
+Current Studio `apply()` writes visual/presentation preferences atomically and retains backups.
+
+This is appropriate as a presentation-state operation.
+
+Move it behind the shared `PresentationPreferenceStore` proposed in Layer 4A rather than routing
+ordinary palette/layout changes through ActionBroker.
+
+Privileged/platform mutations continue through `BeastActionClient`.
+
+## Operations boundary is good
+
+Studio correctly uses the Action client for operations including:
+- plugin changes;
+- service restart;
+- Doctor known-good;
+- backups/support bundles;
+- Pack install/rollback/activation;
+- updates;
+- roster/synthesis;
+- global policy;
+- presentation planning.
+
+Protect this boundary.
+
+File/catalog uploads may remain Studio-managed intake operations when they only place bytes into a
+bounded inbox/library and confer no trust/activation authority.
+
+## Exact compositor preview — current capability
+
+The 480x320 Studio preview has a strong property:
+- it uses the same BeastUI/PIL compositor code;
+- it uses current Beast Core telemetry;
+- it validates the same theme/face/layout preferences.
+
+This is much better than a browser mock-up.
+
+Call it **Exact Compositor Preview**.
+
+## Exact Runtime Mirror — distinct future capability
+
+Current preview is not necessarily the exact frame currently visible on the physical TFT because:
+- it renders a draft-selected page, not necessarily current physical navigation state;
+- it constructs a fresh UI runtime;
+- animation phase/timing differs;
+- transient Surface stack may differ;
+- touch state/transitions may differ;
+- Rare/Doctor/notices may differ by timing;
+- it is request/render based, not the actual physical-frame stream.
+
+A true **Exact Runtime Mirror** should consume either:
+1. the physical compositor's final logical frame + Surface/runtime metadata; or
+2. the same canonical PresentationSession state with synchronized phase/Surface stack.
+
+Potential modes:
+- view-only exact mirror;
+- remote touch/control when explicitly authorized;
+- inspect Surface/layer/Signal under pointer;
+- frame-performance overlay.
+
+Keep view and remote-control permissions separate.
+
+## Preview performance
+
+Browser edits use a ~90 ms debounce, which is good.
+
+Current preview request:
+- validates by constructing BeastUI;
+- fetches live state/history;
+- constructs another BeastUI render context;
+- renders/compresses PNG.
+
+Potential issue:
+- an already-started preview request is not aborted when another edit queues;
+- ThreadingHTTPServer may therefore process overlapping preview renders during rapid dragging/color
+  adjustment.
+
+Future improvements:
+- client AbortController / generation id;
+- server latest-request-wins coalescing;
+- one preview render worker;
+- reusable validated render context;
+- cache theme/fonts/static assets;
+- lower preview cadence while actively dragging, final high-quality render on release;
+- governor-aware preview budget.
+
+Studio preview must yield to the physical UI and Core health under thermal pressure.
+
+## Studio schema/source-of-truth cleanup
+
+Current schema generation constructs a BeastUI probe to discover:
+- themes;
+- pages;
+- renderer choices;
+- face/animation profiles;
+- Apps;
+- Experience coverage.
+
+As registries mature, Studio should consume those registries directly.
+
+Do not instantiate a whole UI object just to answer catalog/schema questions.
+
+This also eliminates duplicated literals such as the currently stale `version: "0.18.0"` schema
+value on the v0.19 development line.
+
+---
+
+# Layer 4C — Presentation ownership, Native mode and remote clients
+
+## Physical presentation ownership — preserve current caution
+
+Current model distinguishes:
+- native Pwnagotchi;
+- Korrie71 Theme Manager;
+- Beast UI.
+
+`PresentationBroker` owns desired/active/status truth.
+`PresentationTransitionPlanner` describes release/acquire/verify/rollback.
+Physical execution remains disabled until adapters pass validation.
+
+This is correct.
+
+Exactly one component may own:
+- physical framebuffer presentation;
+- physical touch/input hook;
+
+at a time.
+
+## Separate three presentation concepts
+
+Do not conflate:
+
+### Physical owner
+Who writes/controls the actual TFT/input device.
+
+### Presentation source
+What semantic/visual content is shown:
+- Beast Scene;
+- exact Native Pwnagotchi frame;
+- Theme Manager presentation;
+- cinematic Surface.
+
+### Remote viewer/controller
+Studio/phone/desktop observing or interacting over network.
+
+A remote mirror does not become physical owner merely because it displays the same frame.
+
+## Native Pwnagotchi frame integration — keep
+
+`NativePwnFrameSource` reads the actual Pwnagotchi WebUI-composed PNG and:
+- caches by mtime;
+- survives coincident writes with last-known-good frame;
+- respects configured rotation;
+- preserves exact upstream layout;
+- can recolor without reconstructing semantics.
+
+This is a strong compatibility technique.
+
+Long-term, PwnagotchiAdapter should provide the native-frame path/rotation contract so UI code does
+not own upstream path assumptions.
+
+## Remote input authority
+
+Future Exact Runtime Mirror/mobile/desktop input should enter the same InputRouter as physical
+gestures **after** authentication/authorization.
+
+Input envelope should identify:
+- source: physical / Studio / remote client;
+- operator/session;
+- logical coordinates/gesture;
+- timestamp;
+- target device/session.
+
+Surface/action policy can reject remote input for:
+- sensitive confirmation;
+- credential entry;
+- physical-only tests;
+- explicit local-presence requirements.
+
+Remote control should be opt-in and separable from remote viewing.
+
+## PresentationSession
+
+A useful future shared read model is **PresentationSession**:
+- active physical owner;
+- current primary Surface/page;
+- Surface stack;
+- active Experience;
+- presentation preferences generation;
+- logical size / physical target;
+- transition state;
+- current transient/cinematic id;
+- render phase/timebase where synchronization matters;
+- input owner/focus;
+- last frame sequence;
+- frame/performance telemetry.
+
+This can power:
+- Exact Runtime Mirror;
+- Studio inspector;
+- support bundle;
+- Doctor display diagnosis;
+- remote client resynchronization.
+
+Do not make PresentationSession another source of telemetry truth; it describes presentation state
+only.
+
