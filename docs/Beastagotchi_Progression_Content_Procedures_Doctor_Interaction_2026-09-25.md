@@ -249,6 +249,84 @@ Its presentation may be visual, textual and interactive simultaneously:
 
 Raw terminal/log evidence remains available underneath the clean interpretation.
 
+
+## 7A. Doctor heartbeat / vital-sign affordance
+
+A small persistent **heart / vital-sign / heartbeat** affordance is a preferred Doctor entry point
+for the TFT.
+
+It should feel alive rather than like a static status LED.
+
+Possible semantic states:
+- **green** — healthy / no action needed;
+- **yellow / amber** — attention / advisory;
+- **red** — critical / owner action strongly recommended;
+- **blue** — informational / observation / recovery / Doctor watching a condition, exact semantic
+  meaning to be finalized before implementation.
+
+Visual behavior may reinforce severity:
+- healthy: slow calm pulse / soft heartbeat;
+- attention: slightly stronger or irregular pulse;
+- critical: faster/stronger pulse or sharper waveform, without becoming seizure-like or annoying;
+- recovery/observation: cool pulse, breathing glow or alternate cadence.
+
+The icon may include:
+- heart silhouette;
+- ECG/vital line;
+- glow;
+- hue shift;
+- aura;
+- brief flash;
+- pulse/throb.
+
+These effects are presentation semantics, not additional factual telemetry.
+
+Tap/activate should navigate to the health/Patient Chart surface, with deeper Doctor/actions available
+from there.
+
+Experience-specific rendering is encouraged:
+- Forge may render the health pulse like a machine status oscillator;
+- Observatory may render it as a trace;
+- Habitat may render it more organically;
+- Monolith may reduce it to one restrained glowing mark.
+
+Same canonical Doctor state, different Experience presentation.
+
+## 7B. Clearer owner-facing treatment language
+
+Avoid making the primary call-to-action unnecessarily clinical or ambiguous.
+
+Preferred primary labels depend on context:
+- **TAKE ACTION** — broad/default recommendation;
+- **FIX THIS** — simple low-risk remediation where the result is obvious;
+- **START TREATMENT** — Doctor-oriented but understandable;
+- **RUN CHECK** / **RUN DIAGNOSTIC** — investigation, not treatment;
+- **REPAIR & VERIFY** — suitable when rollback/verification is part of the transaction;
+- **RESTART & VERIFY** — explicit service recovery case.
+
+"Plan Treatment" can remain an explanatory/internal concept, but the user-facing button should say
+what will actually happen.
+
+The plan screen still appears before mutation when appropriate.
+
+## 8A. Procedures must surface Doctor next steps
+
+Any Procedure whose results correspond to Doctor findings should expose those findings directly.
+
+A Procedure result may offer:
+- `VIEW DOCTOR`;
+- `TAKE ACTION`;
+- a specific Action such as `CLEAN CACHE`, `RESTART & VERIFY`, or `BUILD SUPPORT BUNDLE`;
+- `DETAILS / EVIDENCE`;
+- `IGNORE / REMIND LATER` where appropriate.
+
+The user should not be forced to manually leave the Procedure, open Doctor, find the same finding,
+and rediscover an already-known next step.
+
+Doctor remains the health authority; Procedure results may provide contextual deep links/actions
+into that authority.
+
+
 ## 8. Doctor and Procedures reinforce each other
 
 Doctor may recommend a Procedure.
