@@ -150,6 +150,7 @@ class LocalAPI:
             "theme_manager_managed_handoff_supported": bool(self.state.get("presentation.theme_manager.managed_handoff_supported", False)),
             "last_error": self.state.get("presentation.last_error"),
         }
+        experiences = self.experience_bundle()
         return {
             "library": self.store.library_summary(12),
             "jobs": {"items": self.store.recent_jobs(20)},
@@ -187,12 +188,12 @@ class LocalAPI:
             "governor": governor,
             "presentation": presentation,
             "experiences": {
-                "schema": self.experience_bundle().get("schema", 1),
-                "mode": self.experience_bundle().get("mode", "unavailable"),
-                "count": int(self.experience_bundle().get("count", 0) or 0),
-                "preview_ready_count": int(self.experience_bundle().get("preview_ready_count", 0) or 0),
-                "production_navigation_ready_count": int(self.experience_bundle().get("production_navigation_ready_count", 0) or 0),
-                "tft_activation_enabled": bool(self.experience_bundle().get("tft_activation_enabled", False)),
+                "schema": experiences.get("schema", 1),
+                "mode": experiences.get("mode", "unavailable"),
+                "count": int(experiences.get("count", 0) or 0),
+                "preview_ready_count": int(experiences.get("preview_ready_count", 0) or 0),
+                "production_navigation_ready_count": int(experiences.get("production_navigation_ready_count", 0) or 0),
+                "tft_activation_enabled": bool(experiences.get("tft_activation_enabled", False)),
             },
             "integrations": self.integration_catalog.snapshot() if self.integration_catalog is not None else {"schema":1,"mode":"unavailable","count":0,"items":[]},
             "dependencies": {
