@@ -85,3 +85,27 @@ def test_night_context_reduces_motion_without_changing_family():
     assert night["motion_profile"] == "subtle"
     assert night["visual_family"] == "industrial"
     assert night["layout_family"] == "cockpit_cluster"
+
+
+def test_namespaced_pack_families_can_extend_presentation_without_core_patch():
+    from beastcore.experience_dna import ExperienceDNA
+
+    custom = ExperienceDNA(
+        id="example_biomech",
+        label="Example Biomech",
+        visual_family="example.biomech",
+        layout_family="example.organism",
+        motion_profile="example.pulse",
+        alert_style="example.alert",
+    )
+    assert custom.validate() == ()
+
+    bad = ExperienceDNA(
+        id="bad_custom",
+        label="Bad Custom",
+        visual_family="biomech",
+        layout_family="organism",
+    )
+    errors = bad.validate()
+    assert any("visual_family" in x for x in errors)
+    assert any("layout_family" in x for x in errors)
