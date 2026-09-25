@@ -120,6 +120,58 @@ assembles independently reusable components.
 v0.19 discovers, validates and previews Experience Profiles. Applying a full
 profile transactionally to user preferences is deliberately the next gate.
 
+#### Optional Experience DNA
+
+A Mission Experience may now add a declarative `experience_dna` block plus a
+trusted renderer reference:
+
+```json
+{
+  "experience_renderer": "atlas",
+  "experience_dna": {
+    "visual_family": "expedition",
+    "layout_family": "map_first",
+    "density": "balanced",
+    "motion_profile": "calm_ambient",
+    "creature_presence": "supporting",
+    "utility_bias": "instrument",
+    "playfulness": "low",
+    "alert_style": "field",
+    "input_model": "touch_first",
+    "doctor_visibility": "contextual",
+    "mystery_level": "discoverable",
+    "hardware_fit": ["reference", "medium", "large", "desktop"],
+    "mission_bias": ["field", "journey", "location"],
+    "tags": ["field", "gps", "companion"]
+  },
+  "experience_policy": {
+    "requires": ["display.primary"],
+    "optional_requirements": ["location.position", "radio.wifi.monitor"],
+    "preferred_pages": ["home", "recon", "map"],
+    "presentation_engine": "beast_scene",
+    "fallback_policy": "identity_preserving"
+  }
+}
+```
+
+Rules:
+
+- Pack DNA is declarative data only; it does not load Pack rendering code.
+- `experience_renderer` references an already-registered Beast Experience
+  renderer such as `atlas`, `forge`, `observatory`, `habitat` or
+  `monolith`.
+- Pack identity/DNA remains distinct from the referenced renderer. Studio labels
+  both so a Pack Experience does not masquerade as the built-in renderer.
+- Core semantic axes such as density, creature presence and utility bias use the
+  closed Beast vocabulary so Resource Governor/Doctor can reason about them.
+- Presentation vocabularies may extend through namespaced values such as
+  `vendor.biomech`; unnamespaced collisions are rejected.
+- Core compiles Pack Experiences through the same long-lived
+  DependencyCapabilityResolver used by Plugins/Packs.
+- Missing Pack/capability requirements make the plan non-previewable; Core does
+  not install/select anything on the Pack's behalf.
+- Preview never writes preferences and never claims TFT ownership.
+
 ### Board Pack
 
 ```
