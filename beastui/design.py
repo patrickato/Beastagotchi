@@ -84,3 +84,23 @@ def page_index(page_id: str) -> int:
         return PRIMARY_PAGES.index(str(page_id))
     except ValueError:
         return 0
+
+
+def page_group(page_id: str) -> str:
+    ident=str(page_id)
+    for group, pages in PAGE_GROUPS.items():
+        if ident in pages:
+            return group
+    return "other"
+
+
+def page_group_boundaries() -> tuple[int, ...]:
+    """Indexes where a new semantic page group begins in PRIMARY_PAGES."""
+    out=[]
+    previous=None
+    for idx,page_id in enumerate(PRIMARY_PAGES):
+        group=page_group(page_id)
+        if idx and group!=previous:
+            out.append(idx)
+        previous=group
+    return tuple(out)
