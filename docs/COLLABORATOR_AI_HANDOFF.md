@@ -85,3 +85,4 @@ Those identities remain useful presets/references only. The top-level architectu
 First prototype order: Atlas, Forge, Observatory, Habitat, Monolith.
 
 Each must differ in grayscale silhouette, content hierarchy, creature presence, motion language and Doctor relationship before palette is considered.
+- Cross-page Experience milestone: Atlas Home/Recon, Forge Home/System, Observatory Home/Spectrum, Habitat Home/Beast, Monolith Home/Overview are implemented and centrally registered. Do not let later page work collapse them back into one dashboard grammar.
