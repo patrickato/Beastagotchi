@@ -45,16 +45,58 @@ def _register(rt,spec):
 
 
 def _draw_focal(draw,meta):
-    # Quiet geometric creature: large focal object, no panel behind it.
-    cx,cy=240,142
-    draw.ellipse((150,54,330,230),outline=_ACCENT,width=2)
-    draw.polygon([(169,84),(194,43),(210,87)],fill=_BG,outline=_ACCENT)
-    draw.polygon([(270,87),(288,43),(313,84)],fill=_BG,outline=_ACCENT)
-    draw.ellipse((205,129,214,138),fill=_INK)
-    draw.ellipse((266,129,275,138),fill=_INK)
-    draw.arc((214,142,266,180),20,160,fill=_INK,width=2)
-    draw.text((201,194),meta["stage"].upper(),fill=_MUTED,font=_font(9))
-    draw.text((226,209),f"{meta['level']:02d}",fill=_INK,font=_font(13))
+    """Premium sculptural Beast: restrained geometry with depth, not a circle face."""
+    cx = 240
+    shadow = (24, 24, 23)
+    facet = (29, 29, 27)
+    facet_2 = (35, 34, 31)
+
+    # Quiet halo/depth rings; no panel and no decorative grid.
+    draw.arc((148, 48, 332, 236), 205, 335, fill=_LINE, width=1)
+    draw.arc((160, 60, 320, 224), 25, 155, fill=(44,44,42), width=1)
+
+    # Sculpted head silhouette with tall ears and tapered jaw.
+    head = [
+        (169, 105), (176, 78), (190, 86), (202, 50), (218, 81),
+        (240, 72),
+        (262, 81), (278, 50), (290, 86), (304, 78), (311, 105),
+        (314, 149), (302, 184), (278, 214), (240, 230),
+        (202, 214), (178, 184), (166, 149),
+    ]
+    draw.polygon(head, fill=shadow, outline=_ACCENT)
+    draw.line(head + [head[0]], fill=_ACCENT, width=2, joint="curve")
+
+    # Minimal planar facets catch the eye without making a busy illustration.
+    draw.polygon([(177,109),(207,91),(224,126),(205,168),(178,151)], fill=facet, outline=_LINE)
+    draw.polygon([(303,109),(273,91),(256,126),(275,168),(302,151)], fill=facet, outline=_LINE)
+    draw.polygon([(207,91),(240,78),(273,91),(256,126),(224,126)], fill=facet_2, outline=_LINE)
+    draw.polygon([(205,168),(240,151),(275,168),(260,203),(240,218),(220,203)], fill=facet, outline=_LINE)
+
+    # Fine eye slits / pupils: premium and expression-neutral.
+    eye_col = _INK
+    draw.line((192,133,222,130), fill=eye_col, width=2)
+    draw.line((258,130,288,133), fill=eye_col, width=2)
+    draw.ellipse((206,130,211,135), fill=_OK if meta["health"].lower()=="healthy" else _ACCENT)
+    draw.ellipse((269,130,274,135), fill=_OK if meta["health"].lower()=="healthy" else _ACCENT)
+
+    # Center seam + small muzzle.
+    draw.line((240,84,240,164), fill=_LINE)
+    draw.polygon([(233,160),(247,160),(240,168)], fill=_ACCENT)
+    mood = meta["mood"].lower()
+    if mood in {"awake","happy","excited"}:
+        draw.arc((216,166,264,194), 18, 162, fill=_INK, width=2)
+    elif mood in {"sad","bored"}:
+        draw.arc((216,176,264,202), 200, 340, fill=_INK, width=2)
+    else:
+        draw.line((220,186,260,186), fill=_INK, width=2)
+
+    # Identity is typography outside the sculpture; keep the face uncluttered.
+    stage = meta["stage"].upper()
+    sw = draw.textbbox((0,0), stage, font=_font(8))[2]
+    draw.text((cx-sw//2, 235), stage, fill=_MUTED, font=_font(8))
+    level = f"{meta['level']:02d}"
+    lw = draw.textbbox((0,0), level, font=_font(13))[2]
+    draw.text((cx-lw//2, 247), level, fill=_INK, font=_font(13))
 
 
 def render_monolith_home(state:dict[str,Any],*,scene_runtime:SceneRuntime|None=None)->Image.Image:
