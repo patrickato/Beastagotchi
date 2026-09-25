@@ -3,6 +3,7 @@ from beastcore.experience_compiler import (
     ExperienceCompileError,
     compile_builtin_catalog,
     compile_experience,
+    compile_pack_experience,
 )
 
 
@@ -104,3 +105,52 @@ def test_unknown_experience_fails_explicitly():
         assert "unknown built-in Experience" in str(exc)
     else:
         raise AssertionError("unknown Experience should fail")
+
+
+def test_pack_experience_compiles_through_common_resolver_without_mutation():
+    row = compile_pack_experience(
+        "pack_field-experience_field",
+        {
+            "visual_family": "expedition",
+            "layout_family": "map_first",
+            "density": "balanced",
+            "motion_profile": "calm_ambient",
+            "creature_presence": "supporting",
+            "utility_bias": "instrument",
+            "playfulness": "low",
+            "alert_style": "field",
+            "doctor_visibility": "contextual",
+            "mystery_level": "discoverable",
+        },
+        {"compute_tier": "full", "display_class": "reference"},
+        label="Field Companion",
+        requires=["display.primary"],
+        optional_requirements=["location.position"],
+        preferred_pages=["home", "recon", "map"],
+        resolver=_resolver(),
+        renderer_pages=["home", "recon"],
+        source_pack="field-experience",
+        source_file="/packs/field/missions/field.json",
+    )
+    assert row["experience_id"] == "pack_field-experience_field"
+    assert row["source"]["kind"] == "pack"
+    assert row["source"]["pack_id"] == "field-experience"
+    assert row["variant"]["visual_family"] == "expedition"
+    assert row["page_coverage"]["missing_preferred"] == ["map"]
+    assert row["capabilities"]["resolution"]["requirements_ready"] is True
+    assert row["writes_preferences"] is False
+    assert row["installs_dependencies"] is False
+    assert row["selects_providers"] is False
+
+
+def test_pack_experience_rejects_invalid_dna_explicitly():
+    try:
+        compile_pack_experience(
+            "pack_bad",
+            {"visual_family": "not_namespaced", "layout_family": "also_bad"},
+            {},
+        )
+    except ValueError as exc:
+        assert "visual_family" in str(exc)
+    else:
+        raise AssertionError("invalid Pack DNA should fail")
