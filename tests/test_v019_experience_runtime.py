@@ -73,6 +73,7 @@ def test_core_experience_publisher_uses_shared_resolver_and_real_surface_coverag
     assert row["preview_ready_count"] == 5
     assert row["production_navigation_ready_count"] == 1
     assert row["renderer_coverage"]["atlas"] == ["home", "recon"]
+    assert row["native_target_coverage"]["atlas"] == ["reference"]
     assert row["renderer_coverage"]["monolith"] == ["home", "overview"]
     assert by_id["atlas"]["page_coverage"]["implemented"] == ["home", "recon"]
     assert by_id["monolith"]["ready_for_production_navigation"] is True
@@ -181,6 +182,8 @@ def test_core_publishes_pack_experience_plan_with_trusted_renderer_reference():
     assert pack["source"]["kind"] == "pack"
     assert pack["source"]["pack_id"] == "field-experience"
     assert pack["renderer_experience_id"] == "atlas"
+    assert pack["render_target"]["native_target_classes"] == ["reference"]
+    assert pack["render_target"]["native_supported"] is True
     assert pack["page_coverage"]["implemented"] == ["home", "recon"]
     assert pack["page_coverage"]["missing_preferred"] == ["map"]
     assert pack["component_refs"]["theme"] == "orchard_example"
