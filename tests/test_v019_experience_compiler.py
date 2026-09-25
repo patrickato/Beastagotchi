@@ -154,3 +154,42 @@ def test_pack_experience_rejects_invalid_dna_explicitly():
         assert "visual_family" in str(exc)
     else:
         raise AssertionError("invalid Pack DNA should fail")
+
+
+def test_reference_target_can_be_native_but_medium_requires_explicit_scene_variant():
+    reference = compile_experience(
+        "monolith",
+        {
+            "compute_tier": "full",
+            "display_class": "reference",
+            "primary_display": {"width": 480, "height": 320},
+        },
+        resolver=_resolver(),
+        renderer_pages=("home", "overview"),
+        renderer_native_targets=("reference",),
+    )
+    assert reference["render_target"]["native_supported"] is True
+    assert reference["render_target"]["render_mode"] == "native_reference"
+    assert reference["render_target"]["requested_size"] == [480, 320]
+    assert reference["ready_for_native_target"] is True
+    assert reference["ready_for_production_navigation"] is True
+
+    medium = compile_experience(
+        "monolith",
+        {
+            "compute_tier": "full",
+            "display_class": "medium",
+            "primary_display": {"width": 800, "height": 480},
+        },
+        resolver=_resolver(),
+        renderer_pages=("home", "overview"),
+        renderer_native_targets=("reference",),
+    )
+    assert medium["ready_for_preview"] is True
+    assert medium["render_target"]["native_supported"] is False
+    assert medium["render_target"]["render_mode"] == "native_variant_required"
+    assert medium["render_target"]["reflow_required"] is True
+    assert medium["render_target"]["compatibility_scaling_is_native"] is False
+    assert medium["render_target"]["scale_hint"] == 1.5
+    assert medium["ready_for_native_target"] is False
+    assert medium["ready_for_production_navigation"] is False
