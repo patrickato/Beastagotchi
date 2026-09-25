@@ -115,7 +115,7 @@ class BeastCore:
         self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
-        self.doctor = BeastDoctor(self.state)
+        self.doctor = BeastDoctor(self.state, self.store)
         self.peerdex = PeerDex(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
