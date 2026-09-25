@@ -134,14 +134,53 @@ def _draw_channel_distribution(draw, state, box):
 
 
 def _observer(draw, state):
-    # Supporting observer identity, intentionally small compared with measurements.
+    """Observer identity as a research optic, not a smiley inside a badge."""
     cx, cy = 410, 92
-    draw.ellipse((cx-38, cy-38, cx+38, cy+38), outline=_EDGE, fill=_PANEL)
-    draw.arc((cx-24, cy-18, cx+24, cy+22), 15, 165, fill=_TRACE, width=2)
-    draw.ellipse((cx-16, cy-4, cx-12, cy), fill=_INK)
-    draw.ellipse((cx+12, cy-4, cx+16, cy), fill=_INK)
-    mood = str(state.get("pwnagotchi.mood") or "awake").upper()
-    draw.text((cx-22, cy+48), mood, fill=_MUTED, font=_font(8))
+    mood = str(state.get("pwnagotchi.mood") or "awake").lower()
+    expression = str(state.get("beast.expression") or "").lower()
+    alert = mood in {"angry", "intense", "focused", "hunting"} or expression in {"hunting", "fault"}
+
+    # Outer optical assembly: broken rings, registration ticks and a quiet instrument body.
+    draw.ellipse((cx-37, cy-37, cx+37, cy+37), fill=(22, 27, 29), outline=_EDGE)
+    draw.arc((cx-42, cy-42, cx+42, cy+42), 198, 344, fill=_TRACE, width=2)
+    draw.arc((cx-42, cy-42, cx+42, cy+42), 18, 153, fill=_TRACE_2, width=1)
+    for dx, dy, horizontal in (
+        (0,-43,True),(0,43,True),(-43,0,False),(43,0,False),
+    ):
+        if horizontal:
+            draw.line((cx-6, cy+dy, cx+6, cy+dy), fill=_EDGE)
+        else:
+            draw.line((cx+dx, cy-6, cx+dx, cy+6), fill=_EDGE)
+
+    # Faceted observer shell sits inside the lens. It reads as a companion seen
+    # through scientific optics rather than a generic UI avatar.
+    shell = [
+        (cx, cy-29), (cx+20, cy-23), (cx+29, cy-7),
+        (cx+27, cy+15), (cx+15, cy+29), (cx, cy+34),
+        (cx-15, cy+29), (cx-27, cy+15), (cx-29, cy-7),
+        (cx-20, cy-23),
+    ]
+    draw.polygon(shell, fill=_PANEL_2, outline=_TRACE if not alert else _WARN)
+    draw.line((cx,cy-28,cx,cy+30), fill=(58,70,71))
+    draw.line((cx-27,cy-7,cx,cy+5,cx+27,cy-7), fill=(58,70,71))
+    draw.line((cx-20,cy+22,cx,cy+5,cx+20,cy+22), fill=(49,61,62))
+
+    # Narrow sensor-eyes, central aperture and a restrained mouth/expression cue.
+    eye_col = _WARN if alert else _TRACE
+    draw.line((cx-18,cy-5,cx-6,cy-7), fill=eye_col, width=2)
+    draw.line((cx+6,cy-7,cx+18,cy-5), fill=eye_col, width=2)
+    draw.ellipse((cx-2,cy-1,cx+2,cy+3), fill=_INK)
+    if mood in {"happy","excited","awake"} and not alert:
+        draw.arc((cx-14,cy+5,cx+14,cy+22), 18, 162, fill=_TRACE, width=2)
+    elif mood in {"sad","bored"}:
+        draw.arc((cx-14,cy+12,cx+14,cy+27), 198, 342, fill=_TRACE_2, width=2)
+    else:
+        draw.line((cx-11,cy+16,cx+11,cy+16), fill=eye_col, width=2)
+
+    # Optical glint and a tiny mode label anchor the observer to the lab margin.
+    draw.ellipse((cx+11,cy-20,cx+14,cy-17), fill=_INK)
+    draw.text((cx-30, cy+48), "OBSERVER", fill=_MUTED, font=_font(7))
+    draw.text((cx+5, cy+48), mood.upper()[:8], fill=eye_col, font=_font(7))
 
 
 def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
