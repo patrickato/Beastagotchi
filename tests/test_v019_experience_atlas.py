@@ -37,7 +37,7 @@ def test_atlas_home_renders_reference_size_and_semantic_scene():
     im = render_atlas_home(state, scene_runtime=rt)
     assert im.size == (480, 320)
     snap = rt.snapshot()
-    assert snap["scene_id"] == "experience:atlas:home"
+    assert snap["scene"] == "experience:atlas:home"
     ids = {row["id"] for row in snap["layers"]}
     assert {
         "atlas.header",
