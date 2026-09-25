@@ -30,6 +30,7 @@ from .monster_reveal import render_monster_reveal, reveal_active
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
+from .components import transient_notice
 from .design import TOKENS
 from . import __version__ as UI_VERSION
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
@@ -144,6 +145,7 @@ class BeastUI:
             except Exception:self.touch=None
         self.last_render=0.0; self.last_input=None; self.last_input_at=0.0
         self.touching=False; self.button_flash=None; self.button_flash_at=0.0; self.transition=None; self.monster_reveal_dismissed_id=None; self._monster_reveal_was_active=False
+        self.notice=None; self.notice_started=0.0; self.notice_duration=TOKENS.notice_default_s; self._last_data_error=None
         self.test_mode_path=Path('/run/beastagotchi/ui-test-mode'); self.runtime_path=Path('/run/beastagotchi/ui-runtime.json'); self.rare_preview_path=Path('/var/lib/beastagotchi/ui/rare_preview.json')
         self._render_samples=[]; self._compose_samples=[]; self._write_samples=[]; self._frame_count=0; self._runtime_started=time.monotonic()
         self.reactions=ReactionGovernor(); self._last_reaction_id=None
@@ -253,10 +255,39 @@ class BeastUI:
                 if _label in _cats:self.app_category_idx=_cats.index(_label)
             self._pref_sig=sig;self.fb.reset_diff();self.dirty.set()
             self.button_flash='studio:applied';self.button_flash_at=time.monotonic()
+            self.show_notice('STUDIO APPLIED',kind='success',detail='Preferences updated')
         except FileNotFoundError:
             return
         except Exception as exc:
             log.warning('could not reload Beast Studio prefs: %s',exc)
+
+    def show_notice(self,title,*,kind='info',detail='',duration=None):
+        kind=str(kind or 'info').lower()
+        if kind not in {'info','success','warn','error','loading'}:kind='info'
+        try:seconds=float(TOKENS.notice_default_s if duration is None else duration)
+        except Exception:seconds=TOKENS.notice_default_s
+        self.notice={
+            'title':str(title or kind).strip()[:34],
+            'kind':kind,
+            'detail':str(detail or '').strip()[:54],
+        }
+        self.notice_started=time.monotonic()
+        self.notice_duration=max(.5,min(10.0,seconds))
+        self.dirty.set()
+        return dict(self.notice)
+
+    def _notice_active(self,now=None):
+        if not self.notice:return False
+        now=time.monotonic() if now is None else float(now)
+        age=now-float(self.notice_started or 0.0)
+        if age>=float(self.notice_duration or TOKENS.notice_default_s):
+            self.notice=None
+            return False
+        return True
+
+    def _transient_notice(self,d):
+        if not self._notice_active():return
+        transient_notice(d,self.notice,self.fonts,self.theme,phase=self.phase)
 
     def _fonts(self):
         paths=['/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']; path=next((p for p in paths if os.path.exists(p)),None)
@@ -392,6 +423,7 @@ class BeastUI:
     def _apply_theme_detail(self):
         self._save_prefs(); self.theme_detail=None; self.theme_detail_page=0; self.theme_library=False; self.drawer=False
         self._theme_preview_original=None; self._theme_preview_options=None; self.button_flash='theme:applied'; self.button_flash_at=time.monotonic(); self.dirty.set()
+        self.show_notice('THEME APPLIED',kind='success',detail=self.theme.id)
 
     def _cycle_theme_option(self,key,values):
         self._step_theme_option(key,values,1)
@@ -935,7 +967,13 @@ class BeastUI:
         self.events=ev
         self.histories=hist
         self.aux=aux
+        previous_error=self.data_error
         self.data_error=err
+        if err and err!=previous_error:
+            self.show_notice('DATA FEED ERROR',kind='error',detail=str(err)[:54],duration=4.0)
+        elif previous_error and not err:
+            self.show_notice('DATA FEED RESTORED',kind='success',detail='Live state is updating again')
+        self._last_data_error=err
         self._apply_rare_preview()
 
     def adaptive_fps(self):
@@ -973,6 +1011,13 @@ class BeastUI:
             if age<.30:return True
             self.button_flash=None
             return True  # one cleanup frame removes the highlight
+        if self.notice:
+            age=now-float(self.notice_started or 0.0)
+            if age>=float(self.notice_duration or TOKENS.notice_default_s):
+                self.notice=None
+                return True  # cleanup frame removes expired notice
+            if str(self.notice.get('kind') or '')=='loading':
+                return True
         opts=self.render_options_for_theme(self.theme.id);fps=self._background_cadence(opts)
         if fps>0:
             return self._bg_cache is None or now-self._bg_cache_at>=1.0/max(.1,fps)
@@ -2139,7 +2184,7 @@ class BeastUI:
         # No Beast header/footer/event reaction/scanline is painted in Native
         # Dark/Light: the untouched Jayofelony composition is the point.
         # Chroma only recolors/glows the exact native foreground mask.
-        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
+        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d);self._transient_notice(d)
         # Monster reveals remain available above Native; Rare Moments still win final priority.
         im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         return render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
@@ -2184,7 +2229,7 @@ class BeastUI:
         if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),title)
         self._header(d,title);getattr(self.pages,page_id)(d,self.state,self);self.scene_runtime.end()
         im=draw_foreground_effects(im,self.theme,self.phase,self.render_options_for_theme(self.theme.id));d=ImageDraw.Draw(im)
-        self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
+        self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d);self._transient_notice(d)
         _scanline_opt=str(self.render_options_for_theme(self.theme.id).get('scanline','on')).lower()
         if self.theme.scanlines and _scanline_opt!='off':
             speed=float(getattr(self.theme,'scanline_speed',31.0) or 31.0);width=max(1,int(getattr(self.theme,'scanline_width',1) or 1));y=35+int((self.phase*speed)%240)
