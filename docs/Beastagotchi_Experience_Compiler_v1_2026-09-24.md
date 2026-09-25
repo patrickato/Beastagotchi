@@ -80,20 +80,26 @@ An incident/recovery context may elevate Doctor visibility without changing the 
 
 - Experience DNA: implemented;
 - platform variant resolution: implemented;
-- common resolver adoption: implemented at compiler/library level;
-- renderer coverage input: implemented;
-- central Experience renderer registry: implemented;
-- Beast Studio schema exposes Experience DNA + renderer coverage;
-- paired Studio Experience preview endpoint: implemented;
-- Core-owned live compiler publication: not yet implemented;
-- production TFT Experience ownership/switching: deliberately disabled;
-- Experience Pack compiler input: not yet implemented.
+- common DependencyCapabilityResolver adoption: implemented;
+- actual renderer/page coverage input: implemented;
+- central trusted Experience renderer registry: implemented;
+- Beast Studio compiled Experience browser/preview: implemented;
+- Core-owned live compiler publication: implemented;
+- Studio consumes Core-published plans rather than re-probing capability truth: implemented;
+- Mission Packs may carry validated declarative `experience_dna`, `experience_policy` and reusable component references: implemented;
+- Pack Experiences compile through the same resolver and may reference an already-registered trusted Beast renderer without injecting Pack rendering code: implemented;
+- truthful render-target planning: implemented. Current first-party Experience renderers are explicitly native only for the 480×320 `reference` target; 800×480 scaling is not called native responsiveness;
+- bounded `TRY ON TFT` transaction planning with mandatory automatic rollback: implemented;
+- `TRY ON TFT` physical execution: deliberately disabled;
+- production TFT Experience ownership/selection: deliberately disabled.
+
+The compiler/Studio path remains non-mutating: it does not install dependencies, choose providers, write preferences, persist Experience selection or claim TFT ownership.
+
 
 ## Next
 
-1. Have Beast Core publish compiled Experience plans using the same long-lived DependencyCapabilityResolver instance already shared by Plugins/Packs.
-2. Feed compiler plans to Studio rather than re-probing capabilities there.
-3. Add Pack-defined Experience DNA/component references.
-4. Add responsive target/Scene variants.
-5. Add preview/TRY ON TFT transaction flow.
-6. Enable production Experience selection only after Gate 1 off-screen acceptance and rollback behavior are proven.
+1. Return primary Gate 1 attention to actual generated visual fidelity and obtain owner off-screen acceptance of the renderer.
+2. Add real native Scene/reflow variants for non-reference targets instead of treating compatibility scaling as responsiveness.
+3. After off-screen acceptance, connect the already-planned bounded TRY ON TFT transaction to the physically validated Presentation Broker/display-handoff executor.
+4. Run the reference Pi/TFT readability, touch, QR, glare, smoothness, thermal and framebuffer acceptance session with automatic rollback.
+5. Enable persistent production Experience selection only after the physical proof succeeds.
