@@ -2773,3 +2773,341 @@ This can power:
 Do not make PresentationSession another source of telemetry truth; it describes presentation state
 only.
 
+
+---
+
+# Layer 5A — Beast identity, XP, growth and progression semantics
+
+## Current foundation
+
+Current persistence already distinguishes:
+- Beast identity;
+- per-Beast progress;
+- per-Beast achievements;
+- per-Beast unlocks;
+- ancestry;
+- Monster syntheses;
+- global unlocks;
+- global achievements;
+- meaningful memories;
+- Beast/Expedition association.
+
+This is a strong data foundation.
+
+Current live progression also has:
+- XP;
+- levels 1–100;
+- named stages;
+- session aura;
+- per-Beast discoveries/vendors/GPS/captures/runtime;
+- achievements + XP bonuses;
+- Rare Moment witness;
+- separate Beast/Monster stage names;
+- Hall of Legends at level 100.
+
+## Current level curve
+
+Current cumulative XP curve:
+
+    xp(level) = round(45 * (level - 1)^1.60)
+
+Representative thresholds:
+- level 5: ~414 XP
+- level 10: ~1,514 XP
+- level 20: ~5,003 XP
+- level 35: ~12,693 XP
+- level 50: ~22,779 XP
+- level 70: ~39,389 XP
+- level 85: ~53,958 XP
+- level 100: ~70,182 XP
+
+The curve itself is a reasonable long-term starting point.
+
+Current passive runtime award is approximately:
+- 1 XP / 10 minutes;
+- 6 XP/hour.
+
+Runtime alone therefore makes level 100 finite but extremely long (~11,700 hours), while real
+exploration/discovery/achievements accelerate it.
+
+This aligns with the owner principle:
+> Level 100 should take real time, but should not require 100% completion of every optional system.
+
+## Current breadth is v1, not lifetime-complete
+
+Current per-Beast achievement catalog is roughly a few dozen definitions and concentrates on:
+- signals;
+- vendors;
+- GPS;
+- captures;
+- runtime;
+- level milestones;
+- one Rare witness.
+
+This is a solid skeleton, not yet a sufficiently rich lifetime ecosystem for the intended final
+product.
+
+The solution is **more independent progression opportunities**, not necessarily a steeper XP curve.
+
+## Define the vocabulary now
+
+### XP
+A monotonic numerical lifetime progression value for one creature.
+
+XP answers:
+> How much broad life/activity progression has this creature accumulated?
+
+XP should have multiple legitimate sources.
+It should not represent every collectible or secret directly.
+
+### Level
+A deterministic 1–100 interpretation of XP.
+
+Level answers:
+> How far through the long-term progression curve is this creature?
+
+Do not create several competing "main levels."
+
+### Growth Track
+The creature's visual/narrative development path.
+
+Growth may depend on:
+- Level milestones;
+- lineage;
+- kind;
+- inherited traits;
+- special unlocks;
+- selected branch choices;
+- meaningful lifecycle events.
+
+Growth does **not** need a second redundant XP currency.
+
+### Stage
+The currently named node/milestone in a Growth Track.
+
+Examples current:
+- Beast: Hatchling -> Cub -> Scout -> ... -> Monstergotchi
+- Monster: Origin -> Awakened -> Morph -> ... -> Monstergotchi
+
+Future lineages may supply different named/visual stages without changing the Level contract.
+
+### Maturity
+A derived eligibility state for lifecycle operations such as synthesis/breeding.
+
+Current v1 effectively means:
+- two distinct Beast-class parents;
+- each level >= 70;
+- pair not previously used for v1 synthesis.
+
+Do not permanently equate "maturity" with one hard-coded level.
+Expose a Lineage/Synthesis policy that can consider level and other bounded criteria.
+
+Default can remain simple.
+
+### Achievement
+An immutable record that a defined condition was accomplished.
+
+It may:
+- grant XP;
+- grant an Unlock;
+- award cosmetic/trophy content;
+- create a Memory;
+- trigger Choreography.
+
+It does not have to do all of them.
+
+### Unlock
+A durable entitlement/state flag.
+
+Examples:
+- new Growth branch;
+- face/accessory;
+- Monster subsystem;
+- Surface;
+- secret;
+- lineage option;
+- content variation.
+
+Unlocks should be stable IDs and should not be inferred only from UI visibility.
+
+### Award / Trophy / Badge
+Presentation/collection representation of an accomplishment.
+
+Awards may derive from:
+- Achievement;
+- Stage;
+- Unlock;
+- Rare;
+- Expedition;
+- Hall/Legend status.
+
+An Award is not necessarily the source of truth for progression.
+
+### Memory
+A low-volume personal historical record.
+
+Memory answers:
+> What meaningful things happened to this individual creature?
+
+Memories should not become a second telemetry database.
+
+They may be displayed, searched, used for narrative flavor or special conditions.
+
+### Rare / Secret
+A scarce/hidden trigger or event class.
+
+A Rare/Secret may produce:
+- acknowledgement;
+- Memory;
+- Achievement;
+- Unlock;
+- XP;
+- cosmetic/content reward;
+- Choreography.
+
+But secrets should not be mandatory for level 100.
+
+### Aura / Buff-like visual effect
+Current session aura is derived from unique session discoveries.
+
+Future aura/glow/particle/buff visuals may represent:
+- session intensity;
+- temporary milestone;
+- Doctor health/recovery;
+- rare state;
+- unlocked cosmetic;
+- context.
+
+The visual effect must not imply a gameplay/system effect that does not exist.
+
+## Separate progression truth from presentation
+
+Core owns:
+- XP;
+- Level;
+- identity;
+- Stage/Growth state;
+- Achievements;
+- Unlocks;
+- maturity/eligibility;
+- ancestry;
+- memories.
+
+Experience/Scene/Choreography owns:
+- how evolution looks;
+- reveal cinematics;
+- aura rendering;
+- trophy presentation;
+- celebration effects.
+
+This prevents visual creativity from becoming progression authority.
+
+---
+
+# Layer 5B — Progression catalogs and extensibility
+
+## Current hard-coded catalogs will become a growth bottleneck
+
+Current Python owns:
+- `STAGES`;
+- `MONSTER_STAGES`;
+- `AURAS`;
+- `ACHIEVEMENT_DEFS`;
+- `ACHIEVEMENT_META`;
+- global achievement definitions;
+- event-to-XP logic;
+- synthesis thresholds.
+
+That is understandable for v1.
+
+It should not become the permanent expansion model.
+
+## Progression Catalog
+
+Introduce a versioned Progression Catalog/registry containing declarative definitions for:
+- achievements;
+- awards;
+- unlocks;
+- stage/growth tracks;
+- progression conditions;
+- XP reward metadata;
+- maturity policies;
+- optional secret descriptors;
+- content/choreography references.
+
+Built-in Core ships an official catalog.
+
+Trusted declarative Packs may contribute namespaced definitions.
+
+## Progression Rule Engine
+
+Do not allow arbitrary Pack Python to directly add XP.
+
+A bounded rule can declare:
+- id/source;
+- trigger Event or metric;
+- condition;
+- per-occurrence XP;
+- first-only / cooldown / daily cap / lifetime cap;
+- creature vs device/global scope;
+- Achievement/Unlock outputs;
+- optional Choreography.
+
+Core validates/evaluates the rule.
+
+This keeps the economy understandable and prevents a supposedly inert content Pack from becoming
+unbounded progression authority.
+
+## Progression authority / owner choice
+
+Suggested trust:
+- Core official rules: contribute normal global XP by default;
+- trusted project expansion rules: may contribute XP within declared bounds;
+- community content: can contribute Pack-local achievements/unlocks by default; global XP rewards
+  require an explicit accepted progression policy/trust tier.
+
+Owner Expert Mode may override this.
+
+This is not DRM or anti-cheat.
+It preserves meaningful progression for normal users while retaining owner sovereignty.
+
+## Surplus progression opportunity
+
+Design content so total available legitimate progression substantially exceeds the XP needed for
+level 100.
+
+Do not design:
+> 70,182 XP required and exactly 70,182 XP exists.
+
+Instead:
+- ordinary long-term operation always remains a path;
+- exploration provides substantial acceleration;
+- achievements provide bonuses;
+- expeditions/context provide alternatives;
+- future content adds more opportunities;
+- missing seasonal/rare/Pack content never strands a creature.
+
+Level 100 represents a long-lived creature, not 100% checklist completion.
+
+## Avoid runaway XP inflation
+
+As post-release content accumulates:
+- new XP sources should have caps/cooldowns;
+- one trivial repeatable Action should not dominate progression;
+- achievements should not all need large XP rewards;
+- many rewards can be cosmetic/unlock/memory-only;
+- expansions can add breadth without multiplying XP rate uncontrollably.
+
+Maintain a testable progression budget/simulation.
+
+CI can simulate representative owner styles:
+- mostly stationary/home;
+- field explorer;
+- GPS-heavy;
+- capture-heavy;
+- mixed;
+- long-lived low-interaction;
+- Pack-rich user.
+
+The goal is broad viable paths, not identical leveling speed.
+
