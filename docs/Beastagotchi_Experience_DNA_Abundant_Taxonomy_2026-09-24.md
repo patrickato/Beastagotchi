@@ -95,6 +95,8 @@ This list is intentionally broad but **not closed**.
 
 Community Packs may introduce additional families or local variants later, provided they use the same Signal/Scene/Action/Capability contracts.
 
+Implementation rule: custom presentation vocabularies are allowed through **namespaced extension IDs** such as `example.biomech` or `vendor.organism`. Core semantic axes that other subsystems must reason about—density, creature presence, utility bias, playfulness, input model, Doctor visibility and mystery level—remain standardized. This gives Packs creative freedom without breaking interoperability.
+
 ### Layout family
 
 Layout is independent of visual style.
