@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from beastui.experience_habitat import habitat_home_metadata, render_habitat_home
+from beastui.experience_habitat import habitat_home_metadata, render_habitat_home, render_habitat_beast
 from beastui.experience_monolith import monolith_home_metadata, render_monolith_home
 from beastui.scene_runtime import SceneRuntime
 
@@ -59,3 +59,18 @@ def test_monolith_keeps_primary_information_intentionally_sparse():
 def test_habitat_and_monolith_are_visually_distinct():
     state = _state()
     assert render_habitat_home(state).tobytes() != render_monolith_home(state).tobytes()
+
+
+def test_habitat_beast_page_preserves_creature_first_growth_memory_language():
+    state = _state()
+    rt = SceneRuntime()
+    im = render_habitat_beast(state, scene_runtime=rt)
+    assert im.size == (480, 320)
+    snap = rt.snapshot()
+    assert snap["page"] == "beast"
+    assert snap["scene"] == "experience:habitat:beast"
+    rows = {row["id"]: row for row in snap["layers"]}
+    assert "habitat_beast.creature" in rows
+    assert "habitat_beast.growth" in rows
+    assert "habitat_beast.memories" in rows
+    assert rows["habitat_beast.environment"]["decorative"] is True
