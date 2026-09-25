@@ -1971,3 +1971,255 @@ Depot/Studio can eventually provide actions such as:
 Keep GitHub/project contribution as the canonical public-development highway initially; a native
 mobile application is optional convenience, not a foundation requirement.
 
+
+---
+
+# Layer 3E — Surfaces, overlays, cinematics and lifecycle choreography
+
+## Avoid a registry explosion
+
+The UI currently has several presentation concepts:
+- primary Pages;
+- App launcher destinations;
+- overlays;
+- drawers;
+- Experience-specific pages;
+- Monster reveal;
+- Rare Moment overlay;
+- notices;
+- native Pwnagotchi presentation;
+- future Doctor interventions / creation cinematics.
+
+Creating an unrelated registry for every one of these would solve switch statements by replacing them
+with registry sprawl.
+
+A cleaner presentation abstraction is **Surface**.
+
+## Surface
+
+A Surface is a user-visible presentation destination/state.
+
+Possible kinds:
+- `page` — persistent/swipe/navigation destination;
+- `overlay` — modal/detail surface;
+- `drawer` — navigation/tool shell;
+- `transient` — notice/status;
+- `cinematic` — bounded event/lifecycle presentation;
+- `workspace` — larger/Studio/external-target surface;
+- `native` — upstream/native presentation surface.
+
+A SurfaceSpec may declare:
+- id;
+- kind/modality;
+- label/category;
+- semantic navigation group;
+- Scene/renderer reference;
+- requirements/capabilities;
+- Signal dependencies;
+- input/dismiss behavior;
+- priority/layering;
+- Experience variant hooks;
+- source;
+- target/display support;
+- availability state/reason;
+- help/Doctor hooks;
+- Actions/Procedures exposed.
+
+Then:
+- **Page Registry** becomes a filtered view of Surface Registry;
+- **App Registry** launches a Surface, Procedure or external workspace;
+- **Experience** provides alternate Scene implementations for the same semantic Surface;
+- cinematics/reveals use the same layering/input contracts without pretending they are ordinary
+  pages.
+
+This is a presentation-layer structure, not necessarily a new Beast Core kernel primitive.
+
+## Primary navigation
+
+Primary carousel remains curated.
+
+A Surface may be:
+- primary;
+- secondary;
+- app-only;
+- contextual;
+- event-triggered;
+- hidden until unlocked.
+
+This permits hundreds of available Surfaces without navigation clutter.
+
+## Availability / Coming Soon
+
+The owner explicitly wants future-facing features to be able to appear honestly before completion.
+
+Surface availability should support:
+- `ready`;
+- `degraded`;
+- `preview`;
+- `coming_soon`;
+- `unavailable`;
+- `hidden`.
+
+A `coming_soon` Surface may show:
+- honest label;
+- reason;
+- prerequisite/progression if relevant;
+- optional target release/roadmap wording when known.
+
+It must not expose a control that appears functional but silently does nothing.
+
+Use sparingly: do not fill the device with advertisements for unfinished ideas.
+
+## Choreography
+
+Creation/hatching/assembly, breeding/synthesis, Monster reveals, Rare Moments and some Doctor/
+recovery experiences share a common visual need:
+
+> a bounded sequence of Scenes/stages driven by real state/events and optional owner input.
+
+Introduce a declarative **Choreography** contract.
+
+A ChoreographySpec may declare:
+- id/version/source;
+- trigger Event/condition;
+- stages;
+- Scene/Surface reference per stage;
+- duration or completion condition;
+- skippable/non-skippable policy;
+- owner interaction points;
+- required/optional content;
+- resource/thermal class;
+- reduced-motion fallback;
+- missing-media fallback;
+- completion Event;
+- witness/acknowledgement behavior;
+- rarity/tier variants.
+
+Core owns the truth:
+- creature created;
+- synthesis completed;
+- Monster identity/heritage;
+- achievement unlocked;
+- Rare Moment exists.
+
+Choreography owns how that truth is presented.
+
+## Content-driven lifecycle examples
+
+No universal egg requirement.
+
+Content may define:
+
+    incubate -> crack -> hatch -> reveal
+
+or:
+
+    parts -> assembly -> boot -> awaken
+
+or:
+
+    excavate -> fracture -> emerge
+
+or:
+
+    pod -> breach -> reveal
+
+or another namespaced lifecycle.
+
+The same engine executes the stages.
+
+## Built-in fallback + optional premium media
+
+Every important lifecycle should have a lightweight built-in/procedural fallback.
+
+Optional Packs may provide:
+- richer art;
+- sound;
+- animation;
+- video/cinematic;
+- Experience-specific variant.
+
+Therefore a 16 GB device never loses functionality merely because a 200 MB cinematic component is
+not installed.
+
+ResourceGovernor may substitute the lightweight fallback when thermal/resource policy requires it
+without changing the underlying lifecycle truth.
+
+## Monster reveal
+
+Current `monster_reveal.py` proves the concept but is hard-coded:
+- one procedural visual sequence;
+- fixed-ish timing based on published state;
+- global overlay behavior.
+
+Migrate eventually to Choreography:
+- ordinary synthesis reveal;
+- first Monstergotchi reveal;
+- mutation reveal;
+- rare/legendary/mythic variants;
+- lineage/Experience-specific content.
+
+This directly supports the owner's desire for bigger/better Monster reveal hoopla without hardcoding
+every future reveal into BeastUI.
+
+## Rare Moments
+
+Current RareMomentEngine correctly owns:
+- deterministic schedule;
+- rarity;
+- history;
+- active/omen truth.
+
+Current Rare overlay owns presentation.
+
+That separation is good.
+
+### Current cross-layer debt
+Rare acknowledgement is currently:
+- UI writes `/var/lib/beastagotchi/ui/rare_ack.json`;
+- Core Rare engine polls that file.
+
+This is a small functional bridge, but it is hidden coupling.
+
+Replace eventually with a registered low-risk interaction such as:
+- `rare.acknowledge` Action;
+- or a dedicated UI-input/Event channel;
+
+so witness acknowledgement has:
+- canonical actor/time;
+- validation against active event;
+- Event publication;
+- persistence/history;
+- no magic shared file.
+
+No full Transaction is needed for a simple acknowledgement.
+
+## Doctor interventions as Surfaces/Choreography
+
+Doctor should be able to request presentation severity without owning pixels directly.
+
+Examples:
+- passive health heartbeat Surface;
+- advisory transient Surface;
+- finding detail Surface;
+- critical intervention Surface;
+- treatment-progress Choreography;
+- recovery-verification Choreography.
+
+Experience determines visual grammar.
+Doctor determines semantic health state.
+Action/Transaction performs mutation.
+
+## Security of declarative Scene/Surface bindings
+
+A third-party declarative Surface must not gain authority by declaring an action name.
+
+Compiler must validate:
+- referenced Action/Procedure is registered;
+- operator/risk policy remains owned by ActionBroker;
+- Signal privacy is inherited from canonical SignalSpec, not downgraded by Pack metadata;
+- resource cost may be declared but can be clamped/reclassified by Beast;
+- touch targets obey platform policy.
+
+Third-party presentation requests capability; it does not grant itself capability.
+
