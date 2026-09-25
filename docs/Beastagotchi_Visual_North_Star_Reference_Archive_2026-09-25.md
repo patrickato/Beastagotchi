@@ -313,6 +313,38 @@ layout.
 
 ---
 
+
+## Architecture clarification — abundance without arbitrary ceilings
+
+The current named Experiences such as Atlas, Forge, Observatory, Habitat and Monolith are
+**reference implementations / validation exemplars**, not root categories and not a product
+ceiling.
+
+Likewise, built-in visual-family names are organizing vocabulary, not a closed definition of what
+Beastagotchi may become.
+
+Permanent design principle:
+
+- do not impose an arbitrary upper limit on Experiences, pages, Scenes, layers, Packs, faces,
+  visual families, apps, overlays, widgets or other extensible content where no hardware,
+  usability, safety or runtime constraint requires one;
+- prefer registries and discoverable content over fixed enumerations when the domain is intended
+  to grow;
+- keep small curated defaults for usability, but do not confuse defaults with architectural
+  limits;
+- allow Pack/community extensions to introduce genuinely new presentation vocabulary through
+  versioned/namespaced contracts;
+- taxonomy exists to organize abundance, not to pre-enumerate creativity;
+- navigation may expose a bounded set of *primary* destinations while the total available page/
+  app/Scene universe remains open-ended;
+- hardware/resource budgets constrain what is active at one time, not what may exist in the
+  ecosystem or external library.
+
+The target is not “five good themes” or “eleven good pages.” The target is an architecture
+expressive enough that new Experiences and page types can be added without modifying the
+foundational contracts merely to make room for them.
+
+
 ## Acceptance rule
 
 Concept renders may inspire implementation, but a visual change is accepted only after:
