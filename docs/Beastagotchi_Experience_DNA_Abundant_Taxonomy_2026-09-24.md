@@ -462,6 +462,7 @@ A strong Experience should be recognizable in grayscale silhouette/layout before
 Implemented in v0.19:
 
 - `beastcore/experience_dna.py`;
+- read-only `beastcore/experience_compiler.py` using Platform Profile, shared dependency/capability resolution and real page coverage;
 - 16 visual-family taxonomy entries;
 - independent layout/density/motion/creature/utility/alert/input/Doctor/mystery axes;
 - built-in DNA for Atlas, Forge, Observatory, Habitat, Monolith, Dossier, Stillwater and Bench;
@@ -475,7 +476,7 @@ Still to build:
 
 - actual Scene/asset implementations for the first prototype Experiences;
 - Studio Experience browser/editor;
-- Experience Compiler resolving DNA into Theme/Scene/Face/Motion/Board/Deck components;
+- Experience Compiler v1 planning/resolution is implemented; full component resolution into Theme/Scene/Face/Motion/Board/Deck/Pack references remains to be expanded;
 - Pack schema for community Experience DNA;
 - responsive target variants;
 - per-Experience sound/haptic/accessory behavior;
