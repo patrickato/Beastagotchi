@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import time
 from typing import Any
 
@@ -146,6 +148,96 @@ class DoctorPatientChart:
         self._persist()
         return True
 
+    @staticmethod
+    def _fingerprint_hash(fingerprint: dict[str, Any]) -> str:
+        payload = json.dumps(fingerprint or {}, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _checkpoint_meta(row: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(row, dict):
+            return None
+        return {
+            "id": row.get("id"),
+            "saved_at": row.get("saved_at"),
+            "label": row.get("label"),
+            "sha256": row.get("sha256"),
+        }
+
+    def save_known_good(
+        self,
+        fingerprint: dict[str, Any],
+        *,
+        label: str = "owner",
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        fingerprint = copy.deepcopy(fingerprint or {})
+        digest = self._fingerprint_hash(fingerprint)
+        rows = list(self.data.get("known_good") or [])
+        latest = rows[-1] if rows else None
+        if isinstance(latest, dict) and latest.get("sha256") == digest:
+            return {
+                "saved": False,
+                "reason": "unchanged",
+                "checkpoint": self._checkpoint_meta(latest),
+            }
+        ts = float(self.clock() if now is None else now)
+        row = {
+            "id": f"kg-{int(ts * 1000)}-{digest[:12]}",
+            "saved_at": ts,
+            "label": str(label or "owner")[:80],
+            "sha256": digest,
+            "fingerprint": fingerprint,
+        }
+        rows.append(row)
+        self.data["known_good"] = rows[-self.max_known_good:]
+        self.data["updated_at"] = ts
+        self._persist()
+        return {
+            "saved": True,
+            "reason": "created",
+            "checkpoint": self._checkpoint_meta(row),
+        }
+
+    def known_good_history(self) -> list[dict[str, Any]]:
+        return [
+            meta for meta in (
+                self._checkpoint_meta(row)
+                for row in reversed(self.data.get("known_good") or [])
+            )
+            if meta is not None
+        ]
+
+    def latest_known_good(self) -> dict[str, Any] | None:
+        rows = self.data.get("known_good") or []
+        return copy.deepcopy(rows[-1]) if rows else None
+
+    def diff_known_good(self, current: dict[str, Any]) -> dict[str, Any]:
+        latest = self.latest_known_good()
+        if latest is None:
+            return {
+                "found": False,
+                "changed": False,
+                "change_count": 0,
+                "changes": {},
+                "checkpoint": None,
+            }
+        before = latest.get("fingerprint") if isinstance(latest.get("fingerprint"), dict) else {}
+        after = copy.deepcopy(current or {})
+        keys = sorted(set(before) | set(after))
+        changes = {
+            key: {"before": copy.deepcopy(before.get(key)), "after": copy.deepcopy(after.get(key))}
+            for key in keys
+            if before.get(key) != after.get(key)
+        }
+        return {
+            "found": True,
+            "changed": bool(changes),
+            "change_count": len(changes),
+            "changes": changes,
+            "checkpoint": self._checkpoint_meta(latest),
+        }
+
     def summary(self) -> dict[str, Any]:
         return copy.deepcopy({
             "schema": self.data.get("schema", self.SCHEMA),
@@ -153,8 +245,10 @@ class DoctorPatientChart:
             "coverage": self.data.get("coverage") or {},
             "recurrence": self.data.get("recurrence") or {},
             "known_good_count": len(self.data.get("known_good") or []),
-            "known_good_latest": (self.data.get("known_good") or [])[-1]
-            if self.data.get("known_good") else None,
+            "known_good_latest": self._checkpoint_meta(
+                (self.data.get("known_good") or [])[-1]
+                if self.data.get("known_good") else None
+            ),
             "updated_at": self.data.get("updated_at"),
             "load_error": self.load_error,
         })
