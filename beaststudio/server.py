@@ -32,6 +32,9 @@ from .update_policies import UpdatePolicyStore, UpdatePolicyError
 from .pack_files import PackFileManager, PackFileError
 from .experiences import compose_experience_draft, ExperienceDraftError
 from beastcore.depot_catalog import DepotCatalogStore, DepotCatalogError
+from beastcore.experience_dna import (
+    BUILTIN_EXPERIENCE_DNA, LEGACY_REFERENCE_IDENTITIES, list_experience_families,
+)
 
 
 HTML=r'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -502,7 +505,7 @@ class StudioState:
         for row in themes:
             th=load_theme(probe._theme_path(row["id"]))
             theme_colors[row['id']]={slot:'#%02x%02x%02x'%th.c(slot) for slot in PALETTE_SLOTS if slot in th.colors}
-        return {'version':'0.18.0','themes':themes,'preview_outputs':[{'id':'480x320','label':'REFERENCE · 480 × 320','width':480,'height':320,'reference':True},{'id':'640x480','label':'COMPATIBILITY · 640 × 480','width':640,'height':480,'reference':False},{'id':'800x480','label':'COMPATIBILITY · 800 × 480','width':800,'height':480,'reference':False}],'pages':[{'id':x,'title':probe.pages.TITLES[x]} for x in probe.pages.IDS],'renderers':probe.RENDERER_CHOICES,'theme_options':opts,'dashboard_keys':telemetry,'widget_styles':list(WIDGET_STYLES),'palette_slots':list(PALETTE_SLOTS),'theme_colors':theme_colors,'apps':apps,'default_context_decks':[dict(x) for x in DEFAULT_CONTEXT_DECKS],'max_dashboard_widgets':MAX_DASHBOARD_WIDGETS,'pack_boards':pack_boards,'pack_layouts':pack_layouts,'face_profiles':face_profiles,'animation_profiles':animation_profiles}
+        return {'version':'0.18.0','themes':themes,'preview_outputs':[{'id':'480x320','label':'REFERENCE · 480 × 320','width':480,'height':320,'reference':True},{'id':'640x480','label':'COMPATIBILITY · 640 × 480','width':640,'height':480,'reference':False},{'id':'800x480','label':'COMPATIBILITY · 800 × 480','width':800,'height':480,'reference':False}],'pages':[{'id':x,'title':probe.pages.TITLES[x]} for x in probe.pages.IDS],'renderers':probe.RENDERER_CHOICES,'theme_options':opts,'dashboard_keys':telemetry,'widget_styles':list(WIDGET_STYLES),'palette_slots':list(PALETTE_SLOTS),'theme_colors':theme_colors,'apps':apps,'default_context_decks':[dict(x) for x in DEFAULT_CONTEXT_DECKS],'max_dashboard_widgets':MAX_DASHBOARD_WIDGETS,'pack_boards':pack_boards,'pack_layouts':pack_layouts,'face_profiles':face_profiles,'animation_profiles':animation_profiles,'experience_families':list_experience_families(),'experience_dna':[row.as_dict() for row in BUILTIN_EXPERIENCE_DNA.values()],'legacy_reference_identities':sorted(LEGACY_REFERENCE_IDENTITIES)}
 
     def preview(self,draft: dict)->bytes:
         cfg=self.validate(draft);live=self.api.live(24);state=live.get('state') if isinstance(live,dict) else {}
