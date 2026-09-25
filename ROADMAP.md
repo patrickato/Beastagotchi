@@ -541,3 +541,7 @@ The detailed recovered rationale is preserved in
 - Habitat requires substantially richer creature/environment art and choreography while protecting creature-first hierarchy;
 - Monolith requires premium typography/transitions and restraint; do not fill its negative space with more widgets;
 - next architecture proof: extend **Atlas** and **Observatory** beyond Home, then Habitat, to prove Experience DNA changes whole-product page language rather than only the landing screen.
+- Cross-page Experience proof is now implemented: **Atlas Recon** retains field-survey language and **Observatory Spectrum** retains scientific measurement language from the same canonical state.
+- `beastui/experience_registry.py` centralizes currently implemented Experience/page renderers; Studio schema exposes coverage and `/api/experience-preview` provides paired live previews.
+- next diversification proof: translate **Habitat** into progression/memory/Expedition surfaces before broad production integration.
+- production TFT ownership should wait for an Experience Compiler/resolution path and owner off-screen acceptance; do not hard-wire prototypes directly into live navigation yet.
