@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import platform
 import socket
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -61,6 +62,19 @@ class SystemCollector(Collector):
         return m
 
     @staticmethod
+    def _os_release() -> dict[str, str]:
+        out: dict[str, str] = {}
+        for line in read_text("/etc/os-release").splitlines():
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                value = value[1:-1]
+            out[key.strip()] = value
+        return out
+
+    @staticmethod
     def _parse_clock_hz(text: str) -> float | None:
         try:
             raw=str(text or '').strip().split('=',1)[-1]
@@ -102,7 +116,17 @@ class SystemCollector(Collector):
                 uptime = float(up[0]); values["system.uptime_sec"] = uptime; values["system.boot_time"] = time.time() - uptime
             except Exception: pass
         if self._static is None:
-            static = {"system.hostname": socket.gethostname(), "system.kernel": platform.release(), "system.architecture": platform.machine(), "system.os": platform.system()}
+            osr = self._os_release()
+            static = {
+                "system.hostname": socket.gethostname(),
+                "system.kernel": platform.release(),
+                "system.architecture": platform.machine(),
+                "system.os": platform.system(),
+                "system.python.version": platform.python_version(),
+                "system.os.id": osr.get("ID"),
+                "system.os.version_id": osr.get("VERSION_ID"),
+                "system.os.build_id": osr.get("BUILD_ID") or osr.get("IMAGE_ID"),
+            }
             model = read_text("/proc/device-tree/model").replace("\x00", "").strip()
             if model: static["system.model"] = model
             self._static = static
