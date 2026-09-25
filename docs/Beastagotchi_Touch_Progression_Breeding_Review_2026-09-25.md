@@ -417,3 +417,321 @@ breaking the system.
             +-> legacy markers
 
 This adds depth without creating conflicting duplicate Level systems.
+
+---
+
+## 11. OS-grade touch/display architecture
+
+Desktop Linux feels polished because "touch" is not one function. It is a stack.
+
+Beastagotchi should intentionally mirror that separation even though its final renderer is a compact
+framebuffer appliance rather than Wayland/GNOME/KDE.
+
+Target structure:
+
+    Kernel / device tree / evdev / framebuffer
+              |
+       Beast Device HAL
+        /           \
+    DisplayProfile  TouchProfile
+        |              |
+    RenderScheduler  TouchSample stream
+        |              |
+    Compositor      GestureRecognizer
+        |              |
+    Framebuffer     GestureArbiter
+         \             /
+           SurfaceStack
+               |
+          UI controls
+
+### DisplayProfile
+Discover/measure rather than assume:
+- framebuffer node;
+- pixel geometry;
+- logical geometry;
+- rotation;
+- pixel format / bpp;
+- physical dimensions if available;
+- configured SPI/display fps;
+- actual full-frame and dirty-update write time;
+- driver identity;
+- brightness/backlight capability if exposed.
+
+An SPI ILI9486 does not behave like a 60/120 Hz HDMI desktop monitor. Render cadence should be based
+on the real panel/driver/write budget, with immediate interaction feedback prioritized over chasing
+an arbitrary refresh-rate number.
+
+### TouchProfile
+Query the Linux input device rather than hard-code only X/Y:
+- supported event/absolute axes;
+- ABS_X/ABS_Y minimum/maximum;
+- fuzz/flat/resolution;
+- ABS_PRESSURE when present;
+- BTN_TOUCH;
+- transform/rotation;
+- calibrated affine matrix;
+- bezel/dead zones;
+- measured noise/slop;
+- pressure calibration if available.
+
+Linux evdev already exposes much of the raw capability metadata that desktop input stacks consume.
+
+### Calibration
+Replace "one static touch.json forever" with a versioned calibration/profile contract:
+- 5- or 9-point guided calibration;
+- outlier rejection;
+- affine transform solve;
+- verification pass;
+- per-rotation profile;
+- quality score/error heatmap;
+- easy re-calibration;
+- safe fallback.
+
+### Widget/gesture layer
+Create reusable touch-native controls:
+- Button;
+- Toggle;
+- Slider;
+- ScrollList;
+- ScrollView;
+- Tabs;
+- Carousel;
+- Context menu;
+- drag/reorder handle;
+- modal confirmation.
+
+These controls own hit slop, pressed state, scroll claiming, visual feedback and accessibility
+instead of every Surface implementing touch geometry independently.
+
+### Acceptance targets
+Final numbers require physical evidence, but define measurable targets for:
+- tap hit rate;
+- edge/corner hit rate;
+- false swipe rate;
+- false tap-after-scroll rate;
+- long-press accuracy;
+- scroll continuity;
+- gesture latency;
+- release/lift noise;
+- pressure repeatability if supported.
+
+Touch/navigation acceptance is a release gate equal in importance to visual fidelity.
+
+---
+
+## 12. Progression provenance / tamper-evident Life Ledger
+
+Beastagotchi is open-source and owner-sovereign. A root owner can ultimately replace any local
+check. The goal is therefore **not impossible anti-cheat**.
+
+The useful goal is:
+> ordinary progression should not be defeated by changing one obvious XP/level value.
+
+Introduce a per-creature **Life Ledger**.
+
+Each progression entry records:
+- sequence;
+- creature id;
+- source Event/action;
+- rule id + rule-set version/hash;
+- XP delta;
+- relevant bounded context;
+- timestamp;
+- prior-entry hash;
+- entry hash;
+- optional device-local HMAC/signature.
+
+Canonical XP/Level is derived/verified from the ledger.
+The mutable `beast_progress.xp` field becomes a cache/materialized value, not unquestioned truth.
+
+### Effects
+- directly editing `xp=999999` is detected/rebuilt from ledger;
+- deleting/reordering ledger entries breaks the hash chain;
+- changing XP rules changes the rule-set provenance;
+- official release/build hashes can be recorded with awards;
+- backup/restore can validate lineage history.
+
+### Owner sovereignty
+Expert/root owner can still:
+- use an explicit `admin_adjustment` progression entry;
+- adopt/import a customized timeline;
+- run a development/sandbox profile;
+- patch/replace validation code entirely.
+
+Managed Beast then labels provenance honestly:
+- Verified;
+- Restored;
+- Imported;
+- Customized;
+- Reconstructed / integrity warning.
+
+No remote server or DRM is required.
+
+### Fun response to crude tampering
+A detected mismatch may produce a playful non-destructive event such as:
+- "Temporal anomaly detected";
+- glitch aura;
+- Doctor finding;
+- corrupted-timeline visual;
+- hidden Easter egg.
+
+It must not destroy data or permanently lock the owner out.
+
+Offer:
+- Restore From Ledger;
+- Explain Difference;
+- Adopt Customized Timeline (Expert).
+
+This creates the desired "nice try" behavior while respecting local ownership.
+
+### Important limitation
+A determined root owner with source access can remove/fake every local check.
+Do not market this as secure competitive anti-cheat.
+It is provenance, integrity and friction against trivial editing.
+
+---
+
+## 13. Recalibrate progression around real Pwnagotchi duty cycles
+
+Previous calendar estimates implicitly assumed daily effective XP accumulation that is unrealistic
+for many Pwnagotchi owners.
+
+Reference usage should include:
+- light: ~4 hours/week;
+- typical: ~8-10 hours/week;
+- active: ~12-16 hours/week;
+- heavy/field enthusiast: 20+ hours/week.
+
+The current ~70,182 XP L100 threshold is likely too large unless XP awards are multiplied so heavily
+that their numbers become needlessly inflated.
+
+### Preferred direction
+Keep:
+- levels 1..100;
+- curved progression shape.
+
+Reconsider:
+- absolute XP coefficient;
+- all reward values together.
+
+Likely useful L100 design band:
+**~20,000-30,000 total XP**, subject to simulation/beta telemetry.
+
+For example, keeping the current 1.60 curve but reducing the coefficient from 45 to 16 produces
+approximately:
+- L10: 538 XP;
+- L20: 1,779;
+- L35: 4,513;
+- L50: 8,099;
+- L70: 14,005;
+- L85: 19,185;
+- L100: 24,954.
+
+This is an example calibration, not a committed formula.
+
+### Calendar target
+A reasonable design target to test:
+- typical 8-10 h/week mixed use: L100 in roughly 8-12 months;
+- lighter ~4 h/week use: roughly 14-20 months;
+- active 12-16 h/week use: roughly 5-8 months.
+
+Heavy users should not trivially finish in weeks.
+
+### Reward design
+Avoid relying on raw uptime alone.
+
+Use a mixture:
+- modest active-runtime progression;
+- session milestones;
+- real discovery;
+- captures;
+- vendors;
+- Expeditions;
+- Achievements;
+- Rares;
+- progression/content events.
+
+Use diminishing returns/caps for highly repetitive sources so 24/7 uptime does not dominate.
+
+Do not use daily streak punishment.
+
+### Progression simulator
+Before freezing values, build a simulation/test harness with representative usage profiles and
+real/replayed field traces.
+
+Outputs:
+- median days/hours to L10/L25/L50/L70/L85/L100;
+- source contribution percentages;
+- earliest/median synthesis;
+- Monster L100 timing;
+- effect of Achievements/Packs;
+- exploit/repeatable-source dominance.
+
+Tune from evidence, then beta telemetry.
+
+---
+
+## 14. Richer lifetime axes without competing Level systems
+
+Level 1-100 remains the single primary numeric level.
+
+Add orthogonal dimensions rather than another XP ladder.
+
+### Life Phase / maturity
+Broad universal semantic phase, for example:
+- Origin / Newborn;
+- Juvenile;
+- Growing;
+- Mature;
+- Prime;
+- Apex;
+- Ascended-eligible.
+
+Exact thresholds remain provisional.
+
+### Growth Form
+Lineage-specific visual/narrative form.
+
+A lineage may have 6, 8, 10 or another number of Forms.
+Forms do not all need a completely separate sprite set; some may be substantial geometry/forms and
+others may add horns/aura/posture/markings/equipment/etc.
+
+### Rank / Title
+Earned status based on accomplishments rather than age.
+
+Examples:
+- Explorer;
+- Veteran;
+- Cartographer;
+- Collector;
+- Pathfinder;
+- Legend.
+
+Rank/title should not be another numeric Level.
+
+### Archetype / Role
+May emerge from behavior:
+- Explorer-heavy;
+- Collector-heavy;
+- stationary sentinel;
+- expedition specialist;
+- etc.
+
+This can alter flavor/visual reactions without locking progression.
+
+### Rarity
+Intrinsic birth/synthesis outcome tier.
+Independent from Level/maturity.
+
+### Mastery
+Late-game accomplishment domains used for optional Ascension variants/endgame depth.
+
+### Ascension
+Post-L100 transformation/state.
+Level remains 100.
+
+This model separates:
+age/maturity, visual form, accomplishment, behavior, rarity and endgame state instead of forcing all
+of them into one Stage label.
+
