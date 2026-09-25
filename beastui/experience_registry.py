@@ -7,7 +7,7 @@ from PIL import Image
 
 from .experience_atlas import render_atlas_home, render_atlas_recon
 from .experience_forge import render_forge_home
-from .experience_habitat import render_habitat_home
+from .experience_habitat import render_habitat_home, render_habitat_beast
 from .experience_monolith import render_monolith_home
 from .experience_observatory import render_observatory_home, render_observatory_spectrum
 from .scene_runtime import SceneRuntime
@@ -46,6 +46,7 @@ _register("forge", "home", render_forge_home)
 _register("observatory", "home", render_observatory_home)
 _register("observatory", "spectrum", render_observatory_spectrum)
 _register("habitat", "home", render_habitat_home)
+_register("habitat", "beast", render_habitat_beast)
 _register("monolith", "home", render_monolith_home)
 
 
