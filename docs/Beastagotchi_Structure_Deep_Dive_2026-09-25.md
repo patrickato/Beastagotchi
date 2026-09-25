@@ -3111,3 +3111,281 @@ CI can simulate representative owner styles:
 
 The goal is broad viable paths, not identical leveling speed.
 
+
+---
+
+# Layer 5C — Maturity, lineage, synthesis and Monsters
+
+## Current v1 synthesis behavior
+
+Current `BeastRoster`:
+- requires two distinct parents;
+- currently requires both parents to be Beast-class;
+- requires each parent level >= 70;
+- does not consume/reset parents;
+- allows one v1 child per exact parent pair;
+- creates a new Monster at level 1;
+- records ancestry;
+- generates deterministic inherited traits;
+- records synthesis;
+- unlocks `monstergotchi.core` globally on first successful synthesis.
+
+This is a strong prototype because identity/ancestry truth is already durable.
+
+## Small cleanup: unused synthesis constant
+
+`SYNTHESIS_UNLOCK_LEVEL = 70` is currently declared but not used; the actual gating uses
+`SYNTHESIS_PARENT_MIN_LEVEL = 70`.
+
+Consolidate when synthesis policy is extracted so there is one source for the default threshold.
+
+## MaturityPolicy / SynthesisRecipe
+
+Replace hard-coded long-term synthesis rules with declarative, versioned policy.
+
+Candidate `SynthesisRecipe`:
+- id/version;
+- allowed parent kinds;
+- minimum maturity requirements;
+- pair reuse policy;
+- offspring kind/lineage resolver;
+- generation rule;
+- inheritance strategy;
+- mutation table/chance policy;
+- global/per-Beast unlock outputs;
+- Choreography reference;
+- optional content requirements.
+
+Core validates and executes recipes.
+
+Default v1 recipe may remain essentially what exists today.
+
+## Do not make maturity an arbitrary checklist wall
+
+Maturity can remain primarily Level/time driven.
+
+Possible bounded criteria:
+- minimum Level;
+- minimum lived runtime/age;
+- optional specific lifecycle milestone.
+
+Avoid requiring:
+- every Achievement;
+- every secret;
+- every Rare;
+- every Pack.
+
+Breeding/synthesis should feel earned, not completionist.
+
+## Heritage generation
+
+Current deterministic heritage model is good:
+- stable seed;
+- inherited parent traits;
+- temperament blending/jitter;
+- mutation chance;
+- provenance;
+- legacy markers.
+
+This is ideal for:
+- reproducibility;
+- debugging;
+- Capsule/export;
+- future visual rendering.
+
+Protect deterministic generation.
+
+## Mutation rarity
+
+Current approximate design:
+- base mutation chance 3.5%;
+- cross-lineage +1.5%;
+- each level-100 parent +2.5%;
+- capped at 10%;
+- one result per parent pair in v1.
+
+This supports genuinely uncommon outcomes without requiring server-side randomness.
+
+Future mutation catalogs should be data-driven and namespaced.
+
+Do not make all high-tier content depend on low-probability mutation; mutation is a special branch,
+not the only route to interesting Monsters.
+
+## Heritage privacy / schema hardening
+
+Current heritage stores `parent_preferences` wholesale.
+
+Today those preferences are largely presentation state, but generic preference blobs are not a good
+permanent ancestry contract.
+
+Replace with explicitly inheritable snapshots:
+- lineage id;
+- trait inputs;
+- approved appearance genes;
+- optional presentation affinity ids;
+- relevant unlocked inheritance markers.
+
+Do not automatically copy future arbitrary/private preference fields into offspring heritage.
+
+## Monster is a kind/growth path, not simply "Beast level 101"
+
+Current Monsters start at level 1 and have their own Stage vocabulary.
+
+That is structurally correct.
+
+They can:
+- share the same XP/Level 1–100 contract;
+- use different Growth Tracks;
+- have inherited traits;
+- unlock Monster-specific Achievements/Surfaces/Choreography;
+- eventually have additional synthesis recipes if desired.
+
+Do not extend the main Level number indefinitely merely because Monsters exist.
+
+## Synthesis/Monster Choreography
+
+The actual biological/mechanical/etc. presentation belongs in the Choreography layer.
+
+Potential stages:
+- eligibility/readiness;
+- parent selection;
+- confirmation;
+- synthesis/breeding;
+- incubation/formation;
+- reveal;
+- mutation/rarity escalation;
+- ancestry/roster commit;
+- celebration.
+
+Core commits identity truth transactionally.
+Presentation dramatizes the result.
+
+For exceptional outcomes:
+- ordinary Monster reveal;
+- first-ever Monstergotchi-core unlock;
+- mutation;
+- legendary/mythic inheritance;
+
+may select progressively richer Choreography.
+
+A lightweight procedural fallback must always exist.
+
+---
+
+# Layer 5D — Global progress, memories and personal history
+
+## Individual versus device-global accomplishments
+
+Current split is correct.
+
+Per-Beast:
+- XP/Level;
+- individual discovery history;
+- Achievements;
+- Unlocks;
+- Memories;
+- Expeditions;
+- lineage/ancestry.
+
+Global/device:
+- total unique discovery collection;
+- roster size;
+- Monster count;
+- number of level-100 creatures;
+- first Monster;
+- multi-Legend accomplishments;
+- global unlocks.
+
+Do not arbitrarily assign device-wide history to whichever Beast happened to be active when queried.
+
+## Hall of Legends
+
+Current Hall induction:
+- requires level 100;
+- is separately marked;
+- does not delete/retire the creature.
+
+That is a useful distinction:
+- level 100 = progression fact;
+- Legend/Hall = recognition/presentation state.
+
+Future Hall content may add:
+- plaques;
+- lineage tree prominence;
+- special idle presentation;
+- legacy markers;
+- descendant influence;
+
+without altering historical XP.
+
+## Global Achievement Catalog
+
+Current global catalog is small but structurally correct.
+
+Move definitions into the same versioned Progression Catalog model as per-Beast accomplishments,
+with explicit scope:
+- beast;
+- roster;
+- device;
+- lineage;
+- optional future community/local scope.
+
+## Memories
+
+Current `BeastMemoryEngine` is appropriately conservative.
+
+It records meaningful events such as:
+- level changes;
+- evolution;
+- Achievements;
+- Rare witness;
+- Expedition milestones;
+- durable personality changes.
+
+It intentionally does not copy raw AP/client/GPS streams.
+
+Protect that.
+
+## MemorySpec registry
+
+Future Packs/lifecycle systems may contribute namespaced Memory definitions, but memory creation
+should still be bounded.
+
+A MemorySpec can declare:
+- source Event;
+- kind;
+- safe fields to retain;
+- summary template;
+- dedupe/cooldown;
+- rarity;
+- whether it is per-Beast or global.
+
+This keeps memory rich without becoming an unbounded log.
+
+## Memories should not all award XP
+
+Memories primarily preserve personal history.
+
+Some event that creates a Memory may independently award XP/Achievement/Unlock through progression
+rules, but Memory itself should not become another automatic XP source.
+
+## Personality / owner interaction
+
+Optional owner-Beast relationship systems can sit beside main XP progression.
+
+Possible future **Affinity/Bond** state may influence:
+- expressions;
+- hidden dialogue/reactions;
+- cosmetic Choreography;
+- unlocks;
+- rare interactions.
+
+It should:
+- enrich engagement;
+- not punish neglect;
+- not block core Pwnagotchi function;
+- not be required for level 100;
+- avoid daily-streak/compulsion mechanics.
+
+If added, it is a separate bounded relationship axis, not a second Level system.
+
