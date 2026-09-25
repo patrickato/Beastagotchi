@@ -25,7 +25,7 @@ def test_experience_renderer_registry_exposes_current_prototype_coverage():
     assert summary["atlas"]==["home","recon"]
     assert summary["observatory"]==["home","spectrum"]
     assert summary["forge"]==["home"]
-    assert summary["habitat"]==["home"]
+    assert summary["habitat"]==["beast","home"]
     assert summary["monolith"]==["home"]
 
 
