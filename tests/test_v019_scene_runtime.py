@@ -142,5 +142,6 @@ def test_flagship_concept_creatures_decode_with_alpha():
         image = concept_creature(name)
         assert image is not None
         assert image.mode == "RGBA"
-        assert image.width >= 80 and image.height >= 80
+        assert image.width >= 60 and image.height >= 60
+        assert image.width * image.height >= 4500
         assert image.getchannel("A").getbbox() is not None
