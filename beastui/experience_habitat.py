@@ -61,82 +61,147 @@ def _register(rt, spec):
 
 
 def _draw_habitat(draw, phase):
-    # Organic backdrop. Decorative and intentionally not telemetry.
-    for radius, tone in ((130, _SOIL), (105, (67, 72, 51)), (82, (58, 68, 50))):
-        cx = 238 + int(math.sin(phase * 0.2 + radius) * 2)
-        cy = 157
-        draw.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), fill=tone)
-    for x, y, r in ((55,72,22),(414,73,25),(52,244,28),(425,239,20),(102,45,14),(374,270,16)):
-        draw.ellipse((x-r, y-r, x+r, y+r), outline=_LEAF, width=2)
+    """Layered organic habitat with slow decorative motion and less flat geometry."""
+    cx = 238 + int(math.sin(phase * 0.23) * 2)
+    cy = 158 + int(math.cos(phase * 0.17) * 1)
+
+    # Broad earth/canopy masses. The off-centre inner pools prevent the background
+    # reading as a target made from three perfect circles.
+    draw.ellipse((cx-134, cy-134, cx+134, cy+134), fill=(66, 58, 45))
+    draw.ellipse((cx-111, cy-118, cx+105, cy+114), fill=(62, 68, 49))
+    draw.ellipse((cx-88, cy-96, cx+91, cy+99), fill=(53, 63, 47))
+
+    # Broken canopy rings and root arcs create depth without pretending to be data.
+    for radius, start_ang, end_ang, tone, width in (
+        (126, 196, 342, _LEAF, 3),
+        (113, 22, 150, _LEAF_2, 2),
+        (96, 206, 326, (86, 105, 72), 2),
+        (78, 32, 142, (104, 125, 82), 2),
+    ):
+        draw.arc((cx-radius, cy-radius, cx+radius, cy+radius),
+                 start_ang, end_ang, fill=tone, width=width)
+
+    # Vines/roots on the outside keep the scene organic while leaving the Beast clear.
+    draw.line((23, 231, 34, 208, 45, 195, 58, 188), fill=_LEAF, width=3)
+    draw.line((421, 94, 433, 110, 441, 133, 446, 156), fill=(91, 118, 78), width=2)
+    draw.arc((17, 177, 82, 269), 122, 286, fill=(111, 137, 88), width=2)
+    draw.arc((397, 48, 463, 129), 206, 356, fill=(102, 128, 83), width=2)
+
+    # Leaf/seed nodes are intentionally irregular rather than a symmetric ring.
+    nodes = (
+        (55,72,22),(414,73,25),(52,244,28),(425,239,20),
+        (102,45,14),(374,270,16),(150,102,9),(329,119,8),
+        (143,168,7),(335,177,11),(166,61,6),(313,70,7),
+    )
+    for idx,(x,y,r) in enumerate(nodes):
+        wobble = int(math.sin(phase * 0.31 + idx) * 1.5)
+        draw.ellipse((x-r+wobble, y-r, x+r+wobble, y+r),
+                     outline=_LEAF_2 if idx % 3 == 0 else _LEAF,
+                     width=2)
+
+    # Tiny warm spores add depth and an inhabited feeling without becoming UI chrome.
+    for idx,(x,y) in enumerate(((132,82),(347,91),(120,217),(357,222),(86,163),(394,165))):
+        pulse = 1 if math.sin(phase * 0.5 + idx) > 0.35 else 0
+        r = 2 + pulse
+        draw.ellipse((x-r,y-r,x+r,y+r), fill=(154,132,76))
 
 
 def _draw_creature(draw, meta):
-    """Organic companion portrait with layered facial structure, not a circle mascot."""
-    cx = 240
-    coat = (46, 48, 39)
-    coat_2 = (54, 58, 45)
-    shadow = (37, 40, 34)
+    """Sculpted companion portrait with layered planes, gaze and body depth."""
+    coat = (43, 46, 38)
+    coat_mid = (51, 55, 43)
+    coat_high = (61, 66, 49)
+    shadow = (31, 34, 29)
+    muzzle = (58, 61, 47)
+    eye_socket = (24, 28, 24)
 
-    # Body/shoulders sit behind the head so the Beast feels present in a habitat,
-    # not pasted as a floating icon.
-    draw.ellipse((166, 190, 314, 292), fill=shadow, outline=_SOIL, width=2)
-    draw.arc((150, 184, 330, 300), 198, 342, fill=_LEAF, width=2)
+    # Torso and shoulders. Multiple overlapping masses make the portrait occupy space
+    # instead of reading as a head pasted on a circular badge.
+    draw.ellipse((157, 188, 323, 296), fill=shadow)
+    draw.ellipse((176, 196, 304, 289), fill=coat)
+    draw.arc((145, 181, 335, 302), 197, 343, fill=_LEAF, width=2)
+    draw.arc((165, 198, 315, 292), 205, 334, fill=(105, 124, 82), width=2)
+    draw.polygon([(182,224),(208,205),(240,216),(272,205),(298,224),(282,274),(198,274)],
+                 fill=(48,51,41))
 
-    # Asymmetric leafy halo is decorative habitat language.
-    for x, y, r in ((151,105,10),(326,118,8),(142,168,7),(334,176,11),(167,61,6),(312,70,7)):
-        draw.ellipse((x-r,y-r,x+r,y+r), outline=_LEAF, width=2)
-
-    # Head silhouette: broad cheek structure, tapered chin, tall ears.
+    # Head silhouette: broad cheeks, tapered chin and ears integrated into the skull.
     head = [
-        (158, 115), (166, 82), (182, 88), (191, 54), (213, 84),
-        (240, 75),
-        (267, 84), (289, 54), (298, 90), (314, 83), (322, 116),
-        (326, 161), (312, 205), (284, 235), (240, 252),
-        (196, 235), (168, 205), (154, 161),
+        (157, 117), (164, 84), (178, 90), (191, 53), (214, 83),
+        (240, 74),
+        (266, 83), (289, 53), (302, 91), (316, 84), (323, 117),
+        (327, 158), (316, 196), (291, 226), (262, 244), (240, 252),
+        (218, 244), (189, 226), (164, 196), (153, 158),
     ]
     draw.polygon(head, fill=coat, outline=_WARM)
     draw.line(head + [head[0]], fill=_WARM, width=3, joint="curve")
 
-    # Inner ears and cheek planes.
-    draw.polygon([(174,91),(191,61),(207,91),(192,108)], fill=coat_2, outline=_LEAF)
-    draw.polygon([(273,91),(289,61),(306,93),(289,108)], fill=coat_2, outline=_LEAF)
-    draw.polygon([(166,151),(193,138),(208,177),(190,211),(167,190)], fill=coat_2, outline=_SOIL)
-    draw.polygon([(314,151),(287,138),(272,177),(290,211),(313,190)], fill=coat_2, outline=_SOIL)
+    # Ear cavities use three depths rather than a single outlined triangle.
+    draw.polygon([(172,91),(191,59),(209,91),(194,111)], fill=shadow, outline=_LEAF)
+    draw.polygon([(180,88),(191,68),(201,91),(193,101)], fill=(73,72,52))
+    draw.polygon([(271,91),(289,59),(308,93),(289,111)], fill=shadow, outline=_LEAF)
+    draw.polygon([(279,89),(289,68),(299,92),(289,101)], fill=(73,72,52))
 
-    # Brow/eye shapes convey mood more expressively than dot eyes.
-    eye_y = 141
-    alert = meta["mood"].lower() in {"angry","intense","focused","hunting"}
-    left_eye = [(188,eye_y),(222,eye_y+3),(214,eye_y+17),(194,eye_y+16)]
-    right_eye = [(258,eye_y+3),(292,eye_y),(286,eye_y+16),(266,eye_y+17)]
-    eye_col = _WARM if alert else _INK
-    draw.polygon(left_eye, fill=(34,37,31), outline=eye_col)
-    draw.polygon(right_eye, fill=(34,37,31), outline=eye_col)
-    draw.ellipse((202,147,208,153), fill=_LEAF_2)
-    draw.ellipse((272,147,278,153), fill=_LEAF_2)
-    draw.line((184,132,220,128), fill=_LEAF if not alert else _WARM, width=2)
-    draw.line((260,128,296,132), fill=_LEAF if not alert else _WARM, width=2)
+    # Forehead bridge and temple planes give the face a dimensional centre.
+    draw.polygon([(240,79),(216,91),(204,126),(219,148),(240,157),
+                  (261,148),(276,126),(264,91)],
+                 fill=coat_mid, outline=(72,76,57))
+    draw.line((240,84,240,153), fill=(85,88,64), width=1)
+    draw.polygon([(165,145),(193,135),(212,171),(195,211),(169,194)],
+                 fill=coat_mid, outline=_SOIL)
+    draw.polygon([(315,145),(287,135),(268,171),(285,211),(311,194)],
+                 fill=coat_mid, outline=_SOIL)
+    draw.polygon([(196,178),(216,158),(240,166),(264,158),(284,178),
+                  (270,216),(240,231),(210,216)],
+                 fill=muzzle, outline=(74,78,58))
 
-    # Muzzle/nose and mood-driven mouth.
-    draw.polygon([(232,171),(248,171),(240,180)], fill=_WARM)
-    draw.line((240,180,240,187), fill=_MUTED)
+    # Brow and recessed eye sockets. Pupils have direction/highlight so the Beast
+    # reads as a living focal subject instead of a symbol.
     mood = meta["mood"].lower()
-    if mood in {"awake","happy","excited"}:
-        draw.arc((207,176,241,205), 5, 100, fill=_LEAF_2, width=2)
-        draw.arc((239,176,273,205), 80, 175, fill=_LEAF_2, width=2)
-    elif mood in {"sad","bored"}:
-        draw.arc((214,188,266,214), 200, 340, fill=_LEAF_2, width=2)
-    else:
-        draw.line((216,197,264,197), fill=_LEAF_2, width=2)
+    alert = mood in {"angry","intense","focused","hunting"}
+    eye_col = _WARM if alert else _INK
+    brow_col = _WARM if alert else _LEAF_2
+    draw.line((181,130,219,124), fill=brow_col, width=3)
+    draw.line((261,124,299,130), fill=brow_col, width=3)
+    left_eye = [(187,139),(221,141),(214,160),(194,158)]
+    right_eye = [(259,141),(293,139),(286,158),(266,160)]
+    draw.polygon(left_eye, fill=eye_socket, outline=eye_col)
+    draw.polygon(right_eye, fill=eye_socket, outline=eye_col)
+    draw.ellipse((199,144,211,157), fill=(105,137,86), outline=_LEAF_2)
+    draw.ellipse((269,144,281,157), fill=(105,137,86), outline=_LEAF_2)
+    draw.ellipse((203,146,208,157), fill=(18,22,18))
+    draw.ellipse((273,146,278,157), fill=(18,22,18))
+    draw.ellipse((204,146,206,148), fill=_INK)
+    draw.ellipse((274,146,276,148), fill=_INK)
 
-    # Identity is a small collar/tag beneath the face rather than text across it.
-    draw.line((207,224,240,239,273,224), fill=_LEAF, width=2)
-    draw.ellipse((229,232,251,254), fill=_SOIL, outline=_WARM)
+    # Nose, muzzle split, mouth and short whisker marks.
+    draw.polygon([(231,174),(249,174),(240,184)], fill=_WARM)
+    draw.line((240,184,240,191), fill=_MUTED, width=2)
+    draw.arc((209,177,240,207), 8, 102, fill=_LEAF_2, width=2)
+    draw.arc((240,177,271,207), 78, 172, fill=_LEAF_2, width=2)
+    if mood in {"sad","bored"}:
+        draw.arc((216,192,264,216), 200, 340, fill=_LEAF_2, width=2)
+    elif alert:
+        draw.line((218,202,262,202), fill=_LEAF_2, width=2)
+    draw.line((203,184,181,180), fill=(112,111,84))
+    draw.line((204,191,178,193), fill=(112,111,84))
+    draw.line((277,184,299,180), fill=(112,111,84))
+    draw.line((276,191,302,193), fill=(112,111,84))
+
+    # Chin and cheek edge highlights keep the lower face from collapsing into a flat fill.
+    draw.line((191,212,216,233,240,241,264,233,289,212),
+              fill=(91,108,73), width=2)
+    draw.line((176,173,184,205,204,226), fill=(72,82,61), width=2)
+    draw.line((304,173,296,205,276,226), fill=(72,82,61), width=2)
+
+    # Collar/tag: identity detail belongs beneath the portrait, not across the face.
+    draw.line((205,229,240,243,275,229), fill=_LEAF, width=2)
+    draw.ellipse((228,235,252,259), fill=_SOIL, outline=_WARM, width=2)
     level = str(meta["level"])
     bbox = draw.textbbox((0,0), level, font=_font(9))
-    draw.text((240-(bbox[2]-bbox[0])//2,237), level, fill=_INK, font=_font(9))
+    draw.text((240-(bbox[2]-bbox[0])//2,241), level, fill=_INK, font=_font(9))
     label = meta["stage"].upper()
     tw = draw.textbbox((0,0), label, font=_font(9))[2]
-    draw.text((240-tw//2, 258), label, fill=_INK, font=_font(9))
+    draw.text((240-tw//2, 263), label, fill=_INK, font=_font(9))
 
 
 def render_habitat_home(state: dict[str, Any], *, phase: float = 0.0,
