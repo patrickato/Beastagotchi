@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from .doctor_patient import DoctorPatientChart
+
 
 class BeastDoctor:
     """Read-only explanation/diagnostic layer over canonical Beast state."""
 
     schema = 1
 
-    def __init__(self, state) -> None:
+    def __init__(self, state, store=None) -> None:
         self.state = state
+        self.patient = DoctorPatientChart(store)
 
     @staticmethod
     def _norm(value: Any) -> str:
@@ -281,6 +284,9 @@ class BeastDoctor:
 
         items = items[:64]
         coverage = self.diagnostic_coverage()
+        identity = self.patient_identity()
+        self.patient.observe_identity_coverage(identity, coverage)
+        patient_memory = self.patient.summary()
         return {
             "schema": self.schema,
             "state": "attention" if items else "ok",
@@ -291,9 +297,10 @@ class BeastDoctor:
             "support_state": self.state.get("owner.support_state", "managed"),
             "patient": {
                 "schema": 1,
-                "identity": self.patient_identity(),
+                "identity": identity,
                 "coverage": coverage,
                 "privacy_class": "technical_identity_only",
+                "memory": patient_memory,
             },
         }
 
@@ -307,6 +314,9 @@ class BeastDoctor:
             "doctor.explainable_capability_count": row["explainable_capability_count"],
             "doctor.items": row["items"],
             "doctor.patient.identity": patient.get("identity", {}) if isinstance(patient, dict) else {},
+            "doctor.patient.memory": patient.get("memory", {}) if isinstance(patient, dict) else {},
+            "doctor.patient.updated_at": ((patient.get("memory") or {}).get("updated_at")
+                                          if isinstance(patient, dict) else None),
             "doctor.coverage": coverage,
             "doctor.coverage.covered_count": int((coverage.get("counts") or {}).get("covered", 0) or 0),
             "doctor.coverage.unavailable_count": int((coverage.get("counts") or {}).get("unavailable", 0) or 0),
