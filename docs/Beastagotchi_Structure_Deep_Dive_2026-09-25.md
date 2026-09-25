@@ -1567,3 +1567,407 @@ Cache eviction should be byte/resource-budget based.
 
 The active Experience plus nearby/likely-needed surfaces can remain warm; the rest should be cold.
 
+
+---
+
+# Layer 3C — Content Store, storage pools and small-card scaling
+
+## Current storage model
+
+Today installed Packs are directory copies under:
+- built-in: `/opt/beast-ui/packs`;
+- installed: `/var/lib/beastagotchi/packs/installed`;
+- staged: `/var/lib/beastagotchi/packs/staged`.
+
+Pack update rollback may additionally retain previous full directory copies.
+
+This is simple and correct at current scale.
+
+It will duplicate bytes as the media ecosystem grows and does not yet distinguish:
+- reusable shared assets;
+- installed logical content;
+- evictable downloads/cache;
+- active decoded working set;
+- optional large media.
+
+## First-class Content Store
+
+Introduce a **Content Store** as a separate concept from Pack.
+
+A Pack is a manifest/distribution envelope.
+A Content Object is an immutable validated object identified by digest.
+
+Candidate Content Object metadata:
+- SHA-256/object id;
+- media/content kind;
+- size;
+- MIME/format;
+- source/provenance;
+- author/license;
+- compatibility/target class;
+- validation status;
+- installed/cached/pinned references;
+- last access;
+- eviction eligibility;
+- decode/resource hints.
+
+Logical Pack/component manifests reference objects.
+
+This enables:
+- deduplication;
+- integrity verification;
+- exact provenance;
+- component installs;
+- safe cache eviction;
+- corruption checks;
+- re-download/reconstruction;
+- content sharing between Experiences/Packs without duplicate storage.
+
+## Do not confuse five independent state axes
+
+Avoid one giant lifecycle enum for every question.
+
+Useful orthogonal state:
+
+### Presence
+- catalog_only;
+- cached/acquired;
+- installed.
+
+### Selection
+- disabled;
+- enabled.
+
+### Retention
+- evictable;
+- pinned_local.
+
+### Runtime residency
+- cold;
+- warm/decoded;
+- active.
+
+### Trust
+- metadata_only/untrusted;
+- verified_inert;
+- trusted_declarative;
+- trusted_executable.
+
+Example:
+A cinematic may be installed + enabled + evictable + cold + verified_inert.
+The active face may be installed + enabled + pinned + warm + verified_inert.
+
+This models reality better than forcing both through one sequential state.
+
+## Storage pools
+
+The architecture should understand storage *roles*, not require a particular physical device.
+
+### Core/system pool — normally SD
+Contains:
+- Beast/Pwnagotchi runtime;
+- database;
+- essential recovery;
+- fallback Experience/face/fonts/icons;
+- active configuration.
+
+Non-evictable by normal cache policy.
+
+### Local content pool — normally SD
+User-selected installed optional content.
+
+A one-card device is fully supported.
+
+### Local cache pool — normally SD
+Evictable:
+- previews;
+- downloaded archives;
+- catalog thumbnails;
+- inactive reacquirable objects;
+- temporary staging.
+
+Bounded by policy.
+
+### Optional expansion/library pools
+May be:
+- larger secondary filesystem;
+- USB/SSD;
+- NAS/network library;
+- desktop/mobile transfer source.
+
+Never required for normal Beastagotchi.
+
+### Remote catalog/source
+Metadata and downloadable objects, not runtime storage.
+
+## Active content must survive source loss
+
+If an Experience/face/cinematic is active or explicitly pinned for offline use, required objects must
+be staged locally.
+
+Losing:
+- Internet;
+- NAS;
+- phone;
+- USB source;
+
+must not break the currently active UI.
+
+External storage is a library/source, not an umbilical cord.
+
+## Storage budget manager
+
+Introduce a storage-policy component that knows:
+- actual filesystem free bytes;
+- protected system reserve;
+- protected owner-data reserve;
+- temporary Transaction requirement;
+- cache budget;
+- installed optional-content budget;
+- rollback payload cost.
+
+Before installation, plan must answer:
+- download bytes;
+- installed delta;
+- temporary peak bytes;
+- rollback bytes;
+- free bytes after operation;
+- reserve after operation.
+
+Never use nominal “16 GB / 32 GB” alone.
+
+### First-class small-card profiles
+
+16 GB and 32 GB remain reference qualification targets.
+
+A small card should change:
+- cache size;
+- how many optional assets are kept locally;
+- whether large optional cinematic/HD components are installed;
+
+not whether Beastagotchi is a complete functional system.
+
+## Cache eviction rules
+
+Automatic eviction may remove only reproducible/reacquirable content.
+
+Never auto-evict:
+- database;
+- captures/handshakes;
+- irreplaceable owner data;
+- active content;
+- pinned offline collection;
+- recovery baseline;
+- unsynchronized user-created content.
+
+Candidate eviction order:
+1. expired temporary staging;
+2. stale previews;
+3. superseded downloads;
+4. cold unpinned cache objects;
+5. old optional content explicitly marked evictable.
+
+Doctor/Procedure should explain what can be reclaimed before destructive cleanup.
+
+## Content-addressed implementation note
+
+A possible local object path:
+
+    /var/lib/beastagotchi/content/objects/sha256/<prefix>/<digest>
+
+Manifests/index metadata can live in SQLite or bounded JSON metadata.
+
+Do not prematurely commit to symlink/hardlink implementation:
+- hardlinks deduplicate well on one filesystem but not across storage pools;
+- symlinks complicate trust/path validation;
+- manifest-level object resolution is more portable but requires loader changes.
+
+Prototype/measure before choosing the materialization mechanism.
+
+## Runtime asset budget
+
+Disk size and RAM/render working set are separate budgets.
+
+Current compositor cache is entry-count limited.
+
+Future AssetRuntime should expose:
+- decoded bytes;
+- object count;
+- decode time;
+- last use;
+- active references;
+- cache hits/misses;
+- target/device variant.
+
+Governor can reduce:
+- warm-neighbor count;
+- high-resolution assets;
+- ambient layers;
+- decoded cache budget;
+
+without uninstalling anything.
+
+---
+
+# Layer 3D — Depot, sources, components and user Collections
+
+## Depot is already correctly separated from trust
+
+Current Depot v1:
+- imports bounded metadata;
+- supports discovery/search/filtering;
+- compares catalog entries to local Packs;
+- reports duplicate-ID conflicts;
+- grants no trust;
+- installs nothing;
+- uses GitHub Release metadata only in v1.
+
+This is a very strong starting boundary.
+
+Keep:
+> discovery != trust != acquisition != verification != installation != activation.
+
+## Source abstraction
+
+GitHub Releases are an excellent initial source because current code already supports bounded release
+metadata and SHA-256 verification.
+
+Do not hard-wire the ecosystem to GitHub forever.
+
+Future SourceAdapter registry may support:
+- GitHub Release;
+- project-hosted/CDN;
+- local file/import;
+- local network/library;
+- optional mobile/desktop companion transfer;
+- other explicitly supported community sources.
+
+Every source still feeds the same verification/intake/content-store contracts.
+
+A source location does not grant executable trust.
+
+## Optional components
+
+Pack manifests should support components/subsets.
+
+Example:
+
+    frostline:
+      core_scene          5 MB    required
+      reference_tft_art  18 MB    recommended
+      faces              12 MB    optional
+      audio              40 MB    optional
+      genesis_video      85 MB    optional
+      studio_hd_art     280 MB    optional
+      large_display     160 MB    optional
+
+The installer selects:
+- required components;
+- target-relevant components;
+- owner choices;
+- storage fit.
+
+Small Packs can remain indivisible.
+
+Do not force authors to over-componentize trivial content.
+
+## Collections
+
+Introduce a lightweight **Collection** concept for owner-selected sets.
+
+Examples:
+- My Daily Beast;
+- Camping Set;
+- Road Trip;
+- Minimal;
+- Full Local;
+- Diagnostics Kit;
+- My Favorite Faces.
+
+A Collection primarily stores references/policy, not duplicate bytes:
+- Pack/component ids + versions/hashes;
+- Experiences;
+- faces;
+- audio/cinematic selections;
+- optional Apps/Procedures;
+- desired enabled state;
+- offline/pin policy;
+- perhaps presentation preset references.
+
+Actions:
+- resolve;
+- install missing;
+- pin for offline;
+- activate selected presentation;
+- export manifest;
+- clone to another Beast.
+
+### Prepare Device for Offline Use
+
+This Procedure naturally consumes a Collection:
+1. resolve dependencies;
+2. calculate peak/storage reserve;
+3. acquire missing objects;
+4. verify;
+5. pin required objects;
+6. validate active Experience/face/media;
+7. run Doctor/storage check;
+8. report offline readiness.
+
+## Collection versus Pack
+
+Pack:
+- author/distributor's versioned deliverable.
+
+Collection:
+- owner's selection of things from potentially many Packs.
+
+Do not require an owner to repack content merely to remember a preferred setup.
+
+A Collection can later be exported as a shareable manifest, and optionally as a self-contained bundle
+where licensing permits.
+
+## Collection versus presentation preset
+
+Keep these related but separable.
+
+A presentation preset answers:
+- what should the UI look/behave like?
+
+A Collection answers:
+- what content/components should this device have/retain?
+
+A named user experience may reference both.
+
+This prevents a 300 MB media bundle from being duplicated every time the owner saves a slightly
+different UI arrangement.
+
+## Install/provisioning BOM relationship
+
+A future complete Beastagotchi installer and a Collection can share lower-level reference formats.
+
+A full device BOM may add:
+- upstream Pwnagotchi version/hash;
+- Beast version;
+- OS/package requirements;
+- hardware/display profile;
+- selected Packs/plugins/components;
+- known-good validation.
+
+One resolver/manifest vocabulary is preferable to maintaining unrelated “installer list” and
+“content list” formats.
+
+## Community contribution path
+
+Depot/Studio can eventually provide actions such as:
+- submit Pack metadata;
+- report compatibility result;
+- generate sanitized issue;
+- export support bundle;
+- open upstream/project issue template;
+- propose Experience/Scene;
+- submit physical-device validation result.
+
+Keep GitHub/project contribution as the canonical public-development highway initially; a native
+mobile application is optional convenience, not a foundation requirement.
+
