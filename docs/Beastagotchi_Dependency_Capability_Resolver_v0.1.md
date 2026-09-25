@@ -472,7 +472,7 @@ Not implemented yet:
 - guided credential-entry workflow;
 - automatic package/service installation;
 - generalized Plugin install/update transaction;
-- common resolver adoption by Experiences/Apps/Hardware Studio;
+- common resolver adoption by Apps/Hardware Studio (Experience Compiler v1 now consumes the shared resolver contract);
 - transaction executor for remediation plans.
 
 This boundary is intentional.
