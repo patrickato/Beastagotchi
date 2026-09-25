@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import nullcontext
 import math
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageEnhance, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageOps
 
 from .scene_compositor import alpha_panel, ambient_glow, paste_scene_asset, scene_particles
 from .concept_creatures import concept_creature
