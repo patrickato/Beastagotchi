@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import zlib
 from functools import lru_cache
-from PIL import Image
+from PIL import Image, ImageChops
 
 # Compact concept-derived creature rasters; no telemetry is baked into them.
 
@@ -35,3 +35,40 @@ def concept_creature(name: str) -> Image.Image | None:
     indexed.putpalette(list(palette) + [0] * (768 - len(palette)))
     indexed.info["transparency"] = bytes(alpha) + bytes([255] * (256 - len(alpha)))
     return indexed.convert("RGBA")
+
+
+@lru_cache(maxsize=24)
+def concept_creature_scene(name: str, width: int, height: int, edge_feather: int = 10) -> Image.Image | None:
+    """Return a prepared scene-scale RGBA creature layer.
+
+    Decoding, aspect-preserving resampling and spatial edge feathering are
+    cached because they are invariant across animation frames. Callers should
+    copy the returned image before applying per-frame luminance/opacity.
+    """
+    art = concept_creature(name)
+    if art is None:
+        return None
+    max_w = max(1, int(width))
+    max_h = max(1, int(height))
+    scale = min(max_w / max(1, art.width), max_h / max(1, art.height))
+    target = (
+        max(1, int(round(art.width * scale))),
+        max(1, int(round(art.height * scale))),
+    )
+    img = art if target == art.size else art.resize(target, Image.Resampling.LANCZOS)
+    img = img.copy()
+
+    feather = max(0, min(int(edge_feather), img.width // 3, img.height // 3))
+    if feather:
+        alpha = img.getchannel("A")
+        mask = Image.new("L", img.size, 255)
+        px = mask.load()
+        w, h = img.size
+        for yy in range(h):
+            dy = min(yy, h - 1 - yy)
+            for xx in range(w):
+                dist = min(xx, w - 1 - xx, dy)
+                if dist < feather:
+                    px[xx, yy] = int(255 * dist / max(1, feather))
+        img.putalpha(ImageChops.multiply(alpha, mask))
+    return img
