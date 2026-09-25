@@ -34,6 +34,25 @@ def _delta(previous: Image.Image | None, current: Image.Image) -> dict:
     }
 
 
+def _truth_dirtiness(scene: dict) -> dict:
+    layers = {row.get("id"): row for row in (scene.get("layers") or [])}
+    live, ambient, interaction = [], [], []
+    for layer_id in scene.get("dirty_layers") or []:
+        update_class = ((layers.get(layer_id) or {}).get("update_class") or "")
+        if update_class == "live":
+            live.append(layer_id)
+        elif update_class == "ambient":
+            ambient.append(layer_id)
+        elif update_class == "interaction":
+            interaction.append(layer_id)
+    return {
+        "changed_signals": list(scene.get("changed_signals") or []),
+        "live_dirty_layers": live,
+        "ambient_dirty_layers": ambient,
+        "interaction_dirty_layers": interaction,
+    }
+
+
 def _contact_sheet(frames: list[Image.Image], *, columns: int = 4) -> Image.Image:
     if not frames:
         raise ValueError("at least one frame is required")
@@ -73,12 +92,14 @@ def render_theme(root: Path, out: Path, state: dict, theme: str,
         frame_name = f"frame-{idx:02d}.png"
         image.save(theme_out / frame_name)
         rendered.append(image.copy())
+        scene = ui.scene_runtime.snapshot()
         rows.append({
             "frame": idx,
             "phase": round(phase, 4),
             "file": f"{theme}/{frame_name}",
             "delta": _delta(previous, image),
-            "scene": ui.scene_runtime.snapshot(),
+            "scene": scene,
+            "truth_dirtiness": _truth_dirtiness(scene),
             "compositor_cache": compositor_cache_telemetry(),
         })
         previous = image.copy()
@@ -102,6 +123,16 @@ def render_theme(root: Path, out: Path, state: dict, theme: str,
         "gif": str(gif.relative_to(out)),
         "contact_sheet": str(contact.relative_to(out)),
         "frames": rows,
+        "truth_summary": {
+            "initial_changed_signal_count": len(rows[0]["truth_dirtiness"]["changed_signals"]),
+            "later_live_dirty_frames": sum(
+                1 for row in rows[1:] if row["truth_dirtiness"]["live_dirty_layers"]
+            ),
+            "later_ambient_dirty_frames": sum(
+                1 for row in rows[1:] if row["truth_dirtiness"]["ambient_dirty_layers"]
+            ),
+            "synthetic_telemetry_injected": False,
+        },
         "final_cache": compositor_cache_telemetry(),
     }
 
