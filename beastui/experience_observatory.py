@@ -144,7 +144,7 @@ def _observer(draw, state):
     draw.text((cx-22, cy+48), mood, fill=_MUTED, font=_font(8))
 
 
-def render_observatory_home(state: dict[str, Any], *, scene_runtime: SceneRuntime | None = None) -> Image.Image:
+def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
     """Observatory Home as one continuous measurement station, not boxed widgets."""
     state = dict(state or {})
     meta = observatory_home_metadata(state)
@@ -202,6 +202,20 @@ def render_observatory_home(state: dict[str, Any], *, scene_runtime: SceneRuntim
     _register(rt, SceneLayerSpec(
         "observatory.observer", "creature", (366, 46, 454, 158),
         signals=("pwnagotchi.mood", "beast.expression"), update_class="live",
+    ))
+
+    # Ambient optics cue only. Measurement traces/axes never animate from phase.
+    optical = 0.5 + 0.5 * math.sin(float(phase) * 1.7)
+    arc_col = (
+        int(_EDGE[0] + (_TRACE[0] - _EDGE[0]) * optical),
+        int(_EDGE[1] + (_TRACE[1] - _EDGE[1]) * optical),
+        int(_EDGE[2] + (_TRACE[2] - _EDGE[2]) * optical),
+    )
+    d.arc((365, 43, 455, 133), 210, 330, fill=arc_col, width=1)
+    d.ellipse((456, 84, 458, 86), fill=arc_col)
+    _register(rt, SceneLayerSpec(
+        "observatory.ambient_optics", "ambient", (362, 40, 462, 138),
+        update_class="ambient", reduced_motion="static", decorative=True,
     ))
 
     d.line((358, 166, 470, 166), fill=_EDGE)
