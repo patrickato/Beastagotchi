@@ -123,13 +123,22 @@ def _draw_beast_marker(draw: ImageDraw.ImageDraw, meta: dict[str, Any]) -> None:
     draw.text((x+3, y+67), f"{meta['stage'].upper()} · LV {meta['level']}", fill=_INK, font=_font(9))
 
 
+def _edge_metric(draw, y, label, primary, secondary="", *, accent=False):
+    """Notebook-margin instrument: no card container, just field annotation."""
+    draw.line((412, y, 470, y), fill=(82, 84, 62), width=1)
+    draw.text((414, y+5), label, fill=_MUTED, font=_font(7))
+    draw.text((414, y+18), primary, fill=_ACCENT if accent else _INK, font=_font(11))
+    if secondary:
+        draw.text((414, y+34), secondary, fill=_MUTED, font=_font(7))
+
+
 def render_atlas_home(
     state: dict[str, Any],
     *,
     phase: float = 0.0,
     scene_runtime: SceneRuntime | None = None,
 ) -> Image.Image:
-    """Render the first Atlas Home proof from canonical live/captured state."""
+    """Atlas Home as a field notebook/canvas with edge annotations, not dashboard cards."""
     state = dict(state or {})
     meta = atlas_home_metadata(state)
     rt = scene_runtime
@@ -140,39 +149,48 @@ def render_atlas_home(
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
 
-    # Header / orientation.
-    d.rectangle((0, 0, 479, 31), fill=(35, 39, 31))
+    # Header reads like an expedition folio tab.
+    d.rectangle((0, 0, 479, 31), fill=(34, 38, 30))
     d.text((10, 7), "ATLAS", fill=_ACCENT, font=_font(15))
-    d.text((70, 9), "FIELD EXPEDITION", fill=_MUTED, font=_font(10))
+    d.text((70, 9), "FIELD EXPEDITION // LIVE NOTEBOOK", fill=_MUTED, font=_font(8))
     dock = str(state.get("dock.state") or "field").upper()
-    d.text((400, 9), dock, fill=_INK, font=_font(9))
+    d.text((430, 9), dock[:8], fill=_INK, font=_font(8))
     _register(rt, SceneLayerSpec(
         "atlas.header", "text", (0, 0, 480, 32),
         signals=("dock.state", "expedition.active"), update_class="live",
     ))
 
-    # Dominant field canvas.
-    d.rounded_rectangle((8, 38, 350, 278), radius=12, fill=_FIELD, outline=(92, 94, 67), width=1)
-    _draw_contours(d, phase)
-    d.text((18, 47), "FIELD CONTEXT", fill=_PAPER, font=_font(10))
-    d.text((18, 62), "RF OBSERVATIONS · NOT GEOGRAPHIC POSITION", fill=_MUTED, font=_font(8))
-    _draw_compass(d)
+    # Immersive field canvas fills the body. A single ruled notebook margin
+    # carries instruments on the right instead of separate cards.
+    d.rectangle((0, 32, 407, 281), fill=_FIELD)
+    d.line((407, 32, 407, 281), fill=_ACCENT, width=1)
+    for row in range(7):
+        base_y = 48 + row * 31
+        pts = []
+        for x in range(0, 408, 8):
+            y = base_y + math.sin((x * 0.027) + row * 0.8 + phase * 0.18) * (6 + row)
+            pts.append((x, int(y)))
+        d.line(pts, fill=_FIELD_2, width=1)
+    d.text((14, 43), "FIELD CONTEXT", fill=_PAPER, font=_font(9))
+    d.text((14, 57), "RF OBSERVATIONS // DIAGRAMMATIC, NOT GEOGRAPHIC", fill=_MUTED, font=_font(7))
+
+    # Compass floats inside the map rather than occupying its own panel.
+    _draw_compass(d, center=(365, 74), radius=23)
     _draw_rf_observations(d, state)
     _register(rt, SceneLayerSpec(
-        "atlas.field", "environment", (8, 38, 350, 278),
+        "atlas.field", "environment", (0, 32, 408, 282),
         signals=("gps.fix", "gps.satellites_used", "expedition.route_points", "wifi.aps"),
         update_class="live", decorative=False,
     ))
 
-    # No route is fabricated without fix + enough actual route points.
+    # Truthful route/GPS status stamped directly onto the field.
     if meta["draw_route"]:
-        d.line((56, 192, 106, 171, 154, 176, 205, 138, 253, 145), fill=_ACCENT, width=3)
-        d.text((20, 248), "ROUTE ACTIVE", fill=_ACCENT, font=_font(9))
+        d.line((64, 196, 116, 173, 166, 180, 222, 140, 282, 148, 330, 118), fill=_ACCENT, width=3)
+        d.text((16, 87), "ROUTE // LIVE", fill=_ACCENT, font=_font(8))
     else:
-        d.rounded_rectangle((18, 86, 116, 108), radius=6, fill=(43, 47, 39), outline=_ALERT)
-        d.text((26, 92), meta["gps_status"], fill=_ALERT, font=_font(9))
-        sats = _ival(state, "gps.satellites_used")
-        d.text((20, 112), f"SATS USED {sats}", fill=_MUTED, font=_font(8))
+        d.line((16, 84, 103, 84), fill=_ALERT, width=2)
+        d.text((16, 89), meta["gps_status"], fill=_ALERT, font=_font(8))
+        d.text((16, 103), f"SATS USED {_ival(state, 'gps.satellites_used')}", fill=_MUTED, font=_font(7))
 
     _draw_beast_marker(d, meta)
     _register(rt, SceneLayerSpec(
@@ -181,49 +199,45 @@ def render_atlas_home(
         update_class="live",
     ))
 
-    # Edge instruments: compact and subordinate to the spatial canvas.
-    x1, x2 = 360, 472
-    panels = [
-        ("RADIO", f"CH {meta['channel']}", meta["band"]),
-        ("DISCOVERY", f"{meta['ap_unique']} UNIQUE", f"{_ival(state, 'wifi.ap_count')} NEARBY"),
-        ("JOURNEY", f"{meta['distance_m']:.0f} m", f"{meta['duration_sec']:.0f} sec"),
-        ("SYSTEM", f"{_fval(state, 'system.temp.cpu_c'):.0f} C", str(state.get("governor.mode") or "?")),
-    ]
-    y = 42
-    for title, primary, secondary in panels:
-        d.rounded_rectangle((x1, y, x2, y+50), radius=8, fill=(38, 43, 35), outline=(87, 89, 65))
-        d.text((x1+8, y+6), title, fill=_MUTED, font=_font(8))
-        d.text((x1+8, y+20), primary, fill=_INK, font=_font(12))
-        d.text((x1+8, y+36), secondary, fill=_ACCENT, font=_font(8))
-        y += 58
+    # Ruled field-note margin. These are annotations, not four independent widgets.
+    d.rectangle((408, 32, 479, 281), fill=(31, 35, 29))
+    _edge_metric(d, 42, "RADIO", f"CH {meta['channel']}", meta["band"], accent=True)
+    _edge_metric(d, 98, "DISCOVERY", f"{meta['ap_unique']} UNIQUE", f"{_ival(state, 'wifi.ap_count')} NEARBY")
+    _edge_metric(d, 154, "JOURNEY", f"{meta['distance_m']:.0f} m", f"{meta['duration_sec']:.0f} sec")
+    temp = _fval(state, "system.temp.cpu_c")
+    _edge_metric(d, 210, "READINESS", f"{temp:.0f} C", str(state.get("governor.mode") or "?").upper())
+    d.line((412, 266, 470, 266), fill=(82,84,62))
 
     _register(rt, SceneLayerSpec(
-        "atlas.radio", "instrument", (360, 42, 472, 92),
+        "atlas.radio", "instrument", (408, 42, 479, 96),
         signals=("radio.primary.channel", "radio.primary.band"), update_class="live",
     ))
     _register(rt, SceneLayerSpec(
-        "atlas.discovery", "instrument", (360, 100, 472, 150),
+        "atlas.discovery", "instrument", (408, 98, 479, 152),
         signals=("expedition.ap_unique", "wifi.ap_count"), update_class="live",
     ))
     _register(rt, SceneLayerSpec(
-        "atlas.journey", "instrument", (360, 158, 472, 208),
+        "atlas.journey", "instrument", (408, 154, 479, 208),
         signals=("expedition.distance_m", "expedition.duration_sec"), update_class="live",
     ))
     _register(rt, SceneLayerSpec(
-        "atlas.system", "instrument", (360, 216, 472, 266),
+        "atlas.system", "instrument", (408, 210, 479, 266),
         signals=("system.temp.cpu_c", "governor.mode"), update_class="live",
     ))
 
-    # Journey strip is not a generic nav bar; it summarizes the current expedition.
-    d.rectangle((104, 286, 472, 313), fill=(38, 43, 35))
+    # Expedition ledger spans the full page like the bottom of a field notebook.
+    d.rectangle((0, 282, 479, 319), fill=(34, 38, 30))
+    d.line((0, 282, 479, 282), fill=_ACCENT, width=1)
     active = "ACTIVE" if meta["expedition_active"] else "IDLE"
-    d.text((114, 294), f"EXPEDITION {active}", fill=_ACCENT if meta["expedition_active"] else _MUTED, font=_font(9))
-    d.text((222, 294), f"DISC {meta['ap_unique']}", fill=_INK, font=_font(9))
-    d.text((296, 294), f"CAP +{_ival(state, 'expedition.captures_delta')}", fill=_INK, font=_font(9))
-    d.text((372, 294), f"XP +{_ival(state, 'expedition.xp_delta')}", fill=_INK, font=_font(9))
+    d.text((14, 291), f"EXPEDITION {active}", fill=_ACCENT if meta["expedition_active"] else _MUTED, font=_font(9))
+    d.text((126, 291), f"DISC {meta['ap_unique']}", fill=_INK, font=_font(8))
+    d.text((196, 291), f"CAP +{_ival(state, 'expedition.captures_delta')}", fill=_INK, font=_font(8))
+    d.text((274, 291), f"XP +{_ival(state, 'expedition.xp_delta')}", fill=_INK, font=_font(8))
+    d.text((363, 291), meta["gps_status"], fill=_ACCENT if meta["gps_fix"] else _ALERT, font=_font(7))
+    d.text((14, 306), "FIELD LOG // LIVE CANONICAL STATE", fill=_MUTED, font=_font(7))
     _register(rt, SceneLayerSpec(
-        "atlas.expedition_strip", "timeline", (104, 286, 472, 314),
-        signals=("expedition.active", "expedition.ap_unique", "expedition.captures_delta", "expedition.xp_delta"),
+        "atlas.expedition_strip", "timeline", (0, 282, 480, 320),
+        signals=("expedition.active", "expedition.ap_unique", "expedition.captures_delta", "expedition.xp_delta", "gps.fix"),
         update_class="live",
     ))
 
