@@ -117,6 +117,19 @@ jobs:
           retention-days: 30
 
 
+      - name: Render cross-page Experience translation proof
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_page_translations.py
+
+      - name: Upload cross-page Experience translation proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-page-translations
+          path: artifacts/v019-experience-page-translations
+          if-no-files-found: error
+          retention-days: 30
+
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
