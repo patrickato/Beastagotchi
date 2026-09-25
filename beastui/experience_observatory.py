@@ -145,6 +145,7 @@ def _observer(draw, state):
 
 
 def render_observatory_home(state: dict[str, Any], *, scene_runtime: SceneRuntime | None = None) -> Image.Image:
+    """Observatory Home as one continuous measurement station, not boxed widgets."""
     state = dict(state or {})
     meta = observatory_home_metadata(state)
     rt = scene_runtime
@@ -155,61 +156,75 @@ def render_observatory_home(state: dict[str, Any], *, scene_runtime: SceneRuntim
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
 
+    # Quiet lab header.
     d.rectangle((0, 0, 479, 30), fill=(23, 28, 30))
     d.text((10, 7), "OBSERVATORY", fill=_TRACE, font=_font(14))
-    d.text((112, 9), "MEASUREMENT STATION", fill=_MUTED, font=_font(8))
-    d.text((409, 9), f"{meta['ap_count']} AP", fill=_INK, font=_font(9))
+    d.text((112, 9), "MEASUREMENT STATION // LIVE OBSERVATION", fill=_MUTED, font=_font(7))
+    d.text((432, 9), f"{meta['ap_count']} AP", fill=_INK, font=_font(8))
     _register(rt, SceneLayerSpec(
         "observatory.header", "text", (0, 0, 480, 31),
         signals=("wifi.ap_count",), update_class="live",
     ))
 
-    # Primary live measurement surface.
-    primary = (10, 40, 336, 180)
-    _plot_frame(d, primary, "RF OBSERVATION · CHANNEL / RSSI")
-    _draw_rf_spectrum(d, state, primary)
+    # Main instrument occupies a continuous lab surface. Sparse axes provide
+    # measurement structure without a card/panel container.
+    primary = (10, 40, 342, 205)
+    d.text((12, 42), "RF OBSERVATION // CHANNEL / RSSI", fill=_MUTED, font=_font(8))
+    d.line((34, 64, 34, 190), fill=_EDGE)
+    d.line((34, 190, 336, 190), fill=_EDGE)
+    # Tick marks are functional axis cues, not decorative grid.
+    for x in range(34, 337, 50):
+        d.line((x, 187, x, 193), fill=_EDGE)
+    for y in range(70, 191, 30):
+        d.line((31, y, 37, y), fill=_EDGE)
+    _draw_rf_spectrum(d, state, (10, 42, 342, 208))
     _register(rt, SceneLayerSpec(
         "observatory.spectrum", "graph", primary,
         signals=("wifi.aps", "radio.primary.channel"), update_class="live",
     ))
 
-    # Secondary distribution plot is derived from the same genuine observation set.
-    secondary = (10, 192, 336, 282)
-    _plot_frame(d, secondary, "OBSERVED BAND DISTRIBUTION")
-    _draw_channel_distribution(d, state, secondary)
+    # Secondary distribution is an integrated comparison strip under the main
+    # phenomenon rather than another framed plot card.
+    secondary = (10, 214, 342, 284)
+    d.line((10, 214, 342, 214), fill=_EDGE)
+    d.text((12, 220), "OBSERVED BAND DISTRIBUTION", fill=_MUTED, font=_font(7))
+    d.line((34, 271, 336, 271), fill=_EDGE)
+    _draw_channel_distribution(d, state, (10, 218, 342, 287))
     _register(rt, SceneLayerSpec(
         "observatory.distribution", "graph", secondary,
         signals=("wifi.aps",), update_class="live",
     ))
 
-    # Observer and provenance column.
+    # A ruled observation margin holds identity + provenance. It is visually
+    # part of the laboratory page, not a separate dashboard card.
+    d.line((350, 38, 350, 286), fill=_TRACE, width=1)
     _observer(d, state)
     _register(rt, SceneLayerSpec(
         "observatory.observer", "creature", (366, 46, 454, 158),
         signals=("pwnagotchi.mood", "beast.expression"), update_class="live",
     ))
 
-    d.rectangle((350, 170, 470, 282), fill=_PANEL_2, outline=_EDGE)
-    d.text((360, 179), "PROVENANCE", fill=_MUTED, font=_font(8))
+    d.line((358, 166, 470, 166), fill=_EDGE)
+    d.text((360, 173), "PROVENANCE", fill=_MUTED, font=_font(7))
     kind = meta["capture_kind"].replace("_", " ").upper()
-    # Keep long provenance truthful but compact.
-    d.text((360, 196), kind[:18], fill=_INK, font=_font(8))
+    d.text((360, 190), kind[:18], fill=_INK, font=_font(8))
     if meta["capture_date"]:
-        d.text((360, 210), meta["capture_date"], fill=_MUTED, font=_font(8))
+        d.text((360, 204), meta["capture_date"], fill=_MUTED, font=_font(7))
+    d.line((358, 221, 470, 221), fill=_EDGE)
     gps = "FIX" if meta["gps_fix"] else "NO FIX"
-    d.text((360, 230), f"GPS {gps}", fill=_WARN if not meta["gps_fix"] else _TRACE, font=_font(8))
-    d.text((360, 246), f"CPU {meta['cpu_pct']:.0f}%", fill=_INK, font=_font(8))
-    d.text((414, 246), f"{meta['temp_c']:.0f} C", fill=_INK, font=_font(8))
-    d.text((360, 262), f"MEM {meta['memory_pct']:.1f}%", fill=_INK, font=_font(8))
+    d.text((360, 228), f"GPS {gps}", fill=_WARN if not meta["gps_fix"] else _TRACE, font=_font(8))
+    d.text((360, 244), f"CPU {meta['cpu_pct']:.0f}%  //  {meta['temp_c']:.0f} C", fill=_INK, font=_font(7))
+    d.text((360, 260), f"MEM {meta['memory_pct']:.1f}%", fill=_INK, font=_font(7))
+    d.text((360, 274), f"TUNED CH {meta['channel']}", fill=_WARN, font=_font(7))
     _register(rt, SceneLayerSpec(
-        "observatory.provenance", "instrument", (350, 170, 470, 282),
-        signals=("gps.fix", "system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct"),
+        "observatory.provenance", "instrument", (350, 166, 470, 286),
+        signals=("gps.fix", "system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct", "radio.primary.channel"),
         update_class="live",
     ))
 
-    # Footer explicitly labels this as current observations, not historical replay.
+    # Footer labels data truth explicitly.
     d.line((10, 298, 470, 298), fill=_EDGE)
-    d.text((12, 304), "LIVE/CAPTURED OBSERVATIONS · NO SYNTHETIC HISTORY", fill=_MUTED, font=_font(8))
+    d.text((12, 304), "LIVE/CAPTURED OBSERVATIONS // NO SYNTHETIC HISTORY", fill=_MUTED, font=_font(8))
     _register(rt, SceneLayerSpec(
         "observatory.truth_footer", "text", (10, 294, 470, 318),
         signals=(), update_class="static",
