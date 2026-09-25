@@ -127,3 +127,62 @@ def test_local_api_prefers_published_core_experience_plan_and_summarizes_it():
         "production_navigation_ready_count": 1,
         "tft_activation_enabled": False,
     }
+
+
+def test_core_publishes_pack_experience_plan_with_trusted_renderer_reference():
+    resolver = _Resolver()
+    state = _State({
+        "missions.items": [{
+            "id": "pack_field-experience_field",
+            "label": "Field Companion",
+            "experience": True,
+            "experience_dna_valid": True,
+            "experience_dna": {
+                "visual_family": "expedition",
+                "layout_family": "map_first",
+                "density": "balanced",
+                "motion_profile": "calm_ambient",
+                "creature_presence": "supporting",
+                "utility_bias": "instrument",
+                "playfulness": "low",
+                "alert_style": "field",
+                "doctor_visibility": "contextual",
+                "mystery_level": "discoverable",
+            },
+            "experience_policy": {
+                "requires": ["display.primary"],
+                "optional_requirements": ["location.position"],
+                "preferred_pages": ["home", "recon", "map"],
+                "presentation_engine": "beast_scene",
+                "fallback_policy": "identity_preserving",
+            },
+            "experience_renderer": "atlas",
+            "source_pack": "field-experience",
+            "source_file": "/packs/field/missions/field.json",
+            "theme": "orchard_example",
+            "face_profile": "pack_faces_orbital",
+            "animation_profile": "pack_motion_float",
+            "board": "pack_board_field",
+            "layout": "",
+            "deck": "field",
+            "requirements_met": True,
+        }]
+    })
+    row = ExperiencePlanPublisher(
+        state, resolver=resolver, platform_profile=_Profile()
+    ).snapshot()
+    by_id = {item["experience_id"]: item for item in row["items"]}
+    pack = by_id["pack_field-experience_field"]
+
+    assert row["count"] == 9
+    assert row["builtin_count"] == 8
+    assert row["pack_count"] == 1
+    assert row["pack_errors"] == []
+    assert pack["source"]["kind"] == "pack"
+    assert pack["source"]["pack_id"] == "field-experience"
+    assert pack["renderer_experience_id"] == "atlas"
+    assert pack["page_coverage"]["implemented"] == ["home", "recon"]
+    assert pack["page_coverage"]["missing_preferred"] == ["map"]
+    assert pack["component_refs"]["theme"] == "orchard_example"
+    assert pack["ready_for_preview"] is True
+    assert pack["writes_preferences"] is False
