@@ -143,6 +143,22 @@ def test_diagnostics_surface_shows_patient_chart_and_coverage(tmp_path):
             "os_version_id": "12",
             "pwnagotchi_version": "2.9.5.9",
         },
+        "doctor.patient.memory": {
+            "recurrence": {
+                "service.bettercap": {
+                    "episodes": 2,
+                    "recurrent": True,
+                    "active": True,
+                }
+            }
+        },
+        "doctor.patient.known_good_count": 2,
+        "doctor.patient.known_good_drift": {
+            "found": True,
+            "changed": True,
+            "change_count": 1,
+            "checkpoint": {"label": "healthy baseline"},
+        },
         "health.collector.system.state": "ok",
         "health.collector.system.duration_ms": 4.2,
         "health.collector.system.age_sec": 0.3,
@@ -156,6 +172,11 @@ def test_diagnostics_surface_shows_patient_chart_and_coverage(tmp_path):
     assert "Raspberry Pi 4" in rows[1]["subtitle"]
     assert rows[2]["title"] == "COMPATIBILITY FINGERPRINT"
     assert "2.9.5.9" in rows[2]["subtitle"]
+    assert rows[3]["title"] == "RECURRENCE MEMORY"
+    assert rows[3]["value"] == "RECUR"
+    assert rows[4]["title"] == "KNOWN-GOOD BASELINE"
+    assert rows[4]["value"] == "DRIFT 1"
+    assert "healthy baseline" in rows[4]["subtitle"]
     assert any(row["title"] == "SYSTEM" for row in rows)
 
 
