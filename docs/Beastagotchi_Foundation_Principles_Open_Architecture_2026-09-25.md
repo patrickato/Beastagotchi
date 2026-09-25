@@ -170,6 +170,46 @@ Pack authors may also intentionally publish indivisible small Packs where splitt
 
 ---
 
+
+## 6A. Small-card baseline and storage budgets
+
+Beastagotchi must remain a first-class product on common **16 GB and 32 GB microSD cards**.
+
+Large cards are an expansion option, not a hidden minimum requirement.
+
+Current evidence as of 2026-09-25:
+- current Beastagotchi tracked repository content is only about **3.4 MB** total, including docs and
+  tests; runtime source itself is substantially smaller;
+- the current upstream Jayofelony Pwnagotchi 2.9.5.8 compressed 64-bit image asset is about
+  **1.39 GB** compressed;
+- compressed image size is not the same as installed/used filesystem size, so final distribution
+  budgets must be based on measured post-first-boot free space from the exact reference image.
+
+Design policy:
+- baseline qualification must include 16 GB and 32 GB cards;
+- installation decisions must be based on **actual free bytes**, not nominal card label;
+- reserve explicit headroom for OS updates, logs, handshakes/captures, SQLite/WAL, recovery and
+  temporary transaction space;
+- optional content installation must never consume the reserved safety floor;
+- Pack manifests should declare compressed/download size, installed size, working-set/RAM cost and
+  optional component sizes where useful;
+- content may be evicted/re-fetched only when it is reproducible and not active/pinned;
+- irreplaceable owner data is never treated as cache;
+- the active Experience/face/required assets must remain local and pinned even when their source
+  library is remote/removable.
+
+Provisional product targets (to be replaced by measured reference-Pi evidence):
+- **Core Beastagotchi runtime + essential built-in assets:** aim for well under 250 MB installed;
+- **Recommended Beast extras owned by this project:** aim for under 1 GB total where practical;
+- **16 GB profile:** core + recommended essentials + a small rotating optional-content cache;
+- **32 GB profile:** core + recommended extras + materially larger Pack/face/Experience cache;
+- larger cards: progressively larger local library, never a different architectural requirement.
+
+The ecosystem may be enormous; the mandatory on-card core should remain comparatively small.
+
+
+---
+
 ## 7. Future complete Beastagotchi distribution / installer
 
 Explore a polished distribution/provisioning path that can produce a highly complete supported
