@@ -139,3 +139,11 @@ At the current verified staging checkpoint:
 - stable `main`: **v0.18.1**
 
 The next meaningful truth is first the actual generated renderer after the visual-scene rebuild; the Pi/TFT remains the following physical truth gate.
+
+## Five-way Experience proof evidence — 2026-09-24
+
+CI artifact `v019-experience-home-proofs` now renders Atlas, Forge, Observatory, Habitat and Monolith from the same sanitized real target state and includes a side-by-side `comparison.png`.
+
+Internal result: structural diversification is proven. This is **not owner visual acceptance** and does not close Gate 1.
+
+Next Gate 1 proof is cross-page translation: Atlas into field/recon and Observatory into spectrum/measurement, followed by Habitat progression/memory translation. Physical TFT staging remains blocked until off-screen direction is accepted.
