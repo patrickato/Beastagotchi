@@ -102,6 +102,21 @@ jobs:
           retention-days: 30
 
 
+      - name: Render first non-legacy Experience Home proofs
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_homes.py \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-experience-homes
+
+      - name: Upload non-legacy Experience Home proofs
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-home-proofs
+          path: artifacts/v019-experience-homes
+          if-no-files-found: error
+          retention-days: 30
+
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
