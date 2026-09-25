@@ -42,7 +42,7 @@ def test_shared_transient_notice_renders_all_semantic_kinds():
         )
         assert box == (54, 42, 426, 100)
         # At least some pixels inside the notice differ from the untouched background.
-        assert im.getpixel((55, 43)) != (0, 0, 0)
+        assert im.getpixel((72, 52)) != (0, 0, 0)
 
 
 def test_notice_lifecycle_is_bounded_and_cleanup_safe():
