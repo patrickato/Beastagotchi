@@ -530,3 +530,14 @@ The detailed recovered rationale is preserved in
 `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`.
 
 - Experience DNA expansion: prototype **Atlas -> Forge -> Observatory -> Habitat -> Monolith** as deliberately different whole-product experience families; legacy theme identities remain presets/references rather than the main taxonomy.
+
+### 2026-09-24 Experience-DNA visual proof update
+
+- the first five non-legacy Home proofs are now implemented and CI-rendered from the same sanitized real target state: **Atlas, Forge, Observatory, Habitat, Monolith**;
+- a side-by-side comparison artifact confirms meaningful structural diversity before palette customization;
+- Atlas remains the most card-adjacent and should integrate its edge instruments more organically;
+- Forge needs richer physical/material depth, not additional telemetry density;
+- Observatory currently has the strongest information hierarchy and should be extended into Spectrum/measurement pages next;
+- Habitat requires substantially richer creature/environment art and choreography while protecting creature-first hierarchy;
+- Monolith requires premium typography/transitions and restraint; do not fill its negative space with more widgets;
+- next architecture proof: extend **Atlas** and **Observatory** beyond Home, then Habitat, to prove Experience DNA changes whole-product page language rather than only the landing screen.
