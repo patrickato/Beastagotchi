@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from beastui.experience_atlas import render_atlas_home, render_atlas_recon
 from beastui.experience_observatory import render_observatory_home, render_observatory_spectrum
+from beastui.experience_habitat import render_habitat_home, render_habitat_beast
 from beastui.scene_runtime import SceneRuntime
 
 
@@ -30,6 +31,8 @@ def main()->int:
         ("atlas_recon",render_atlas_recon),
         ("observatory_home",render_observatory_home),
         ("observatory_spectrum",render_observatory_spectrum),
+        ("habitat_home",render_habitat_home),
+        ("habitat_beast",render_habitat_beast),
     ]
     manifest={"purpose":"cross-page Experience-DNA translation proof","pages":{}}
     cards=[]
@@ -41,9 +44,9 @@ def main()->int:
         manifest["pages"][name]={"file":fp.name,"scene":rt.snapshot()}
         cards.append(_card(name.replace("_"," ").upper(),im))
 
-    sheet=Image.new("RGB",(960,700),(8,8,8))
+    sheet=Image.new("RGB",(1440,700),(8,8,8))
     for idx,card in enumerate(cards):
-        sheet.paste(card,((idx%2)*480,(idx//2)*350))
+        sheet.paste(card,((idx%3)*480,(idx//3)*350))
     sheet.save(root/"comparison.png")
     manifest["comparison"]="comparison.png"
     (root/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
