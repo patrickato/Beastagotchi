@@ -120,3 +120,40 @@ def test_doctor_snapshot_and_state_patch_publish_patient_awareness():
         + patch["doctor.coverage.unknown_count"]
         == 10
     )
+
+
+def test_diagnostics_surface_shows_patient_chart_and_coverage(tmp_path):
+    from pathlib import Path
+    from beastui.engine import BeastUI
+
+    root = Path(__file__).resolve().parents[1] / "beastui"
+    ui = BeastUI(root=root, output=str(tmp_path / "diag.png"), theme_id="classic")
+    ui.state = {
+        "doctor.coverage": {
+            "schema": 1,
+            "count": 10,
+            "counts": {"covered": 7, "unavailable": 2, "unknown": 1},
+        },
+        "doctor.patient.identity": {
+            "model": "Raspberry Pi 4 Model B",
+            "architecture": "aarch64",
+            "kernel": "6.6.31",
+            "python_version": "3.13.1",
+            "os_id": "debian",
+            "os_version_id": "12",
+            "pwnagotchi_version": "2.9.5.9",
+        },
+        "health.collector.system.state": "ok",
+        "health.collector.system.duration_ms": 4.2,
+        "health.collector.system.age_sec": 0.3,
+    }
+
+    rows = ui._platform_rows("diagnostics")
+    assert rows[0]["title"] == "DOCTOR COVERAGE"
+    assert rows[0]["value"] == "PARTIAL"
+    assert "7 covered" in rows[0]["subtitle"]
+    assert rows[1]["title"] == "PATIENT CHART"
+    assert "Raspberry Pi 4" in rows[1]["subtitle"]
+    assert rows[2]["title"] == "COMPATIBILITY FINGERPRINT"
+    assert "2.9.5.9" in rows[2]["subtitle"]
+    assert any(row["title"] == "SYSTEM" for row in rows)
