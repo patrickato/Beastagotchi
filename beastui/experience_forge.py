@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
