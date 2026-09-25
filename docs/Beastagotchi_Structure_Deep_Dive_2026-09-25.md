@@ -417,3 +417,173 @@ Preferred future shape:
 
 Avoid two independent growing metadata vocabularies.
 
+
+---
+
+# Layer 2B — Core engines, collectors and lifecycle ownership
+
+## Current shape
+
+`BeastCore` currently:
+- constructs the canonical platform objects;
+- constructs 19 collectors;
+- constructs many independent engines/managers;
+- owns a large number of hand-written async loops;
+- manually creates each task in `run()`;
+- manually chooses cadence and error behavior per loop.
+
+This is functional and understandable at current scale, but every new subsystem increases the size
+and responsibility of the Core composition root.
+
+## Module concept earns a place — as lifecycle metadata, not a forced base class
+
+A first-class **Module** concept appears justified.
+
+The goal is not to force every collector/engine into identical implementation code.
+
+Instead, a ModuleSpec / ModuleRegistration can describe lifecycle and platform behavior around an
+existing object/function.
+
+Candidate metadata:
+- id;
+- kind: collector / engine / service / optional worker;
+- owner/component instance;
+- cadence;
+- source priority;
+- stale threshold;
+- resource class/cost;
+- required capabilities;
+- dependencies/order;
+- enabled predicate;
+- startup behavior;
+- shutdown/checkpoint hook;
+- health probe;
+- failure policy;
+- governor scaling policy;
+- State namespaces/Signals produced;
+- Events produced/consumed;
+- persistence/backup scope.
+
+The implementation may still be:
+- a `Collector.collect()`;
+- an engine `tick()`;
+- an async callback;
+- an event-driven subscriber.
+
+Do not create inheritance complexity merely to make the types look uniform.
+
+## Scheduler
+
+A Core scheduler/ModuleRuntime should own the repeated mechanics:
+- cadence/timers;
+- cancellation;
+- exception handling;
+- health state;
+- duration/runtime telemetry;
+- backoff;
+- stale marking;
+- governor-based cadence scaling where allowed;
+- event/update publication helpers;
+- lifecycle start/stop ordering.
+
+Benefits:
+1. `core.py` becomes a composition manifest rather than dozens of custom loops.
+2. Doctor gets generic module health automatically.
+3. Studio can enumerate running/dormant modules automatically.
+4. ResourceGovernor can influence optional/expensive cadence systemically.
+5. Dormant optional capabilities can truly sleep.
+6. Future Packs/providers can register bounded workers without editing Core's task list.
+7. Performance attribution becomes much easier.
+
+## Important governor distinction
+
+Do **not** globally slow essential truth collectors merely because the Pi is hot.
+
+Suggested resource classes:
+- **critical/control** — health, power/thermal, presentation ownership, essential Pwnagotchi/bridge
+  truth; never arbitrarily starved;
+- **live/operational** — radio/GPS/core platform state; limited reduction only when safe;
+- **derived** — overview, topology, library indexing, compatibility calculations;
+- **ambient/optional** — decorative/previews/background enrichment; aggressively reducible/dormant.
+
+The governor should express budgets/policy.
+The scheduler should enforce the policy according to each module's declared class.
+
+## Event-driven modules
+
+Not every future module should poll.
+
+ModuleRuntime should allow:
+- periodic/tick;
+- event subscription;
+- signal-change subscription;
+- on-demand/procedure;
+- startup-only;
+- idle/dormant until capability exists.
+
+This is important for a large ecosystem with a small active working set.
+
+## Core composition root
+
+Preferred future Core shape:
+
+    StateRegistry
+    Store
+    EventBus
+    Registries
+    ResourceGovernor
+    ModuleRuntime
+    ActionBroker
+    TransactionEngine
+    API
+
+then:
+
+    register(core_modules)
+    discover(trusted_extension_modules)
+    validate_dependencies()
+    start()
+
+instead of Core manually understanding every subsystem's loop.
+
+## Duplicate conceptual managers — confirmed structural debt
+
+`BeastCore` owns:
+- `self.roster`;
+- `self.global_sync`;
+- `self.memories`.
+
+`ActionBroker` currently constructs separate:
+- `BeastRoster(store)`;
+- `GlobalProfileSync(...)`;
+- `BeastMemoryEngine(...)`.
+
+Current severity:
+- `BeastRoster` appears DB-backed and re-reads active state rather than caching it, so immediate
+  divergence risk is lower than first suspected;
+- the duplicate objects also share the same Store/SQLite connection.
+
+Nevertheless this is the wrong ownership shape.
+
+### Recommendation
+Inject the Core-owned roster/global-sync/memory instances into ActionBroker.
+
+Reasons:
+- one conceptual owner represented by one runtime object;
+- future in-memory caches cannot silently diverge;
+- tests can assert identity;
+- Action path and progression path share the same lifecycle;
+- fewer hidden object graphs.
+
+This is a relatively cheap, high-value cleanup and should likely precede large progression/
+breeding expansion.
+
+## What should stay deliberately simple
+
+- collector implementations may remain simple classes;
+- physical/debounce thresholds do not need dynamic plug-in systems;
+- Core should remain one local process unless measurement proves a separate process is necessary;
+- the scheduler should not become a mini-Kubernetes/systemd clone.
+
+Use familiar lifecycle concepts without reproducing an operating system inside Beastagotchi.
+
