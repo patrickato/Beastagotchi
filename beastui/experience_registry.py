@@ -6,9 +6,9 @@ from typing import Any, Callable
 from PIL import Image
 
 from .experience_atlas import render_atlas_home, render_atlas_recon
-from .experience_forge import render_forge_home
+from .experience_forge import render_forge_home, render_forge_system
 from .experience_habitat import render_habitat_home, render_habitat_beast
-from .experience_monolith import render_monolith_home
+from .experience_monolith import render_monolith_home, render_monolith_overview
 from .experience_observatory import render_observatory_home, render_observatory_spectrum
 from .scene_runtime import SceneRuntime
 
@@ -43,11 +43,13 @@ def _register(experience_id: str, page_id: str, renderer: Renderer, *, status="p
 _register("atlas", "home", render_atlas_home)
 _register("atlas", "recon", render_atlas_recon)
 _register("forge", "home", render_forge_home)
+_register("forge", "system", render_forge_system)
 _register("observatory", "home", render_observatory_home)
 _register("observatory", "spectrum", render_observatory_spectrum)
 _register("habitat", "home", render_habitat_home)
 _register("habitat", "beast", render_habitat_beast)
 _register("monolith", "home", render_monolith_home)
+_register("monolith", "overview", render_monolith_overview)
 
 
 def get_experience_renderer(experience_id: str, page_id: str) -> ExperiencePageRenderer | None:
