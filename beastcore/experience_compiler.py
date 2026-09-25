@@ -311,8 +311,10 @@ def compile_builtin_catalog(
     context: str | None = None,
     resolver: DependencyCapabilityResolver | None = None,
     renderer_coverage: dict[str, list[str]] | None = None,
+    native_target_coverage: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     coverage = renderer_coverage or {}
+    targets = native_target_coverage or {}
     return [
         compile_experience(
             experience_id,
@@ -320,6 +322,7 @@ def compile_builtin_catalog(
             context=context,
             resolver=resolver,
             renderer_pages=coverage.get(experience_id, []),
+            renderer_native_targets=targets.get(experience_id, ["reference"]),
         )
         for experience_id in BUILTIN_EXPERIENCE_DNA
     ]
