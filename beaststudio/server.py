@@ -111,7 +111,7 @@ main{display:grid;grid-template-columns:330px minmax(520px,1fr) 300px;height:cal
 <div id="globalStatus" class="status"></div></div>
 <div class="group"><h3>EXACT PUBLIC SNAPSHOT</h3><div class="mini">This is the sanitized JSON that a future Global connector would be allowed to send. Fields not shown here are not part of the public mirror.</div><pre id="globalPreview" class="status" style="max-height:420px;overflow:auto;white-space:pre-wrap"></pre></div>
 </section>
-<section id="search" class="section hidden"><h3>UNIVERSAL BEAST SEARCH</h3><div class="mini">Search offline Field Library documents, BeastDex networks, Capture Vault, durable events and canonical telemetry from one place.</div><label>Search</label><input id="searchQuery" placeholder="GPS, display, network, capture…"><button id="runSearch" style="margin-top:8px">SEARCH BEAST</button><div class="group"><h3>FIELD LIBRARY IMPORT</h3><div class="mini">Import a manual, note, PDF, EPUB or ZIM into Beast’s offline library. Files are stored locally; indexing is automatic.</div><input id="libraryFile" type="file"><button id="uploadLibrary" style="margin-top:7px">IMPORT OFFLINE DOCUMENT</button></div><div id="searchResults" class="group"></div></section><section id="ops" class="section hidden"><h3>BEAST COMMAND CENTER</h3><div class="mini">Whole-platform state, services, tasks, displays and optional runtimes. Service restarts use the same audited Action Broker as the future Beast Operator.</div><button id="refreshOps" style="margin-top:9px">REFRESH OPERATIONS</button><div id="opsSummary" class="group"></div><div id="opsResources" class="group"></div><div id="opsPresentation" class="group"></div><div id="opsIncidents" class="group"></div><div id="opsServices" class="group"></div><div id="opsBackups" class="group"></div><div id="opsSupport" class="group"></div><div id="opsTasks" class="group"></div></section>
+<section id="search" class="section hidden"><h3>UNIVERSAL BEAST SEARCH</h3><div class="mini">Search offline Field Library documents, BeastDex networks, Capture Vault, durable events and canonical telemetry from one place.</div><label>Search</label><input id="searchQuery" placeholder="GPS, display, network, capture…"><button id="runSearch" style="margin-top:8px">SEARCH BEAST</button><div class="group"><h3>FIELD LIBRARY IMPORT</h3><div class="mini">Import a manual, note, PDF, EPUB or ZIM into Beast’s offline library. Files are stored locally; indexing is automatic.</div><input id="libraryFile" type="file"><button id="uploadLibrary" style="margin-top:7px">IMPORT OFFLINE DOCUMENT</button></div><div id="searchResults" class="group"></div></section><section id="ops" class="section hidden"><h3>BEAST COMMAND CENTER</h3><div class="mini">Whole-platform state, services, tasks, displays and optional runtimes. Service restarts use the same audited Action Broker as the future Beast Operator.</div><button id="refreshOps" style="margin-top:9px">REFRESH OPERATIONS</button><div id="opsSummary" class="group"></div><div id="opsResources" class="group"></div><div id="opsPresentation" class="group"></div><div id="opsIncidents" class="group"></div><div id="opsServices" class="group"></div><div id="opsBackups" class="group"></div><div id="opsDoctor" class="group"></div><div id="opsSupport" class="group"></div><div id="opsTasks" class="group"></div></section>
 </aside>
 <section class="preview"><div class="device"><div id="displayBadge" class="deviceBadge">REFERENCE 480 × 320</div><div class="screenWrap"><img id="screen" alt="Exact Beastagotchi preview"><div id="layoutOverlay"></div></div></div><div class="hint"><span id="previewModeLabel">Exact Beast UI compositor</span><span id="previewMeta">draft not applied</span></div></section>
 <aside class="right"><section class="section"><h3>DRAFT CONTROL</h3><div class="mini">Everything here is a draft until Apply. Preview uses current Beast Core telemetry and the same renderer as the physical TFT.</div><div class="group"><div class="row"><button id="undo">UNDO</button><button id="redo">REDO</button></div><button id="apply" class="primary" style="margin-top:8px">APPLY TO BEAST</button><button id="reset" style="margin-top:7px">RESET DRAFT</button><div id="status" class="status"></div></div><div class="group"><h3>NAMED VARIANTS</h3><input id="variantName" placeholder="My Field Setup" maxlength="64"><button id="saveVariant" style="margin-top:7px">SAVE CURRENT DRAFT</button><select id="variantList" style="margin-top:7px"></select><div class="row" style="margin-top:7px"><button id="loadVariant">LOAD</button><button id="deleteVariant">DELETE</button></div></div><div class="group"><h3>COMPOSITION PIPELINE</h3><div class="arch"><span class="badge">Live Data</span><span class="badge">Widget</span><span class="badge">Renderer</span><span class="badge">Layout</span><span class="badge">Theme</span><span class="badge">Animation</span></div><p class="mini">Dashboard binding, palettes, decks and saved variants now share the same draft → exact preview → atomic Apply path. Arbitrary drag/resize composition builds on this model.</p></div></section></aside></main>
@@ -433,6 +433,16 @@ let svc=$('opsServices');svc.innerHTML='<h3>SERVICES</h3>';
 
 let bk=$('opsBackups');bk.innerHTML='<h3>BACKUP / RECOVERY</h3>';let b=document.createElement('button');b.textContent='CREATE RECOVERY BACKUP';b.onclick=()=>createBackup(b);bk.append(b);(x.backups?.items||[]).slice(0,4).forEach(r=>{let d=document.createElement('div');d.className='plugin';d.style.marginTop='6px';let top=document.createElement('div');top.className='pluginTop';let n=document.createElement('span');n.className='pluginName';n.textContent=r.name||'backup';let st=document.createElement('span');st.className='pill '+(r.valid?'on':'');st.textContent=r.valid?'STRUCTURE OK':'CHECK';top.append(n,st);d.append(top);let meta=document.createElement('div');meta.className='mini';meta.textContent=String(r.size_human||r.size_bytes||'');d.append(meta);let vb=document.createElement('button');vb.textContent='VERIFY FOR RESTORE';vb.onclick=()=>verifyBackup(r.name,vb);d.append(vb);bk.append(d)});
 
+let dr=$('opsDoctor');dr.innerHTML='<h3>BEAST DOCTOR / PATIENT CHART</h3>';
+let ds=x.doctor||{},pm=(ds.patient||{}).memory||{},kg=(ds.patient||{}).known_good||{},drift=kg.drift||{},rec=pm.recurrence||{};
+let recurrent=Object.values(rec).filter(r=>r&&r.recurrent).length,activeRec=Object.values(rec).filter(r=>r&&r.active).length;
+let dc=document.createElement('div');dc.className='widget';
+let driftCount=Number(drift.change_count||0),kgCount=Number(pm.known_good_count||0);
+dc.innerHTML=`<div class="widgetHead"><b>PATIENT MEMORY</b><span class="pill ${driftCount?'':'on'}">${driftCount?'DRIFT '+driftCount:'BASELINE '+(kgCount?'MATCH':'NOT SAVED')}</span></div>
+<div class="mini">${kgCount} known-good baseline${kgCount===1?'':'s'} · ${Object.keys(rec).length} remembered incident kinds · ${recurrent} recurrent · ${activeRec} active</div>
+<div class="mini">Saving a baseline records privacy-light build/configuration identity only. It does not change services, providers, UI ownership or Pwnagotchi config.</div>`;
+let db=document.createElement('button');db.textContent='SAVE KNOWN-GOOD BASELINE';db.style.marginTop='7px';db.onclick=()=>saveDoctorKnownGood(db);dc.append(db);dr.append(dc);
+
 let sp=$('opsSupport');sp.innerHTML='<h3>SUPPORT / DIAGNOSTICS</h3><div class="mini">Creates a privacy-sanitized troubleshooting bundle. Network identities, GPS coordinates, credentials, raw config and raw logs are excluded.</div>';let sb=document.createElement('button');sb.textContent='CREATE SANITIZED SUPPORT BUNDLE';sb.style.marginTop='7px';sb.onclick=()=>createSupportBundle(sb);sp.append(sb);
 
 let jobs=$('opsTasks');jobs.innerHTML='<h3>TASK CENTER</h3>';((x.jobs||{}).items||[]).slice(0,8).forEach(r=>{let d=document.createElement('div');d.className='widget';let p=typeof r.progress==='number'?Math.round(r.progress*100)+'%':String(r.status||'').toUpperCase();d.innerHTML=`<div class="widgetHead"><span class="pluginName">${r.label||r.kind}</span><span class="pill ${r.status==='complete'?'on':''}">${p}</span></div><div class="mini">${r.detail||''}</div>`;jobs.append(d)});if(!((x.jobs||{}).items||[]).length)jobs.innerHTML+='<div class="status">No recorded background jobs yet.</div>'
@@ -441,6 +451,20 @@ function fmt(v,suffix=''){if(v===null||v===undefined||v==='')return '--';let n=N
 
 async function restartService(unit,btn){if(!confirm(`Restart ${unit}?`))return;btn.disabled=true;$('status').textContent='Planning service restart…';try{let plan=await jfetch('/api/service-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({unit})});if(!(plan.plan||{}).allowed)throw Error(((plan.plan||{}).blockers||['blocked']).join('; '));let r=await jfetch('/api/service-restart',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({unit})});$('status').textContent=`${unit}: ${(r.action_row||{}).status||r.error||'unknown'}`;await new Promise(x=>setTimeout(x,1200));await loadOps()}catch(e){$('status').textContent='Service restart failed: '+e;btn.disabled=false}}
 $('refreshOps').onclick=loadOps;
+
+async function saveDoctorKnownGood(btn){
+  let label=prompt('Known-good baseline label','healthy baseline');
+  if(label===null)return;label=String(label||'owner').trim().slice(0,80)||'owner';
+  btn.disabled=true;$('status').textContent='Planning Doctor baseline…';
+  try{
+    let plan=await jfetch('/api/doctor-known-good-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({label})});
+    let p=plan.plan||plan;if(!p.allowed)throw Error((p.blockers||['blocked']).join('; '));
+    let r=await jfetch('/api/doctor-known-good-save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({label})});
+    let row=r.action_row||r,result=row.result||{};
+    $('status').textContent=result.saved?'Doctor known-good baseline saved.':('Doctor baseline unchanged: '+(result.reason||'no change'));
+    await loadOps();
+  }catch(e){$('status').textContent='Doctor baseline save failed: '+e;btn.disabled=false}
+}
 
 async function openLibraryDocument(id){try{let r=await fetch('/api/library-file?id='+encodeURIComponent(id),{headers:{'X-Beast-Studio-Token':TOKEN}});if(!r.ok)throw Error(await r.text());let b=await r.blob();let u=URL.createObjectURL(b);window.open(u,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){$('status').textContent='Document open failed: '+e}}
 async function uploadLibraryDocument(){let f=$('libraryFile').files[0];if(!f){$('status').textContent='Choose a Field Library file first.';return}let b=$('uploadLibrary');b.disabled=true;$('status').textContent='Importing '+f.name+'…';try{let r=await fetch('/api/library-upload?name='+encodeURIComponent(f.name),{method:'PUT',headers:{'X-Beast-Studio-Token':TOKEN,'Content-Type':'application/octet-stream'},body:f});let x=await r.json();if(!r.ok)throw Error(x.error||r.statusText);$('status').textContent=`Imported ${x.name}. Beast will index it automatically within about a minute.`;$('libraryFile').value=''}catch(e){$('status').textContent='Library import failed: '+e}finally{b.disabled=false}}
@@ -723,6 +747,18 @@ class StudioState:
     def service_restart(self,obj: dict)->dict:
         return self.actions.perform('service.restart',{'unit':str(obj.get('unit') or '')})
 
+    def doctor_known_good_plan(self,obj: dict)->dict:
+        return self.actions.plan(
+            'doctor.known_good_save',
+            {'label':str(obj.get('label') or 'owner')[:80]},
+        )
+
+    def doctor_known_good_save(self,obj: dict)->dict:
+        return self.actions.perform(
+            'doctor.known_good_save',
+            {'label':str(obj.get('label') or 'owner')[:80]},
+        )
+
     def backup_plan(self)->dict:
         return self.actions.plan('backup.create',{})
 
@@ -913,13 +949,15 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:return self._send(400,{'error':'invalid json'})
         try:
             if path in {'/api/preview','/api/apply'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
-            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/experience-preview','/api/experience-try-plan','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
+            if path in {'/api/plugin-plan','/api/plugin-toggle','/api/service-plan','/api/service-restart','/api/doctor-known-good-plan','/api/doctor-known-good-save','/api/backup-plan','/api/backup-create','/api/support-plan','/api/support-create','/api/variant-save','/api/variant-load','/api/variant-delete','/api/update-policy','/api/pack-inspect','/api/pack-stage','/api/pack-install-plan','/api/pack-install','/api/pack-rollback-plan','/api/pack-rollback','/api/pack-activate-plan','/api/pack-activate','/api/pack-deactivate-plan','/api/pack-deactivate','/api/update-stage-plan','/api/update-stage','/api/update-pack-plan','/api/update-pack-apply','/api/experience-draft','/api/experience-preview','/api/experience-try-plan','/api/global-policy','/api/roster-switch','/api/roster-presentation','/api/roster-presentation-clear','/api/roster-synthesis-plan','/api/roster-synthesize','/api/roster-legend','/api/presentation-plan','/api/capsule-preview','/api/capsule-qr'} and not self._auth():return self._send(403,{'error':'paired Studio token required'})
             if path=='/api/preview':return self._send(200,self.st.preview(obj),'image/png')
             if path=='/api/capsule-preview':return self._send(200,self.st.capsule_preview(obj))
             if path=='/api/capsule-qr':return self._send(200,self.st.capsule_qr_png(obj),'image/png')
             if path=='/api/apply':return self._send(200,self.st.apply(obj))
             if path=='/api/service-plan':return self._send(200,self.st.service_plan(obj))
             if path=='/api/service-restart':return self._send(200,self.st.service_restart(obj))
+            if path=='/api/doctor-known-good-plan':return self._send(200,self.st.doctor_known_good_plan(obj))
+            if path=='/api/doctor-known-good-save':return self._send(200,self.st.doctor_known_good_save(obj))
             if path=='/api/backup-plan':return self._send(200,self.st.backup_plan())
             if path=='/api/backup-create':return self._send(200,self.st.backup_create())
             if path=='/api/support-plan':return self._send(200,self.st.support_plan())
