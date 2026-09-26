@@ -121,9 +121,7 @@ class RegisteredActionBroker(ActionBroker):
                 namespace_owner='core',
                 trust_tier='core',
             ),
-            planner=lambda payload: self.pack_install_transaction.plan(
-                type('_PlanContext', (), {'request': dict(payload or {})})()
-            ),
+            planner=lambda payload: self.pack_installer.plan_install(str(payload.get('id') or '')),
             performer=lambda payload, actor: self._perform_pack_install(payload, actor),
             authority='maintainer',
             risk='C2',
