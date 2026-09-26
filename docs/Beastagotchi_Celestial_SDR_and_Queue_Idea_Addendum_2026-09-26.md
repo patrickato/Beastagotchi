@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-26  
 **Status:** preserved brainstorming / discussion candidates; not frozen implementation canon  
-**Purpose:** capture several cross-layer ideas raised immediately before the Doctor deep-dive so they are not lost during later capability exploration.
+**Purpose:** capture several cross-layer ideas raised immediately before and during the Doctor deep-dive so they are not lost during later capability exploration.
 
 ---
 
@@ -86,7 +86,7 @@ Do not create a new subsystem unless existing provider/runtime/arbitration contr
 
 ---
 
-# 3. SDR: task-focused experiences instead of one giant SDR application
+# 3. SDR: focused experiences **and** complete expert applications
 
 Owner proposed breaking the enormous RTL-SDR / SDR++ / GQRX / SDR# / GNU Radio / SDRTrunk-style universe into **focused capability slices**.
 
@@ -95,6 +95,26 @@ Core idea:
 > The user chooses what they want to experience, and Beast composes/configures the underlying SDR software, decoder, data, audio and UI needed for that purpose.
 
 The owner should not need to master a giant general-purpose SDR console just to perform one common task.
+
+**Important clarification:** this guided layer must not replace, hide or cripple access to the complete software.
+
+Preferred product rule:
+
+> **Guided does not mean restricted.**
+
+Where a full application is installed/available, the owner should also be able to launch and use it in its complete unmodified/expert form.
+
+Potential presentation:
+
+- **Guided / Focused Experience** — Beast-configured Broadcast Radio, ADS-B, AIS, Weather, etc.;
+- **Open Full Tool** — launch the complete SDR application/toolchain when the owner wants unrestricted expert access;
+- optionally **Advanced** inside the guided experience for progressively deeper controls without leaving Beast.
+
+The focused Beast experience is therefore an easier doorway over shared capability contracts, not a replacement for SDR++, GQRX, GNU Radio, SDRTrunk or other complete applications.
+
+This pattern may generalize well beyond SDR:
+
+> complex full application remains available; Beast may additionally offer focused/guided task experiences on top of it.
 
 Candidate focused experiences/categories include, subject to hardware, local regulation, protocol availability and implementation feasibility:
 
@@ -146,7 +166,7 @@ Possible interaction:
 - select a focused domain (Broadcast / Aviation / Maritime / Weather / Amateur / Sensors / Spectrum Lab);
 - Beast chooses a safe/default starting profile;
 - tutorial explains the current controls in context;
-- user can switch between **Simple** and **Advanced** views;
+- user can switch between **Simple**, **Advanced**, and where appropriate **Open Full Tool**;
 - changes visibly demonstrate what each setting does.
 
 Tutorial/reference topics may include:
@@ -184,7 +204,7 @@ Candidate behavior:
 - Beast uses current/selected location plus an offline/online frequency/provider database where available;
 - relevant local receive presets are offered;
 - hardware capability and antenna limitations are explained;
-- user may immediately listen/view, learn through tutorial, or save a profile;
+- user may immediately listen/view, learn through tutorial, save a profile, or open the underlying full expert tool;
 - when travelling, presets can refresh for the new area.
 
 Potential examples:
@@ -225,6 +245,8 @@ Focused experiences then compose those primitives with optional packages/service
 - creature/Experience reactions;
 - Search/Field Library knowledge.
 
+Full expert programs remain separately launchable and may consume the same underlying hardware/provider through explicit ownership/arbitration.
+
 This follows “overlapping, not conflicting”: many experiences reuse one provider instead of each inventing an SDR stack.
 
 Resource arbitration must explain when one physical tuner cannot satisfy two incompatible tuning tasks at once. Multiple tuners/providers may expand simultaneous capability later.
@@ -244,6 +266,7 @@ Candidate generic **Acquisition Queue** / resource-request concept:
 A subsystem may request:
 
 - package/tool;
+- driver/module where supported;
 - manual/document;
 - map region;
 - frequency/catalog dataset;
@@ -259,15 +282,20 @@ If unavailable now:
 2. tell/offer the owner;
 3. allow `Queue for next connection` / `Queue for Home Base` / dismiss;
 4. on an allowed connection (Home Base, phone tether, WebUI-triggered connection, etc.), resolve trusted source/dependencies;
-5. download/stage;
-6. verify integrity/provenance where possible;
-7. automatically sort/store/index it into the appropriate managed location;
-8. notify the requesting subsystem/resource state;
-9. apply/install only according to normal policy/Action/Transaction rules.
+5. download into managed staging;
+6. verify integrity/provenance/compatibility where possible;
+7. unpack/prepare as needed;
+8. install/apply only through the normal authority/Action/Transaction path;
+9. verify the requested capability now exists/works;
+10. retain only artifacts explicitly needed for runtime/recovery/cache policy;
+11. remove temporary archives, extracted staging trees and install debris;
+12. update canonical inventory/Device Passport/Doctor evidence;
+13. notify the requesting subsystem/resource state.
 
 This can unify many existing ideas:
 
 - Doctor temporary helper acquisition;
+- missing driver/helper resolution;
 - offline maps;
 - manuals/wiki/docs;
 - Pack/content downloads;
@@ -276,11 +304,78 @@ This can unify many existing ideas:
 - user download queue;
 - optional AI model/content assets later.
 
-“Download” and “install/apply” remain separate concepts.
+“Download,” “stage,” “install/apply,” “retain,” and “cleanup” remain separate lifecycle concepts.
 
 ---
 
-# 8. Claude as an available project resource
+# 8. Doctor resource-resolution lifecycle
+
+Owner strengthened `find -> use -> put it back` into a broader desired Doctor behavior.
+
+When Doctor detects a missing requirement (driver, package, runtime, library, helper, reference data, etc.), it should be able to search all appropriate available sources rather than immediately stopping at “not installed.”
+
+Candidate resolution order:
+
+1. already installed/present but not detected/configured;
+2. Beast-managed local cache/content pool;
+3. owner/local storage/library;
+4. previously downloaded/staged resources;
+5. trusted Home Base/NAS content source;
+6. trusted package repositories/vendor/project source;
+7. known official GitHub/release source;
+8. broader online Search/knowledge only as discovery evidence, with stronger verification required before managed installation;
+9. queue for later acquisition if no permitted connectivity exists.
+
+Example driver/package lifecycle:
+
+> detect missing requirement -> identify compatible exact resource -> locate source -> stage archive/package -> verify -> unpack if needed -> snapshot/plan -> install/configure -> verify functionality -> commit -> remove temporary ZIP/archive/extracted staging folder -> update inventory -> retain only what policy says is needed.
+
+If verification fails:
+
+> rollback -> clean staging/debris -> preserve diagnostic evidence -> offer next hypothesis/owner action.
+
+Important rules:
+
+- Doctor should not blindly install an arbitrary web result;
+- exact hardware/kernel/runtime compatibility matters;
+- known/trusted/owner-approved sources should outrank generic web discoveries;
+- driver/kernel changes may require reboot/probation and stronger rollback planning;
+- offline field use should be able to create a pending resource request for Home Base/next connectivity;
+- cleanup belongs to the same transaction/lifecycle, not an afterthought.
+
+This reinforces the owner phrase:
+
+> **Doctor finds it -> uses it -> puts it back.**
+
+And broadens “puts it back” to mean **return the system to a clean intentional state**, not necessarily uninstall a runtime component that must remain installed.
+
+---
+
+# 9. Cleanup / post-operation hygiene
+
+Any managed acquisition/install/unpack workflow should register temporary artifacts with cleanup ownership so they cannot become mystery debris.
+
+Examples:
+
+- downloaded ZIP/TAR/package;
+- extracted temporary directory;
+- temporary build tree;
+- transient logs beyond retention policy;
+- temporary helper binaries;
+- caches explicitly marked disposable.
+
+Preferred behavior:
+
+- successful Transaction performs its own post-commit cleanup;
+- rollback performs cleanup appropriate to the failed path;
+- interrupted operations leave enough journal metadata for recovery/cleanup later;
+- broader scheduled `Clean Up`/housekeeping can catch orphaned registered debris without deleting unknown owner files.
+
+Never equate “cleanup” with indiscriminate filesystem deletion.
+
+---
+
+# 10. Claude as an available project resource
 
 Preserve that the owner considers Claude/another AI collaborator continuously available as a second-brain resource during development.
 
@@ -304,14 +399,15 @@ The GitHub branch/review workflow already supports this style.
 
 ---
 
-# 9. Where these ideas belong in the remaining discussion order
+# 11. Where these ideas belong in the remaining discussion order
 
 ## Doctor deep-dive
-Include generic queued acquisition and `find -> use -> put back` behavior where Doctor needs missing resources.
+Include generic queued acquisition, resource resolution, transaction cleanup and `find -> use -> put back` behavior where Doctor needs missing resources.
 
 ## Capability Expansion Pass
 Explicitly include:
 - focused SDR experiences;
+- full expert-program access alongside guided experiences;
 - radio/sensor/sky capability families;
 - task-oriented front ends over complex expert software;
 - automatic dependency/capability discovery;
@@ -327,15 +423,16 @@ Explicitly revisit:
 - SDR + Expedition;
 - hardware sense + creature expression;
 - generic Acquisition Queue + Home Base;
-- one provider powering multiple focused experiences.
+- one provider powering multiple focused experiences;
+- focused guided experience + unrestricted full expert tool.
 
 ## AI discussion
 Separate runtime AI possibilities from Claude-as-development-collaborator use.
 
 ---
 
-# 10. Status
+# 12. Status
 
 These ideas are **preserved, not finalized**.
 
-Do not silently promote exact SDR categories, legal assumptions, celestial UI, astrology behavior, acquisition policy or resource arbitration semantics into implementation until the relevant jam/reconciliation checkpoint.
+Do not silently promote exact SDR categories, legal assumptions, celestial UI, astrology behavior, acquisition policy, resource arbitration semantics, automated driver installation scope or cleanup policy into implementation until the relevant jam/reconciliation checkpoint.
