@@ -5,122 +5,18 @@
   "tranche_status": "foundation_block_complete_pending_physical_validation_where_marked",
   "status_vocabulary": ["planned", "adapter_available", "partially_migrated", "canonical", "legacy_retained", "legacy_removable"],
   "items": [
-    {
-      "id": "runtime.stateful_manager_ownership",
-      "target_contract": "one conceptual owner per stateful manager",
-      "status": "canonical",
-      "runtime_path": "beastcore.core.BeastCore",
-      "legacy_path": null,
-      "evidence": ["tests/test_v019_runtime_ownership_thread_store.py::test_core_action_broker_uses_core_owned_stateful_managers", "tests/test_v019_registered_action_broker.py::test_runtime_core_uses_registered_action_broker_and_shared_managers"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "persistence.sqlite_thread_ownership",
-      "target_contract": "one normal SQLite connection per calling thread",
-      "status": "canonical",
-      "runtime_path": "beastcore.thread_store.ThreadBoundStore",
-      "legacy_path": "beastcore.db.Store for isolated/non-runtime callers",
-      "evidence": ["tests/test_v019_runtime_ownership_thread_store.py::test_thread_bound_store_uses_distinct_same_thread_connections", "tests/test_v019_runtime_ownership_thread_store.py::test_worker_roster_action_updates_the_same_core_roster"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "bridge.restart_sequence",
-      "target_contract": "bridge event sequence is scoped to a bridge instance/session",
-      "status": "canonical",
-      "runtime_path": "pwnagotchi_plugin/beast_bridge.py + beastcore/collectors/bridge.py",
-      "legacy_path": "legacy bridge files accepted through conservative restart fallback",
-      "evidence": ["bridge regression suite in PR #22"],
-      "physical_validation_required": true
-    },
-    {
-      "id": "bridge.runtime_privacy",
-      "target_contract": "bridge runtime state is owner/root-private by default",
-      "status": "canonical",
-      "runtime_path": "pwnagotchi_plugin/beast_bridge.py",
-      "legacy_path": null,
-      "evidence": ["bridge state permission regression test in PR #22"],
-      "physical_validation_required": true
-    },
-    {
-      "id": "presentation.preference_store",
-      "target_contract": "one presentation preference persistence contract",
-      "status": "partially_migrated",
-      "runtime_path": "beastui.presentation_preferences.PresentationPreferenceStore",
-      "legacy_path": "BeastUI/Studio internal serialization remains behind runtime adapters until composition-root cleanup",
-      "evidence": ["tests/test_v019_presentation_preference_store.py", "tests/test_v019_preference_runtime_adapters.py"],
-      "physical_validation_required": true
-    },
-    {
-      "id": "registry.typed_substrate",
-      "target_contract": "typed registries with stable ids, trust metadata, generations and atomic candidate activation",
-      "status": "adapter_available",
-      "runtime_path": "beastcore.registry + beastcore.spec_registry",
-      "legacy_path": null,
-      "evidence": ["tests/test_v019_typed_registries.py"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "registry.action_specs",
-      "target_contract": "Action planning/execution is registered rather than duplicated switch dispatch",
-      "status": "partially_migrated",
-      "runtime_path": "beastcore.registered_actions.RegisteredActionBroker",
-      "legacy_path": "beastcore.actions.ActionBroker fallback for unmigrated actions",
-      "evidence": ["tests/test_v019_registered_action_broker.py", "tests/test_v019_pack_shared_transactions.py::test_registered_pack_install_links_action_outer_and_inner_transactions"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "registry.signal_specs",
-      "target_contract": "canonical SignalSpecRegistry",
-      "status": "adapter_available",
-      "runtime_path": "beastcore.spec_registry.SignalSpecRegistry",
-      "legacy_path": "beastcore.signals.SignalCatalog remains active semantic catalog",
-      "evidence": ["tests/test_v019_typed_registries.py::test_signal_registry_forbids_privacy_downgrade"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "registry.event_specs",
-      "target_contract": "canonical EventSpecRegistry",
-      "status": "adapter_available",
-      "runtime_path": "beastcore.spec_registry.EventSpecRegistry",
-      "legacy_path": "beastcore.events.EventBus remains active event transport",
-      "evidence": ["tests/test_v019_typed_registries.py::test_event_registry_forbids_privacy_downgrade"],
-      "physical_validation_required": false
-    },
-    {
-      "id": "transactions.shared_engine",
-      "target_contract": "one shared durable Transaction Engine/journal",
-      "status": "partially_migrated",
-      "runtime_path": "beastcore.transactions.TransactionEngine + FileTransactionJournal",
-      "legacy_path": "Pack install now uses the shared outer engine; Pack inner journal/rollback, Pack rollback action, update and backup transaction behavior remain retained until individually migrated",
-      "evidence": ["tests/test_v019_transaction_engine.py", "tests/test_v019_pack_shared_transactions.py"],
-      "physical_validation_required": true
-    },
-    {
-      "id": "transactions.pack_install",
-      "target_contract": "registered Pack install executes through shared Transaction Engine while preserving proven Pack rollback safeguards during migration",
-      "status": "partially_migrated",
-      "runtime_path": "RegisteredActionBroker -> TransactionEngine -> PackInstallTransactionAdapter -> PackInstallManager",
-      "legacy_path": "PackInstallManager inner transaction journal/automatic rollback intentionally retained; pack.rollback remains legacy ActionBroker path",
-      "evidence": ["tests/test_v019_pack_shared_transactions.py::test_registered_pack_install_links_action_outer_and_inner_transactions", "tests/test_v019_pack_shared_transactions.py::test_pack_rollback_remains_legacy_action_during_incremental_migration", "tests/test_v019_pack_shared_transactions.py::test_outer_verification_failure_uses_inner_pack_rollback_to_restore_previous", "tests/test_v019_pack_shared_transactions.py::test_inner_pack_failure_with_verified_auto_rollback_is_not_double_mutated", "GitHub Actions run 703: code-head full suite success"],
-      "physical_validation_required": true
-    },
-    {
-      "id": "runtime.module_scheduler",
-      "target_contract": "recurring work declared and owned by ModuleRuntime/Scheduler",
-      "status": "planned",
-      "runtime_path": null,
-      "legacy_path": "BeastCore asyncio loops and collector loops",
-      "evidence": [],
-      "physical_validation_required": true
-    },
-    {
-      "id": "presentation.surface_stack",
-      "target_contract": "SurfaceRegistry/SurfaceStack/InputRouter/NavigationController",
-      "status": "planned",
-      "runtime_path": null,
-      "legacy_path": "current BeastUI page/overlay/input priority ladder",
-      "evidence": [],
-      "physical_validation_required": true
-    }
+    {"id":"runtime.stateful_manager_ownership","target_contract":"one conceptual owner per stateful manager","status":"canonical","runtime_path":"beastcore.core.BeastCore","legacy_path":null,"evidence":["tests/test_v019_runtime_ownership_thread_store.py::test_core_action_broker_uses_core_owned_stateful_managers","tests/test_v019_registered_action_broker.py::test_runtime_core_uses_registered_action_broker_and_shared_managers"],"physical_validation_required":false},
+    {"id":"persistence.sqlite_thread_ownership","target_contract":"one normal SQLite connection per calling thread","status":"canonical","runtime_path":"beastcore.thread_store.ThreadBoundStore","legacy_path":"beastcore.db.Store for isolated/non-runtime callers","evidence":["tests/test_v019_runtime_ownership_thread_store.py::test_thread_bound_store_uses_distinct_same_thread_connections","tests/test_v019_runtime_ownership_thread_store.py::test_worker_roster_action_updates_the_same_core_roster"],"physical_validation_required":false},
+    {"id":"bridge.restart_sequence","target_contract":"bridge event sequence is scoped to a bridge instance/session","status":"canonical","runtime_path":"pwnagotchi_plugin/beast_bridge.py + beastcore/collectors/bridge.py","legacy_path":"legacy bridge files accepted through conservative restart fallback","evidence":["bridge regression suite in PR #22"],"physical_validation_required":true},
+    {"id":"bridge.runtime_privacy","target_contract":"bridge runtime state is owner/root-private by default","status":"canonical","runtime_path":"pwnagotchi_plugin/beast_bridge.py","legacy_path":null,"evidence":["bridge state permission regression test in PR #22"],"physical_validation_required":true},
+    {"id":"presentation.preference_store","target_contract":"one presentation preference persistence contract","status":"partially_migrated","runtime_path":"beastui.presentation_preferences.PresentationPreferenceStore","legacy_path":"BeastUI/Studio internal serialization remains behind runtime adapters until composition-root cleanup","evidence":["tests/test_v019_presentation_preference_store.py","tests/test_v019_preference_runtime_adapters.py"],"physical_validation_required":true},
+    {"id":"registry.typed_substrate","target_contract":"typed registries with stable ids, trust metadata, generations and atomic candidate activation","status":"adapter_available","runtime_path":"beastcore.registry + beastcore.spec_registry","legacy_path":null,"evidence":["tests/test_v019_typed_registries.py"],"physical_validation_required":false},
+    {"id":"registry.action_specs","target_contract":"Action planning/execution is registered rather than duplicated switch dispatch","status":"partially_migrated","runtime_path":"beastcore.registered_actions.RegisteredActionBroker","legacy_path":"beastcore.actions.ActionBroker fallback for unmigrated actions","evidence":["tests/test_v019_registered_action_broker.py","tests/test_v019_pack_shared_transactions.py::test_registered_pack_install_links_action_outer_and_inner_transactions"],"physical_validation_required":false},
+    {"id":"registry.signal_specs","target_contract":"canonical SignalSpecRegistry","status":"adapter_available","runtime_path":"beastcore.spec_registry.SignalSpecRegistry","legacy_path":"beastcore.signals.SignalCatalog remains active semantic catalog","evidence":["tests/test_v019_typed_registries.py::test_signal_registry_forbids_privacy_downgrade"],"physical_validation_required":false},
+    {"id":"registry.event_specs","target_contract":"canonical EventSpecRegistry","status":"adapter_available","runtime_path":"beastcore.spec_registry.EventSpecRegistry","legacy_path":"beastcore.events.EventBus remains active event transport","evidence":["tests/test_v019_typed_registries.py::test_event_registry_forbids_privacy_downgrade"],"physical_validation_required":false},
+    {"id":"transactions.shared_engine","target_contract":"one shared durable Transaction Engine/journal","status":"partially_migrated","runtime_path":"beastcore.transactions.TransactionEngine + FileTransactionJournal","legacy_path":"Pack install now uses the shared outer engine; Pack inner journal/rollback, Pack rollback action, update and backup transaction behavior remain retained until individually migrated","evidence":["tests/test_v019_transaction_engine.py","tests/test_v019_pack_shared_transactions.py"],"physical_validation_required":true},
+    {"id":"transactions.pack_install","target_contract":"registered Pack install executes through shared Transaction Engine while preserving proven Pack rollback safeguards during migration","status":"partially_migrated","runtime_path":"RegisteredActionBroker -> TransactionEngine -> PackInstallTransactionAdapter -> PackInstallManager","legacy_path":"PackInstallManager inner transaction journal/automatic rollback intentionally retained; pack.rollback remains legacy ActionBroker path","evidence":["tests/test_v019_pack_shared_transactions.py::test_registered_pack_install_links_action_outer_and_inner_transactions","tests/test_v019_pack_shared_transactions.py::test_pack_rollback_remains_legacy_action_during_incremental_migration","tests/test_v019_pack_shared_transactions.py::test_outer_verification_failure_uses_inner_pack_rollback_to_restore_previous","tests/test_v019_pack_shared_transactions.py::test_inner_pack_failure_with_verified_auto_rollback_is_not_double_mutated","GitHub Actions run 703: code-head full suite success"],"physical_validation_required":true},
+    {"id":"runtime.module_scheduler","target_contract":"recurring work declared and owned by ModuleRuntime/Scheduler","status":"planned","runtime_path":null,"legacy_path":"BeastCore asyncio loops and collector loops","evidence":[],"physical_validation_required":true},
+    {"id":"presentation.surface_stack","target_contract":"SurfaceRegistry/SurfaceStack/InputRouter/NavigationController","status":"planned","runtime_path":null,"legacy_path":"current BeastUI page/overlay/input priority ladder","evidence":[],"physical_validation_required":true}
   ]
 }
