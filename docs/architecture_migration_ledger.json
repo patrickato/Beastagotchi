@@ -116,10 +116,12 @@
     {
       "id": "transactions.shared_engine",
       "target_contract": "one shared durable Transaction Engine/journal",
-      "status": "planned",
-      "runtime_path": null,
-      "legacy_path": "Pack/update/backup subsystems retain their current bounded transaction behavior",
-      "evidence": [],
+      "status": "adapter_available",
+      "runtime_path": "beastcore.transactions.TransactionEngine + FileTransactionJournal",
+      "legacy_path": "Pack/update/backup subsystems retain their current bounded transaction behavior until individually adapted",
+      "evidence": [
+        "tests/test_v019_transaction_engine.py"
+      ],
       "physical_validation_required": true
     },
     {
