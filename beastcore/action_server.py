@@ -62,6 +62,16 @@ class LocalActionServer:
         except Exception:
             return "local:unix"
 
+    def _run_broker_call(self, fn, *args, **kwargs):
+        """Run one broker call and release this worker's DB connection afterwards."""
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            store = getattr(self.broker, "store", None)
+            release = getattr(store, "release_thread_connection", None)
+            if callable(release):
+                release()
+
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         response: dict[str, Any]
         try:
@@ -75,11 +85,17 @@ class LocalActionServer:
             action = str(req.get("action") or "")
             payload = req.get("payload") if isinstance(req.get("payload"), dict) else {}
             if op == "plan":
-                plan = await asyncio.to_thread(self.broker.plan, action, payload)
+                plan = await asyncio.to_thread(self._run_broker_call, self.broker.plan, action, payload)
                 response = {"ok": True, "op": "plan", "action": action, "plan": plan}
             elif op == "perform":
                 actor = self._peer_actor(writer)
-                row = await asyncio.to_thread(self.broker.perform, action, payload, actor=actor)
+                row = await asyncio.to_thread(
+                    self._run_broker_call,
+                    self.broker.perform,
+                    action,
+                    payload,
+                    actor=actor,
+                )
                 response = {"ok": row.get("status") == "success", "op": "perform", "action": action, "action_row": row}
             else:
                 raise ValueError("unsupported operation")

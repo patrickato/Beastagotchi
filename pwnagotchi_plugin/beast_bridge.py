@@ -7,13 +7,15 @@ import json
 import logging
 import os
 import time
+import uuid
 from pathlib import Path
 
 import pwnagotchi.plugins as plugins
 
+
 class BeastBridge(plugins.Plugin):
     __author__ = "Beastagotchi"
-    __version__ = "0.2.0"
+    __version__ = "0.3.0"
     __license__ = "GPL3"
     __description__ = "Read-only local telemetry/event bridge for Beast Core."
 
@@ -22,6 +24,7 @@ class BeastBridge(plugins.Plugin):
         self.path = Path("/run/beastagotchi/pwnagotchi_bridge.json")
         self.peer_count = 0
         self.seq = 0
+        self.instance_id = uuid.uuid4().hex
         self.events = []
 
     def _write(self, event=None, data=None):
@@ -34,10 +37,19 @@ class BeastBridge(plugins.Plugin):
                 self.seq += 1
                 self.events.append({"seq":self.seq, "type":event, "ts":now, "data":data or {}})
                 self.events = self.events[-32:]
-            obj = {"updated_at":now, "seq":self.seq, "state":self.state, "events":self.events}
+            obj = {
+                "updated_at":now,
+                "instance_id":self.instance_id,
+                "seq":self.seq,
+                "state":self.state,
+                "events":self.events,
+            }
             tmp = self.path.with_suffix(".tmp")
             tmp.write_text(json.dumps(obj, separators=(",",":"), default=str))
-            os.chmod(tmp, 0o644)
+            # Bridge state can contain peer/network-adjacent observations. Beast
+            # Core and Pwnagotchi both run as root on the reference service stack,
+            # so there is no reason to make this tmpfs file world-readable.
+            os.chmod(tmp, 0o600)
             os.replace(tmp, self.path)
         except Exception as exc:
             logging.debug("BeastBridge write failed: %r", exc)

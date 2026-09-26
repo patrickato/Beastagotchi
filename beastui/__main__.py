@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
-from .engine import BeastUI
+from .runtime import RuntimeBeastUI
 
 
 def main():
@@ -18,6 +18,6 @@ def main():
     p.add_argument("--display-mode",choices=("fit","stretch","native"),default="fit")
     p.add_argument("--display-resample",choices=("nearest","bilinear","bicubic","lanczos"),default="bilinear")
     a=p.parse_args()
-    BeastUI(a.root,a.framebuffer,a.output,a.theme,physical_size=(a.physical_width,a.physical_height),display_mode=a.display_mode,display_resample=a.display_resample).run(a.duration)
+    RuntimeBeastUI(a.root,a.framebuffer,a.output,a.theme,physical_size=(a.physical_width,a.physical_height),display_mode=a.display_mode,display_resample=a.display_resample).run(a.duration)
 
 if __name__=="__main__":main()
