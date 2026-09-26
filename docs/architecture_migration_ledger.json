@@ -2,6 +2,7 @@
   "schema": 1,
   "architecture_review": "Parts 1-11",
   "branch": "openai/v019-architecture-foundation-tranche1",
+  "tranche_status": "foundation_block_complete_pending_physical_validation_where_marked",
   "status_vocabulary": [
     "planned",
     "adapter_available",
