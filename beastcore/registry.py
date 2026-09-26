@@ -158,13 +158,16 @@ class TypedRegistry(Generic[T]):
         with self._lock:
             candidate: dict[str, T] = dict(self._items) if merge else {}
             base_generation = self._generation
+            incoming_ids: set[str] = set()
             for item in items:
                 meta = self._metadata(item)
+                if meta.id in incoming_ids:
+                    raise DuplicateSpecError(f"duplicate {self.kind} id in candidate: {meta.id}")
+                incoming_ids.add(meta.id)
                 existing = candidate.get(meta.id)
                 if existing is not None:
-                    # A candidate must never silently contain duplicate ids. When
-                    # merge=True, replacing an already-active id is intentional
-                    # but still subject to trust/namespace protection.
+                    # merge=True may intentionally replace an already-active id,
+                    # but replacement still obeys trust/namespace protection.
                     if not merge or meta.id not in self._items:
                         raise DuplicateSpecError(f"duplicate {self.kind} id in candidate: {meta.id}")
                     self._check_replacement(existing, item)
