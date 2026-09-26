@@ -9,6 +9,7 @@ def test_runtime_core_uses_registered_action_broker_and_shared_managers(tmp_path
         assert core.actions.action_registry.ids() == (
             'operator.revoke',
             'owner.expert_mode_get',
+            'pack.install',
         )
         assert core.actions.roster is core.roster
         assert core.actions.global_sync is core.global_sync
@@ -33,7 +34,7 @@ def test_registered_action_uses_registry_plan_perform_and_common_audit(tmp_path)
         assert row['action'] == 'owner.expert_mode_get'
         assert row['result']['ok'] is True
         assert row['registry_generation'] == core.actions.action_registry.generation
-        assert core.state.get('actions.registry.registered_count') == 2
+        assert core.state.get('actions.registry.registered_count') == 3
         assert core.state.get('actions.last.type') == 'owner.expert_mode_get'
         assert core.events.recent(1)[0]['type'] == 'action.completed'
     finally:
