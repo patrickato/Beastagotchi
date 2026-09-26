@@ -15,8 +15,8 @@ def test_runtime_core_uses_registered_action_broker_and_shared_managers(tmp_path
         assert core.actions.memories is core.memories
         assert core.actions.doctor is core.doctor
         assert core.action_server.broker is core.actions
-        assert core.operator_tools.actions is core.actions
-        assert core.update_automation.actions is core.actions
+        assert core.operator_tools.action_broker is core.actions
+        assert core.update_automation.action_broker is core.actions
     finally:
         core.store.close()
 
