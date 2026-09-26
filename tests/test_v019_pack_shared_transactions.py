@@ -102,6 +102,32 @@ def test_registered_pack_install_links_action_outer_and_inner_transactions(tmp_p
         store.close()
 
 
+def test_pack_rollback_remains_legacy_action_during_incremental_migration(tmp_path):
+    staged = _stage(tmp_path, '1.0')
+    state = _state()
+    store = ThreadBoundStore(str(tmp_path / 'beast.db'))
+    manager = _manager(tmp_path, state, staged)
+    broker = RegisteredActionBroker(
+        state,
+        store,
+        EventBus(),
+        pack_install_manager=manager,
+        transaction_engine=_engine(tmp_path),
+    )
+    try:
+        installed = broker.perform('pack.install', {'id': 'demo-theme'}, actor='pack-test')
+        inner_id = installed['result']['inner_transaction_id']
+        rolled = broker.perform('pack.rollback', {'transaction_id': inner_id}, actor='pack-test')
+
+        assert installed['status'] == 'success'
+        assert rolled['status'] == 'success'
+        assert rolled['result']['rolled_back'] is True
+        assert 'registry_generation' not in rolled
+        assert not (tmp_path / 'installed' / 'demo-theme').exists()
+    finally:
+        store.close()
+
+
 class _FailOuterVerifyAdapter(PackInstallTransactionAdapter):
     def verify(self, ctx):
         return {'ok': False, 'error': 'forced outer verification failure'}
