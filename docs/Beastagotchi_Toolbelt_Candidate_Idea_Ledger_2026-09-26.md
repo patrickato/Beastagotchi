@@ -158,6 +158,50 @@ Owner-controlled software/extensions may coexist with Beast. Beast may observe t
 7. **Unknown/unmanaged remains explicit.** Beast must not fabricate compatibility, ownership, health, or recovery guarantees.
 8. **Owner sovereignty survives the managed UX.** Root/manual customization remains possible; Beast records boundaries rather than pretending they do not exist.
 
+## Provisionally accepted adjacent-ecosystem directions
+
+The owner indicated general agreement with the following directions. Carry them forward as **provisionally accepted product concepts**, subject to later refinement and roadmap prioritization rather than treating them as separate new subsystems.
+
+### Discovery Inbox
+A common intake surface for newly observed hardware, plugins, Packs, owner-installed services, storage, displays, BenchLink peers, or other unassigned capabilities.
+
+Possible owner choices are contextual, but the core pattern is: **inspect -> manage/use -> leave in Owner Space -> ignore**. Discovery does not imply automatic activation or authority.
+
+### Standard diagnostic bundle contract
+Providers, Packs, integrations, and managed extensions may expose structured, privacy-curated diagnostic evidence through one shared contract so Doctor, support bundles, and recovery tooling do not need bespoke log scraping for every extension.
+
+This feeds the **single Doctor**; it does not create integration-specific Doctors.
+
+### Capability Archive
+A user-facing view over already-canonical durable content/history for saved hardware profiles, field/diagnostic snapshots, Beast Capsules, discovered environments, saved Procedures, owner-created tools, Bench sessions, and similar artifacts.
+
+Prefer a view/index over existing stores rather than another independent storage database.
+
+### Declarative Recipes / Blueprints
+Reusable data-first compositions of existing Instruments, Tools, Procedures, Workspaces, conditions, defaults, and Choreography. Recipes should reuse existing execution primitives rather than become a parallel automation engine.
+
+Community sharing should be possible without requiring executable code where declarative composition is sufficient.
+
+### Integration/provider health contract
+Anything that provides a capability should be able, where practical, to answer a common set of health questions: **what are you, what do you provide, are you healthy, and what evidence can be safely shared?**
+
+Doctor, System Graph, Device Passport, Discovery Inbox, and support/recovery surfaces can all consume the same health contract.
+
+### Unifying lifecycle
+
+For external things entering Beastagotchi, prefer the lifecycle:
+
+**Discovery -> Capability -> Health -> Usage**
+
+- **Discovery:** Beast notices a thing without assuming ownership.
+- **Capability:** determine what it can actually provide.
+- **Health:** determine whether that provider/integration is currently functioning and expose evidence.
+- **Usage:** allow Workspaces, Instruments, Procedures, Companion/Explore behavior, automation, or other consumers to use the capability according to authority and owner intent.
+
+This lifecycle should reuse the Capability Resolver, Provider/Registry contracts, System Graph, Doctor, Owner Space, and canonical State rather than create a separate discovery platform.
+
 ## Approval status
 
-These fifteen items are **preserved candidates**. They are not automatically approved for implementation or release priority merely because they appear here. Owner discussion should later classify each as approved, modify/discuss, reserve, or reject, then reconcile accepted items into the roadmap/contracts before implementation.
+The original fifteen items remain **preserved candidates** pending later owner classification as approved, modify/discuss, reserve, or reject.
+
+The five adjacent-ecosystem directions above are **provisionally accepted** based on owner agreement. This means they should be carried forward and considered during architecture/product reconciliation, but their exact UX, implementation form, and release priority are not frozen.
