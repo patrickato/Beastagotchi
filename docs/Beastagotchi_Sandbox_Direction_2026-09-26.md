@@ -1,11 +1,24 @@
 # Beastagotchi Sandbox Direction
 
 **Date:** 2026-09-26
-**Status:** owner-selected direction for the pre-implementation sandbox discussion
+**Status:** owner-selected direction for the pre-implementation sandbox discussion; approved to revisit and implement later with guided setup
 
 ## Goal
 
 Create a practical Windows-hosted Beastagotchi sandbox that moves the large majority of software development, UI work, destructive testing, simulated hardware scenarios, and replayable debugging away from the physical Raspberry Pi while preserving the Pi as final hardware truth.
+
+## Owner implementation preference
+
+The owner is willing to try the selected sandbox architecture when the project reaches the appropriate implementation phase, provided setup and use are guided step-by-step and the user-facing workflow stays simple.
+
+This means:
+- WSL2 should be taught/operated directly with clear setup and daily-use instructions.
+- Docker is acceptable to try if BeastLab hides most Docker-specific complexity behind simple commands/controls.
+- Beast-native virtual hardware inside WSL is selected and should not require learning a separate virtualization stack.
+- SSH/copy-paste/manual file transfer to the physical Pi remains an acceptable and useful bridge for real hardware truth.
+- QEMU remains out of scope unless the owner explicitly reopens it later.
+
+Do not require the owner to become proficient in Docker, virtualization, or infrastructure tooling merely to use the Beast Sandbox.
 
 ## Selected architecture
 
