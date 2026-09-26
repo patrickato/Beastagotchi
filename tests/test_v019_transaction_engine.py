@@ -83,9 +83,11 @@ def test_transaction_happy_path_commits_only_after_verification(tmp_path):
         'planned', 'preparing', 'prepared', 'applying', 'applied',
         'probation', 'verifying', 'committing', 'committed'
     ]
-    assert row['stage_results']['prepared']['snapshot'] == 'before'
-    assert row['stage_results']['applied']['changed'] is True
-    assert row['stage_results']['committed']['ok'] is True
+    assert row['stage_results']['prepare']['snapshot'] == 'before'
+    assert row['stage_results']['apply']['changed'] is True
+    assert row['stage_results']['probation']['ok'] is True
+    assert row['stage_results']['verify']['ok'] is True
+    assert row['stage_results']['commit']['ok'] is True
 
 
 def test_blocked_plan_never_prepares_or_applies(tmp_path):
@@ -96,6 +98,7 @@ def test_blocked_plan_never_prepares_or_applies(tmp_path):
 
     assert row['status'] == 'cancelled_before_apply'
     assert adapter.calls == ['plan']
+    assert row['stage_results']['plan']['ok'] is False
     assert 'blocked by test' in row['timeline'][-1]['detail']
 
 
@@ -107,7 +110,8 @@ def test_apply_failure_enters_rollback_and_finishes_rolled_back(tmp_path):
 
     assert row['status'] == 'rolled_back'
     assert adapter.calls == ['plan', 'prepare', 'apply', 'rollback']
-    assert row['stage_results']['rolled_back']['restored'] is True
+    assert row['stage_results']['apply']['ok'] is False
+    assert row['stage_results']['rollback']['restored'] is True
 
 
 def test_verification_failure_rolls_back_instead_of_committing(tmp_path):
@@ -118,6 +122,7 @@ def test_verification_failure_rolls_back_instead_of_committing(tmp_path):
 
     assert row['status'] == 'rolled_back'
     assert adapter.calls == ['plan', 'prepare', 'apply', 'probation', 'verify', 'rollback']
+    assert row['stage_results']['verify']['ok'] is False
     assert 'commit' not in adapter.calls
 
 
@@ -129,6 +134,7 @@ def test_commit_failure_still_attempts_rollback(tmp_path):
 
     assert row['status'] == 'rolled_back'
     assert adapter.calls[-2:] == ['commit', 'rollback']
+    assert row['stage_results']['commit']['ok'] is False
 
 
 def test_rollback_failure_is_explicit_terminal_state(tmp_path):
@@ -138,7 +144,7 @@ def test_rollback_failure_is_explicit_terminal_state(tmp_path):
     row = engine.execute(TransactionSpec('demo.change', adapter), {'id': 'alpha'})
 
     assert row['status'] == 'rollback_failed'
-    assert row['stage_results']['rollback_failed']['ok'] is False
+    assert row['stage_results']['rollback']['ok'] is False
 
 
 def test_journal_is_private_atomic_and_survives_new_engine_instance(tmp_path):
