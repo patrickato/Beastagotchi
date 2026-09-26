@@ -289,24 +289,84 @@ Reuse:
 
 ---
 
-# 8. Open design question: Doctor autonomy
+# 8. Doctor autonomy / presentation behavior — SELECTED DIRECTION
 
-Still to resolve during this jam:
+Owner selected **Option C: adaptive visibility**.
 
-Possible spectrum:
+Default behavior:
 
-1. **Clinic:** acts only when owner opens Doctor.
-2. **Physician:** proactively notices and reports problems.
-3. **Mechanic:** automatically performs harmless/reversible repairs.
-4. **Caretaker:** proactively investigates, resolves what policy permits, queues missing resources, verifies the result, and bothers the owner only for consequential/ambiguous/physical decisions.
+> **Quiet caretaker normally; visibly communicative when Doctor is opened, a serious issue occurs, owner approval/input is needed, or verbose/expert mode is enabled.**
 
-Current assistant recommendation is between Mechanic and Caretaker, with owner policy/authority governing automatic mutation.
+Doctor may:
+- investigate read-only state freely;
+- proactively notice problems;
+- automatically handle harmless/disposable/transient Beast-owned repairs;
+- prepare reversible managed repairs and apply according to owner policy/authority;
+- queue missing resources;
+- verify outcomes;
+- interrupt the owner only for meaningful consequential/ambiguous/physical decisions.
 
-Need owner jam/input before freezing exact behavior.
+User-facing depth should scale from concise beginner-friendly status to complete raw technical evidence.
+
+See:
+`docs/Beastagotchi_Doctor_Presentation_Concept_2026-09-26.md`
 
 ---
 
-# 9. Full-tool access principle (cross-reference)
+# 9. Diagnosis reasoning direction
+
+Doctor should reason through a problem as a bounded case rather than merely dump commands/logs.
+
+Conceptual flow:
+
+> symptom -> affected capability -> dependency path -> hypotheses -> evidence -> selected probes -> confidence change -> diagnosis -> repair plan -> Transaction/Procedure -> functional verification -> cleanup -> learned outcome.
+
+Important principles:
+
+- Running != working; test actual functional outcome.
+- Probes should answer explicit questions, not merely expose commands.
+- Known-Good / What Changed? should reduce the search tree.
+- System Graph should identify dependency/failure paths.
+- hypotheses may be Possible / Supported / Likely / Strongly supported / Confirmed / Contradicted;
+- unknown problems should still be investigated through dependency/evidence reasoning rather than fail because no signature exists.
+- physical owner interaction should be one clear observation/action at a time, with Doctor watching machine state live where possible.
+
+---
+
+# 10. Live progress/status — selected cross-cutting requirement
+
+Doctor should expose truthful live progress/activity to the owner.
+
+This is part of a broader Beast progress/status primitive reusable by downloads, backups, updates, installs, restores, cleanup, indexing, migrations, Guided Software and other long operations.
+
+Rules:
+- real percentage/bar only when total work is genuinely measurable;
+- otherwise show live stage/activity;
+- show completed/current/pending steps;
+- show waiting state and reason;
+- allow concise TFT representation and richer Studio/WebUI detail;
+- preserve enough execution state to recover/resume/explain interrupted work where supported.
+
+---
+
+# 11. Collective Doctor knowledge — strong candidate
+
+Owner proposed a global collective knowledge network where privacy-sanitized resolved Doctor cases can teach other Doctors.
+
+Core principle:
+
+> **The fleet learns, but each Doctor still treats its own patient.**
+
+Collective cases may contribute normalized hardware/software/config/symptom/repair/outcome evidence and aggregate empirical success/failure confidence without requiring raw personal logs by default.
+
+Failed/obsolete fixes should be demoted/quarantined but retained as negative evidence rather than erased.
+
+See:
+`docs/Beastagotchi_Doctor_Global_Knowledge_Network_2026-09-26.md`
+
+---
+
+# 12. Full-tool access principle (cross-reference)
 
 Guided Beast experiences do not remove expert access to complete underlying software.
 
@@ -318,21 +378,33 @@ Example SDR pattern:
 This may generalize to other complex software and should be examined during Capability Expansion.
 
 See:
-`docs/Beastagotchi_Celestial_SDR_and_Queue_Idea_Addendum_2026-09-26.md`
+`docs/Beastagotchi_Guided_Software_Pattern_2026-09-26.md`
 
 ---
 
-# 10. Status / next
+# 13. Status / next
 
 Doctor deep-dive is **active**.
 
+Current major preserved/selected directions:
+- complete-patient model;
+- Machine Census + vital signs + fault-family probes + open escalation;
+- patient knowledge + medical library;
+- find/use/put-back acquisition lifecycle;
+- queued acquisition;
+- cleanup ownership;
+- selected adaptive Doctor visibility (Option C);
+- confidence-ranked evidence reasoning;
+- functional verification rather than service-state-only checks;
+- shared live progress/status;
+- collective Doctor knowledge candidate;
+- beginner-to-expert presentation depth.
+
 Next jam topics should include:
-- Doctor autonomy/proactivity;
-- how diagnoses become confidence-ranked hypotheses;
-- how Doctor chooses probe blocks/escalation;
-- repair authority and owner-consent policy;
-- physical-action handoff/walkthroughs;
-- how previous solved cases influence future repair;
+- source trust/research freedom vs action freedom;
+- collective Doctor privacy/schema/confidence refinement;
+- how previous solved cases and global evidence influence local decisions;
 - how online/community fixes are vetted/translated into Procedures;
-- whether Doctor needs a dedicated owner-facing "case" UX or simply uses Incidents behind the scenes;
-- how Doctor exposes technical depth to expert users without burdening beginners.
+- how Doctor learns/updates knowledge at Home Base;
+- whether/where AI has any runtime role (defer final decision to dedicated AI discussion);
+- final visual/personality identity of Doctor (defer exact art until broader UI/Experience work and physical display validation).
