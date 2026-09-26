@@ -138,7 +138,7 @@
         "tests/test_v019_pack_shared_transactions.py::test_pack_rollback_remains_legacy_action_during_incremental_migration",
         "tests/test_v019_pack_shared_transactions.py::test_outer_verification_failure_uses_inner_pack_rollback_to_restore_previous",
         "tests/test_v019_pack_shared_transactions.py::test_inner_pack_failure_with_verified_auto_rollback_is_not_double_mutated",
-        "GitHub Actions run 717: full suite success on tranche head f56013f743f623ecbaf554e1a2156e79d518b677"
+        "GitHub Actions run 717: full suite success on functional tranche head f56013f743f623ecbaf554e1a2156e79d518b677"
       ],
       "physical_validation_required": true
     },
