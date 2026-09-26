@@ -5,8 +5,11 @@ import uuid
 from typing import Any
 
 from .actions import ActionBroker
+from .pack_install import PackInstallError, PackInstallManager
+from .pack_transaction_adapter import PackInstallTransactionAdapter
 from .registry import RegistryError, SpecMetadata
 from .spec_registry import ActionSpec, ActionSpecRegistry
+from .transactions import TransactionEngine, TransactionError, TransactionSpec
 
 
 class RegisteredActionBroker(ActionBroker):
@@ -17,11 +20,52 @@ class RegisteredActionBroker(ActionBroker):
     This lets Beast move one action at a time without a flag-day rewrite.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        transaction_engine: TransactionEngine | None = None,
+        pack_install_manager: PackInstallManager | None = None,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
+        if pack_install_manager is not None:
+            self.pack_installer = pack_install_manager
+        self.transaction_engine = transaction_engine or TransactionEngine()
+        self.pack_install_transaction = PackInstallTransactionAdapter(self.pack_installer)
+        self.pack_install_transaction_spec = TransactionSpec(
+            'pack.install',
+            self.pack_install_transaction,
+            risk='C2',
+            reversible=True,
+            probation_required=True,
+            verification_required=True,
+            authority='maintainer',
+            definition_version='1',
+            tags=('pack', 'content', 'filesystem'),
+        )
         self.action_registry = ActionSpecRegistry()
         self._register_bootstrap_actions()
         self.action_registry.freeze()
+
+    def _perform_pack_install(self, payload: dict[str, Any], actor: str) -> dict[str, Any]:
+        transaction = self.transaction_engine.execute(
+            self.pack_install_transaction_spec,
+            payload,
+            actor=actor,
+        )
+        txn_status = str(transaction.get('status') or '')
+        stage_results = transaction.get('stage_results') if isinstance(transaction.get('stage_results'), dict) else {}
+        applied = stage_results.get('apply') if isinstance(stage_results.get('apply'), dict) else {}
+        committed = stage_results.get('commit') if isinstance(stage_results.get('commit'), dict) else {}
+        inner_id = applied.get('inner_transaction_id') or committed.get('inner_transaction_id')
+        return {
+            'ok': txn_status == 'committed',
+            'rolled_back': txn_status == 'rolled_back',
+            'transaction_id': transaction.get('id'),
+            'transaction_status': txn_status,
+            'inner_transaction_id': inner_id,
+            'transaction': transaction,
+        }
 
     def _register_bootstrap_actions(self) -> None:
         self.action_registry.register(ActionSpec(
@@ -69,6 +113,23 @@ class RegisteredActionBroker(ActionBroker):
             mutation='ephemeral_session',
             verification='immediate_readback',
             tags=('operator', 'session'),
+        ))
+        self.action_registry.register(ActionSpec(
+            SpecMetadata(
+                'pack.install',
+                source='beastcore.registered_actions',
+                namespace_owner='core',
+                trust_tier='core',
+            ),
+            planner=lambda payload: self.pack_install_transaction.plan(
+                type('_PlanContext', (), {'request': dict(payload or {})})()
+            ),
+            performer=lambda payload, actor: self._perform_pack_install(payload, actor),
+            authority='maintainer',
+            risk='C2',
+            mutation='installed_pack_registry',
+            verification='shared_transaction_structural_verify',
+            tags=('pack', 'content', 'transaction'),
         ))
 
     def plan(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -125,6 +186,7 @@ class RegisteredActionBroker(ActionBroker):
                 'target': row['target'],
                 'status': status,
                 'registry_generation': self.action_registry.generation,
+                'transaction_id': result.get('transaction_id'),
             },
             'warning' if status not in {'success'} else 'info',
         )
@@ -135,6 +197,7 @@ class RegisteredActionBroker(ActionBroker):
             'actions.last.target': row['target'],
             'actions.last.status': status,
             'actions.last.finished_at': finished,
+            'actions.last.transaction_id': result.get('transaction_id'),
             'actions.registry.generation': self.action_registry.generation,
             'actions.registry.registered_count': len(self.action_registry),
         }, priority=95)
@@ -165,7 +228,7 @@ class RegisteredActionBroker(ActionBroker):
                     if result.get('rolled_back')
                     else 'failed'
                 )
-        except (RegistryError, ValueError) as exc:
+        except (RegistryError, TransactionError, PackInstallError, ValueError) as exc:
             result = {'ok': False, 'error': f'{type(exc).__name__}: {exc}'}
             status = 'failed'
         return self._record_registered_action(
