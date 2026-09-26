@@ -39,6 +39,7 @@ _TRANSITIONS = {
 
 _ID_RE = re.compile(r'^[a-z0-9][a-z0-9_.:-]{0,126}$')
 _RUN_RE = re.compile(r'^txn-[a-z0-9_.:-]+-[0-9]{8}t[0-9]{6}-[a-f0-9]{8}$')
+_STAGE_RE = re.compile(r'^[a-z][a-z0-9_.:-]{0,63}$')
 
 
 class TransactionError(RuntimeError):
@@ -178,6 +179,21 @@ class FileTransactionJournal:
             raise TransactionError('transaction journal is not an object')
         return obj
 
+    def record_stage(
+        self,
+        transaction_id: str,
+        stage: str,
+        result: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        stage = str(stage or '').strip().lower()
+        if not _STAGE_RE.fullmatch(stage):
+            raise TransactionError(f'invalid transaction stage name: {stage!r}')
+        row = self.get(transaction_id)
+        row.setdefault('stage_results', {})[stage] = dict(result)
+        row['updated_at'] = float(self.clock())
+        self._write(row)
+        return row
+
     def transition(
         self,
         transaction_id: str,
@@ -185,6 +201,7 @@ class FileTransactionJournal:
         *,
         detail: str = '',
         stage_result: Mapping[str, Any] | None = None,
+        stage_name: str | None = None,
         extra: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         row = self.get(transaction_id)
@@ -203,7 +220,10 @@ class FileTransactionJournal:
             'detail': str(detail or ''),
         })
         if stage_result is not None:
-            row.setdefault('stage_results', {})[new_state] = dict(stage_result)
+            key = str(stage_name or new_state).strip().lower()
+            if not _STAGE_RE.fullmatch(key):
+                raise TransactionError(f'invalid transaction stage name: {key!r}')
+            row.setdefault('stage_results', {})[key] = dict(stage_result)
         if extra:
             row.update(dict(extra))
         self._write(row)
@@ -281,12 +301,14 @@ class TransactionEngine:
                     'rolled_back',
                     detail='rollback verified by adapter',
                     stage_result=result,
+                    stage_name='rollback',
                 )
             return self.journal.transition(
                 tid,
                 'rollback_failed',
                 detail=str(result.get('error') or 'rollback reported failure'),
                 stage_result=result,
+                stage_name='rollback',
             )
         except Exception as exc:
             return self.journal.transition(
@@ -294,6 +316,7 @@ class TransactionEngine:
                 'rollback_failed',
                 detail=f'{type(exc).__name__}: {exc}',
                 stage_result={'ok': False, 'error': f'{type(exc).__name__}: {exc}'},
+                stage_name='rollback',
             )
 
     def execute(
@@ -326,6 +349,7 @@ class TransactionEngine:
                 'cancelled_before_apply',
                 detail='; '.join(plan.get('blockers') or ['transaction blocked by plan']),
                 stage_result={'ok': False, 'blockers': list(plan.get('blockers') or [])},
+                stage_name='plan',
             )
 
         try:
@@ -338,28 +362,38 @@ class TransactionEngine:
                     'cancelled_before_apply',
                     detail=str(prepared.get('error') or 'prepare blocked transaction'),
                     stage_result=prepared,
+                    stage_name='prepare',
                 )
-            self.journal.transition(tid, 'prepared', detail='transaction prepared', stage_result=prepared)
+            self.journal.transition(
+                tid,
+                'prepared',
+                detail='transaction prepared',
+                stage_result=prepared,
+                stage_name='prepare',
+            )
 
             self.journal.transition(tid, 'applying', detail='applying transaction')
             applied = adapter.apply(ctx)
             if not isinstance(applied, dict):
                 raise TransactionError('apply must return a mapping')
             ctx.data['apply'] = applied
+            self.journal.record_stage(tid, 'apply', applied)
             if applied.get('ok') is False:
                 return self._rollback(ctx, reason=str(applied.get('error') or 'apply reported failure'))
-            self.journal.transition(tid, 'applied', detail='transaction applied', stage_result=applied)
+            self.journal.transition(tid, 'applied', detail='transaction applied')
 
             if spec.probation_required:
                 self.journal.transition(tid, 'probation', detail='observing probation window')
                 probation = self._call_optional(adapter, 'probation', ctx, {'ok': True})
                 ctx.data['probation'] = probation
+                self.journal.record_stage(tid, 'probation', probation)
                 if probation.get('ok') is False:
                     return self._rollback(ctx, reason=str(probation.get('error') or 'probation failed'))
 
             self.journal.transition(tid, 'verifying', detail='verifying transaction outcome')
             verification = self._call_optional(adapter, 'verify', ctx, {'ok': True})
             ctx.data['verify'] = verification
+            self.journal.record_stage(tid, 'verify', verification)
             if spec.verification_required and verification.get('ok') is not True:
                 return self._rollback(ctx, reason=str(verification.get('error') or 'verification failed'))
 
@@ -367,15 +401,16 @@ class TransactionEngine:
             committed = self._call_optional(adapter, 'commit', ctx, {'ok': True})
             ctx.data['commit'] = committed
             if committed.get('ok') is False:
+                self.journal.record_stage(tid, 'commit', committed)
                 return self._rollback(ctx, reason=str(committed.get('error') or 'commit failed'))
             return self.journal.transition(
                 tid,
                 'committed',
                 detail='transaction committed',
                 stage_result=committed,
+                stage_name='commit',
             )
         except Exception as exc:
-            # If apply may have begun, rollback is the conservative managed path.
             current = self.journal.get(tid)
             state = str(current.get('status') or '')
             if state in {'applying', 'applied', 'probation', 'verifying', 'committing'} and spec.reversible:
@@ -386,6 +421,7 @@ class TransactionEngine:
                     'cancelled_before_apply',
                     detail=f'{type(exc).__name__}: {exc}',
                     stage_result={'ok': False, 'error': f'{type(exc).__name__}: {exc}'},
+                    stage_name='exception',
                 )
             try:
                 return self.journal.transition(
@@ -393,6 +429,7 @@ class TransactionEngine:
                     'indeterminate',
                     detail=f'{type(exc).__name__}: {exc}',
                     stage_result={'ok': False, 'error': f'{type(exc).__name__}: {exc}'},
+                    stage_name='exception',
                 )
             except TransactionTransitionError:
                 raise TransactionError(f'transaction failed in terminal state {state}: {exc}') from exc
