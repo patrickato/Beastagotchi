@@ -10,8 +10,8 @@
 - **2. Product facets / Toolbelt:** discussion complete; ideas preserved, consolidated and owner-prioritized.
 - **3. Windows Beast Sandbox:** direction selected and preserved (WSL2 + guided Docker + Beast-native virtual providers + SSH physical Pi + record/replay; QEMU not required).
 - **3A. “Full but not cluttered” reconciliation:** complete and preserved.
-- **4. Final whole-project fresh-eyes / epiphany review:** **NEXT, but only when the owner explicitly authorizes it.**
-- **5. Resume implementation:** follows the fresh-eyes review and roadmap/contract reconciliation.
+- **4. Final whole-project fresh-eyes / epiphany review:** complete and preserved as candidate findings; **owner discussion / approve-modify-reserve-reject reconciliation is next.**
+- **5. Resume implementation:** remains paused until the fresh-eyes findings are reconciled into roadmap/contracts.
 
 ## 1. Complete the already-started correctness tranche — COMPLETE
 
@@ -75,13 +75,13 @@ Key result: broad capability does not require broad primary navigation. Preserve
 
 See `docs/Beastagotchi_Full_Not_Cluttered_Reconciliation_2026-09-26.md`.
 
-## 4. Final whole-project "new eyes" / epiphany review — NEXT, OWNER TRIGGER REQUIRED
+## 4. Final whole-project "new eyes" / epiphany review — COMPLETE, OWNER DISCUSSION NEXT
 
-**Only when the owner explicitly asks for it.**
+The owner explicitly authorized the pass on 2026-09-26.
 
-Re-read/reassess the complete Beastagotchi project with the now-mature architecture and a deliberately broader/free-thinking perspective.
+The review re-read/reassessed the project across architecture, current source, Claude input, Toolbelt/facets, Sandbox direction, progression/life systems, recovery/provisioning, presentation, prior Beastagotchi/Monstergotchi discussion context and selected current adjacent projects/patterns.
 
-Look for:
+It looked for:
 - X + Y => Z capabilities that were not previously obvious;
 - newly relevant ideas caused by later architectural decisions;
 - duplicated concepts that can become one stronger system;
@@ -96,8 +96,12 @@ Look for:
 - ideas from adjacent projects/tools/ecosystems worth adapting;
 - genuinely new directions even when they revise earlier assumptions.
 
-Owner ideas are high-value input, not constraints that prohibit independent engineering/product thinking. Bring back contrary recommendations when evidence or architecture supports them and explain why.
+Findings are preserved at:
 
-## 5. Resume implementation
+`docs/Beastagotchi_Fresh_Eyes_Epiphany_Review_2026-09-26.md`
 
-After the fresh-eyes review, reconcile resulting changes into the roadmap/contracts and continue architecture implementation in meaningful test-backed tranches.
+They are explicitly **candidate findings, not silently approved canon**. The next checkpoint is an owner/assistant back-and-forth to classify important findings as approved / modify / reserve / reject before architecture/roadmap changes are made.
+
+## 5. Resume implementation — PAUSED PENDING RECONCILIATION
+
+After the fresh-eyes findings are discussed and reconciled, fold approved changes into roadmap/contracts/migration sequencing and continue architecture implementation in meaningful test-backed tranches.
