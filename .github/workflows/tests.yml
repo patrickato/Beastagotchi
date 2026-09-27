@@ -141,6 +141,21 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Render staged Experience live-runtime proof
+        run: |
+          PYTHONPATH=. python tools/render_v019_experience_live_runtime.py \
+            --root beastui \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-experience-live-runtime
+
+      - name: Upload staged Experience live-runtime proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-experience-live-runtime
+          path: artifacts/v019-experience-live-runtime
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
