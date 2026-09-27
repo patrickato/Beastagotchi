@@ -74,12 +74,12 @@ def test_monolith_overview_stays_sparse_and_drilldown_first():
         "system.cpu.total","system.temp.cpu_c","wifi.ap_count"
     ]
     assert rows["monolith_overview.inspect_hint"]["update_class"]=="interaction"
-    # Sparse body plus the thin shared shell: status + primary + drilldown +
-    # facts + context + three navigation interactions.
-    assert len(rows) <= 9
-    assert "monolith.overview.shell_status" in rows
-    for suffix in ("nav_previous","nav_home","nav_next"):
-        assert rows[f"monolith.overview.{suffix}"]["update_class"]=="interaction"
+    # Overview is second of two pages: one back destination plus a non-action
+    # position indicator keeps the shell clear without duplicating Home twice.
+    assert "monolith.overview.nav_previous" in rows
+    assert "monolith.overview.nav_next" not in rows
+    assert rows["monolith.overview.nav_position"]["update_class"]=="static"
+    assert len(rows) <= 8
 
 
 def test_all_five_first_experiences_now_have_cross_page_surface():
