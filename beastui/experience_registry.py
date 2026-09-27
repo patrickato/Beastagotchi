@@ -61,10 +61,16 @@ def get_experience_renderer(experience_id: str, page_id: str) -> ExperiencePageR
 
 
 def available_experience_pages(experience_id: str) -> tuple[str, ...]:
+    """Return pages in authored/registration order, not alphabetical order.
+
+    Navigation order is part of Experience grammar. Sorting accidentally made
+    Habitat start at Beast before Home; registry insertion order preserves the
+    deliberate Home -> secondary-page sequence for every built-in Experience.
+    """
     eid = str(experience_id or "").strip().lower()
     return tuple(
         row.page_id
-        for key, row in sorted(_REGISTRY.items())
+        for key, row in _REGISTRY.items()
         if key[0] == eid
     )
 
