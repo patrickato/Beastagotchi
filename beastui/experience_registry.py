@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 from typing import Any, Callable
 
 from PIL import Image
@@ -75,6 +76,20 @@ def available_experience_pages(experience_id: str) -> tuple[str, ...]:
     )
 
 
+def _renderer_kwargs(renderer: Renderer, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the registry's runtime call surface across static/animated pages.
+
+    The runtime may always provide animation phase. Static secondary pages are
+    allowed not to consume it; the registry is the stable interface and forwards
+    only supported optional keyword arguments. Unknown non-runtime kwargs still
+    flow through so renderer-specific proof tooling can use them deliberately.
+    """
+    out = dict(kwargs)
+    if "phase" in out and "phase" not in inspect.signature(renderer).parameters:
+        out.pop("phase", None)
+    return out
+
+
 def render_experience_page(
     experience_id: str,
     page_id: str,
@@ -97,7 +112,11 @@ def render_experience_page(
         render_state,
         available_experience_pages(row.experience_id),
     )
-    return row.renderer(render_state, scene_runtime=scene_runtime, **kwargs)
+    return row.renderer(
+        render_state,
+        scene_runtime=scene_runtime,
+        **_renderer_kwargs(row.renderer, kwargs),
+    )
 
 
 def experience_renderer_catalog() -> list[dict[str, Any]]:
