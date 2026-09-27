@@ -5,12 +5,22 @@ CFG=/etc/pwnagotchi/config.toml
 STATE_DIR=/var/lib/beastagotchi/display-handoff
 BACKUP=$STATE_DIR/config.toml.pre-beast
 PY=/opt/beast-ui/bin/display_config.py
+OVERRIDE_DIR=/run/systemd/system/beast-ui.service.d
+EXPERIENCE_OVERRIDE=$OVERRIDE_DIR/90-beast-experience-test.conf
 
 systemctl stop beast-ui.service 2>/dev/null || true
 systemctl stop beast-studio.service 2>/dev/null || true
 systemctl disable beast-ui.service 2>/dev/null || true
 systemctl stop beast-display-rollback.timer 2>/dev/null || true
 rm -f /run/beastagotchi/ui-test-mode
+
+# Staging selection is always temporary. Clear it before any future Beast start,
+# even when there is no display-config backup left to restore.
+if [[ -f "$EXPERIENCE_OVERRIDE" ]]; then
+  rm -f "$EXPERIENCE_OVERRIDE"
+  rmdir "$OVERRIDE_DIR" 2>/dev/null || true
+  systemctl daemon-reload 2>/dev/null || true
+fi
 
 if [[ -f "$BACKUP" ]]; then
   "$PY" --config "$CFG" restore --backup "$BACKUP"
