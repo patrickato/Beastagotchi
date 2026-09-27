@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+
 from .engine import BeastUI
+from .experience_live import ExperienceBeastUI
+from .experience_registry import experience_renderer_summary
 
 
 def main():
@@ -17,7 +20,32 @@ def main():
     p.add_argument("--physical-height",type=int,default=320,help="physical/output height; logical Beast canvas remains 320")
     p.add_argument("--display-mode",choices=("fit","stretch","native"),default="fit")
     p.add_argument("--display-resample",choices=("nearest","bilinear","bicubic","lanczos"),default="bilinear")
+    p.add_argument(
+        "--experience",
+        choices=tuple(experience_renderer_summary()),
+        help="explicit staging-only Experience renderer; does not change saved UI preferences",
+    )
+    p.add_argument(
+        "--experience-page",
+        default="home",
+        help="initial page for --experience; invalid pages fall back to that Experience's authored first page",
+    )
     a=p.parse_args()
-    BeastUI(a.root,a.framebuffer,a.output,a.theme,physical_size=(a.physical_width,a.physical_height),display_mode=a.display_mode,display_resample=a.display_resample).run(a.duration)
+    common=dict(
+        physical_size=(a.physical_width,a.physical_height),
+        display_mode=a.display_mode,
+        display_resample=a.display_resample,
+    )
+    if a.experience:
+        ui=ExperienceBeastUI(
+            a.root,a.framebuffer,a.output,a.theme,
+            experience_id=a.experience,
+            experience_page=a.experience_page,
+            **common,
+        )
+    else:
+        ui=BeastUI(a.root,a.framebuffer,a.output,a.theme,**common)
+    ui.run(a.duration)
+
 
 if __name__=="__main__":main()
