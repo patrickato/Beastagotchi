@@ -68,7 +68,11 @@ def test_observatory_scene_prioritizes_measurement_and_provenance():
     rows = {row["id"]: row for row in snap["layers"]}
     assert rows["observatory.spectrum"]["signals"] == ["wifi.aps", "radio.primary.channel"]
     assert rows["observatory.distribution"]["signals"] == ["wifi.aps"]
-    assert rows["observatory.truth_footer"]["update_class"] == "static"
+    assert rows["observatory.provenance"]["signals"] == [
+        "wifi.aps", "wifi.aps.quality", "wifi.aps.source", "wifi.aps.age_s", "gps.fix"
+    ]
+    assert rows["observatory.provenance"]["update_class"] == "live"
+    assert rows["observatory.home.nav_position"]["update_class"] == "static"
 
 
 def test_observatory_missing_observation_input_is_unknown_not_empty_sample():
