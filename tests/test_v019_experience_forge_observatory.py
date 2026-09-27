@@ -41,9 +41,10 @@ def test_observatory_metadata_is_derived_from_real_observations():
     assert meta["channels"] == sorted({row["channel"] for row in state["wifi.aps"]})
     assert meta["rssi_max"] == max(row["rssi"] for row in state["wifi.aps"])
     assert meta["capture_kind"] == "sanitized_real_target_capture"
+    assert meta["aps_reading"].known is True
 
 
-def test_observatory_scene_prioritizes_measurement_and_provenance():
+def test_observatory_scene_prioritizes_measurement_provenance_and_shell_truth():
     state = _state()
     rt = SceneRuntime()
     im = render_observatory_home(state, scene_runtime=rt)
@@ -53,7 +54,23 @@ def test_observatory_scene_prioritizes_measurement_and_provenance():
     rows = {row["id"]: row for row in snap["layers"]}
     assert rows["observatory.spectrum"]["signals"] == ["wifi.aps", "radio.primary.channel"]
     assert rows["observatory.distribution"]["signals"] == ["wifi.aps"]
-    assert rows["observatory.truth_footer"]["update_class"] == "static"
+    assert "observatory.provenance" in rows
+    assert "observatory.home.shell_status" in rows
+    assert rows["observatory.home.nav_position"]["update_class"] == "static"
+    assert "observatory.home.nav_previous" not in rows
+    assert rows["observatory.home.nav_next"]["touch"] == "experience_page:spectrum"
+
+
+def test_observatory_missing_observation_input_is_unknown_not_zero():
+    state = _state()
+    state.pop("wifi.aps", None)
+    state.pop("wifi.ap_count", None)
+    state.pop("radio.primary.channel", None)
+    meta = observatory_home_metadata(state)
+    assert meta["ap_count"] is None
+    assert meta["channel"] is None
+    assert meta["aps_reading"].known is False
+    assert meta["channel_reading"].known is False
 
 
 def test_forge_and_observatory_are_visually_distinct():
