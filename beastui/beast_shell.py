@@ -85,8 +85,12 @@ class NavigationModel:
     footer_y: int = 264
     footer_h: int = 56
     previous_box: tuple[int, int, int, int] = (0, 264, 160, 320)
-    home_box: tuple[int, int, int, int] = (160, 264, 320, 320)
+    center_box: tuple[int, int, int, int] = (160, 264, 320, 320)
     next_box: tuple[int, int, int, int] = (320, 264, 480, 320)
+
+    @property
+    def position_text(self) -> str:
+        return f"{self.index + 1}/{len(self.pages)}"
 
 
 @dataclass(frozen=True)
