@@ -31,6 +31,18 @@ def test_atlas_route_requires_fix_and_real_route_points():
     assert meta["gps_status"] == "GPS FIX"
 
 
+def test_atlas_missing_field_truth_stays_unknown():
+    meta = atlas_home_metadata({})
+    assert meta["gps_fix"] is None
+    assert meta["route_points"] is None
+    assert meta["ap_unique"] is None
+    assert meta["distance_m"] is None
+    assert meta["duration_sec"] is None
+    assert meta["channel"] is None
+    assert meta["draw_route"] is False
+    assert meta["gps_status"] == "GPS —"
+
+
 def test_atlas_home_renders_reference_size_and_semantic_scene():
     state = _state()
     rt = SceneRuntime()
@@ -49,6 +61,9 @@ def test_atlas_home_renders_reference_size_and_semantic_scene():
         "atlas.system",
         "atlas.expedition_strip",
     } <= ids
+    assert "atlas.home.nav_previous" not in ids
+    assert "atlas.home.nav_next" in ids
+    assert "atlas.home.nav_position" in ids
 
 
 def test_atlas_field_canvas_is_live_truth_not_decorative_fake_map():
