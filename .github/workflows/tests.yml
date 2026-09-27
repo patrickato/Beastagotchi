@@ -37,11 +37,14 @@ jobs:
       - name: Shell syntax
         run: bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh tools/v019_stage_from_artifact.sh
 
-
       - name: Render sanitized real-state UX gallery
         run: |
           mkdir -p artifacts/v019-real-state-gallery
-          PYTHONPATH=. python tools/render_v019_ux_gallery.py             --root beastui             --state tests/fixtures/v018_target_sanitized_state.json             --out artifacts/v019-real-state-gallery             --all-themes
+          PYTHONPATH=. python tools/render_v019_ux_gallery.py \
+            --root beastui \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-real-state-gallery \
+            --all-themes
 
       - name: Upload v0.19 real-state UX gallery
         uses: actions/upload-artifact@v4
@@ -50,7 +53,6 @@ jobs:
           path: artifacts/v019-real-state-gallery
           if-no-files-found: error
           retention-days: 30
-
 
       - name: Render deterministic v0.19 Home motion proof
         run: |
@@ -72,7 +74,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-
       - name: Render v0.19 Experience structural silhouettes
         run: |
           PYTHONPATH=. python tools/render_v019_experience_silhouettes.py
@@ -84,7 +85,6 @@ jobs:
           path: artifacts/v019-experience-silhouettes
           if-no-files-found: error
           retention-days: 30
-
 
       - name: Render Atlas Home Experience proof
         run: |
@@ -101,7 +101,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-
       - name: Render first non-legacy Experience Home proofs
         run: |
           PYTHONPATH=. python tools/render_v019_experience_homes.py \
@@ -116,7 +115,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-
       - name: Render cross-page Experience translation proof
         run: |
           PYTHONPATH=. python tools/render_v019_experience_page_translations.py
@@ -129,6 +127,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Render shared-shell Monolith state matrix
+        run: |
+          PYTHONPATH=. python tools/render_v019_monolith_shell_states.py \
+            --state tests/fixtures/v018_target_sanitized_state.json \
+            --out artifacts/v019-monolith-shell-states
+
+      - name: Upload shared-shell Monolith state matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: v019-monolith-shell-states
+          path: artifacts/v019-monolith-shell-states
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build commit-pinned v0.19 Pi acceptance source bundle
         env:
