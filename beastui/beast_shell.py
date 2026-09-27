@@ -80,6 +80,8 @@ class NavigationModel:
     index: int
     previous_page: str
     next_page: str
+    previous_enabled: bool = True
+    next_enabled: bool = True
     footer_y: int = 264
     footer_h: int = 56
     previous_box: tuple[int, int, int, int] = (0, 264, 160, 320)
@@ -168,7 +170,12 @@ def _state_word(state: dict[str, Any], key: str) -> str:
 
 
 def attention_state(state: dict[str, Any]) -> AttentionState:
-    """One shared, conservative attention ladder for all Experiences."""
+    """One shared, conservative attention ladder for all Experiences.
+
+    When a directly observed condition explains the severity, prefer that
+    specific cause over a generic aggregate-health sentence. Aggregate health
+    remains the fallback for faults without a known local cause.
+    """
 
     state = dict(state or {})
     health = _state_word(state, "health.core.state")
@@ -177,18 +184,18 @@ def attention_state(state: dict[str, Any]) -> AttentionState:
     bettercap = _state_word(state, "bettercap.service.state")
     monitor = _state_word(state, "radio.monitor.state")
 
-    if health in {"critical", "fault", "failed", "failure"}:
-        return AttentionState("critical", "SYSTEM NEEDS ATTENTION", "health.core.state")
     if temp is not None and temp >= 80.0:
         return AttentionState("critical", "THERMAL CRITICAL", "system.temp.cpu_c")
+    if health in {"critical", "fault", "failed", "failure"}:
+        return AttentionState("critical", "SYSTEM NEEDS ATTENTION", "health.core.state")
     if pwn in {"failed", "failure", "inactive", "dead"} or bettercap in {"failed", "failure", "inactive", "dead"}:
         return AttentionState("warning", "RADIO STACK OFFLINE", "radio-stack")
     if monitor in {"failed", "failure", "offline", "down"}:
         return AttentionState("warning", "MONITOR INPUT OFFLINE", "radio.monitor.state")
-    if health in {"degraded", "warning", "warn"}:
-        return AttentionState("warning", "SYSTEM DEGRADED", "health.core.state")
     if temp is not None and temp >= 75.0:
         return AttentionState("warning", "THERMAL HIGH", "system.temp.cpu_c")
+    if health in {"degraded", "warning", "warn"}:
+        return AttentionState("warning", "SYSTEM DEGRADED", "health.core.state")
     if health in {"healthy", "ok", "ready", "nominal"}:
         return AttentionState("normal", "SYSTEM READY", "health.core.state")
     return AttentionState("notice", "STATUS UNKNOWN", "health.core.state")
@@ -202,8 +209,22 @@ def navigation_model(experience_id: str, page_id: str, pages: Iterable[str]) -> 
     except ValueError:
         index = 0
         current = ordered[0]
-    previous_page = ordered[index - 1] if len(ordered) > 1 else current
-    next_page = ordered[(index + 1) % len(ordered)] if len(ordered) > 1 else current
+
+    if len(ordered) == 1:
+        previous_page = next_page = current
+        previous_enabled = next_enabled = False
+    elif len(ordered) == 2:
+        other = ordered[1 - index]
+        previous_page = next_page = other
+        # A two-page Experience should not advertise the same destination on
+        # both sides of the rail. It reads as a simple forward/back pair.
+        previous_enabled = index > 0
+        next_enabled = index == 0
+    else:
+        previous_page = ordered[index - 1]
+        next_page = ordered[(index + 1) % len(ordered)]
+        previous_enabled = next_enabled = True
+
     return NavigationModel(
         experience_id=str(experience_id or "").strip().lower(),
         page_id=current,
@@ -211,21 +232,14 @@ def navigation_model(experience_id: str, page_id: str, pages: Iterable[str]) -> 
         index=index,
         previous_page=previous_page,
         next_page=next_page,
+        previous_enabled=previous_enabled,
+        next_enabled=next_enabled,
     )
 
 
 def status_sentence(state: dict[str, Any], attention: AttentionState) -> str:
-    if attention.level in {"critical", "warning"}:
-        return attention.summary
+    """Shell status is health/attention language, not a duplicate body metric."""
 
-    ch = reading(state, "radio.primary.channel")
-    nearby = reading(state, "wifi.ap_count")
-    if ch.known and nearby.known:
-        return f"CH {format_reading(ch)} · {format_reading(nearby)} NEARBY"
-    if ch.known:
-        return f"CH {format_reading(ch)}"
-    if nearby.known:
-        return f"{format_reading(nearby)} NEARBY"
     return attention.summary
 
 
