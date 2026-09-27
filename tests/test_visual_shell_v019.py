@@ -85,13 +85,14 @@ def test_navigation_model_is_wraparound_and_touch_sized_for_three_plus_pages():
     assert nav.previous_enabled is True
     assert nav.next_enabled is True
     assert nav.footer_h >= 48
-    for box in (nav.previous_box, nav.home_box, nav.next_box):
+    for box in (nav.previous_box, nav.center_box, nav.next_box):
         x1, y1, x2, y2 = box
         assert x2 - x1 >= 48
         assert y2 - y1 >= 48
 
     wrapped = navigation_model("atlas", "home", ("home", "recon", "map"))
     assert wrapped.previous_page == "map"
+    assert wrapped.position_text == "1/3"
 
 
 def test_two_page_navigation_does_not_repeat_same_destination_on_both_sides():
@@ -99,11 +100,13 @@ def test_two_page_navigation_does_not_repeat_same_destination_on_both_sides():
     assert home.previous_enabled is False
     assert home.next_enabled is True
     assert home.next_page == "overview"
+    assert home.position_text == "1/2"
 
     overview = navigation_model("monolith", "overview", ("home", "overview"))
     assert overview.previous_enabled is True
     assert overview.previous_page == "home"
     assert overview.next_enabled is False
+    assert overview.position_text == "2/2"
 
 
 def test_shell_status_sentence_is_attention_language_not_duplicate_body_metrics():
