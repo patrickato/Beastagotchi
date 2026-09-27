@@ -28,6 +28,20 @@ def test_habitat_is_creature_first_and_uses_real_progression():
     rows = {row["id"]: row for row in snap["layers"]}
     assert rows["habitat.beast"]["bounds"] == [130, 40, 350, 260]
     assert rows["habitat.environment"]["decorative"] is True
+    assert "habitat.home.nav_previous" not in rows
+    assert "habitat.home.nav_next" in rows
+    assert rows["habitat.home.nav_position"]["update_class"] == "static"
+
+
+def test_habitat_missing_life_state_stays_unknown_instead_of_zero():
+    meta = habitat_home_metadata({})
+    assert meta["level"] is None
+    assert meta["progress_pct"] is None
+    assert meta["discoveries"] is None
+    assert meta["lifetime"] is None
+    assert meta["captures"] is None
+    assert meta["expedition_active"] is None
+    assert meta["mood"] == "unknown"
 
 
 def test_habitat_truth_strip_does_not_replace_creature_hierarchy():
@@ -85,3 +99,5 @@ def test_habitat_beast_page_preserves_creature_first_growth_memory_language():
     assert "habitat_beast.growth" in rows
     assert "habitat_beast.memories" in rows
     assert rows["habitat_beast.environment"]["decorative"] is True
+    assert "habitat.beast.nav_previous" in rows
+    assert "habitat.beast.nav_next" not in rows
