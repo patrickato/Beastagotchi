@@ -5,6 +5,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .beast_shell import BeastShellModel, SHELL_TYPE, build_shell_model, format_reading, reading
 from .scene_runtime import SceneLayerSpec, SceneRuntime
 
 
@@ -27,36 +28,18 @@ def _font(size=11):
         return ImageFont.load_default()
 
 
-def _f(state: dict[str, Any], key: str, default=0.0) -> float:
+def _number(value: Any) -> float | None:
     try:
-        return float(state.get(key, default) or default)
-    except Exception:
-        return float(default)
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
-def _i(state: dict[str, Any], key: str, default=0) -> int:
-    try:
-        return int(float(state.get(key, default) or default))
-    except Exception:
-        return int(default)
-
-
-def forge_home_metadata(state: dict[str, Any]) -> dict[str, Any]:
-    attention = state.get("overview.attention") or []
-    return {
-        "core_state": str(state.get("health.core.state") or "unknown"),
-        "cpu_pct": _f(state, "system.cpu.total"),
-        "temp_c": _f(state, "system.temp.cpu_c"),
-        "memory_pct": _f(state, "system.memory.used_pct"),
-        "channel": _i(state, "radio.primary.channel"),
-        "band": str(state.get("radio.primary.band") or "?"),
-        "ethernet": bool(state.get("network.ethernet.carrier")),
-        "power_available": bool(state.get("power.telemetry.available")),
-        "ups_state": str(state.get("power.ups.state") or "unknown"),
-        "governor": str(state.get("governor.mode") or "unknown"),
-        "capabilities": _i(state, "capabilities.count"),
-        "attention_count": len(attention) if isinstance(attention, list) else 0,
-    }
+def _int_or_none(value: Any) -> int | None:
+    n = _number(value)
+    return None if n is None else int(n)
 
 
 def _register(rt, spec):
@@ -64,66 +47,213 @@ def _register(rt, spec):
         rt.register(spec)
 
 
-def _module(draw, box, title, primary, secondary, *, status="normal"):
-    x1, y1, x2, y2 = box
-    edge = _WARN if status == "warn" else _OK if status == "ok" else _EDGE
-    draw.rounded_rectangle(box, radius=7, fill=_METAL, outline=edge, width=2)
-    draw.rectangle((x1+5, y1+5, x1+10, y1+10), fill=edge)
-    draw.text((x1+16, y1+5), title, fill=_MUTED, font=_font(8))
-    draw.text((x1+10, y1+24), primary, fill=_INK, font=_font(14))
-    draw.text((x1+10, y1+44), secondary, fill=_AMBER, font=_font(8))
+def _shell(state: dict[str, Any], page_id: str) -> BeastShellModel:
+    shell = state.get("_beast_shell")
+    if isinstance(shell, BeastShellModel) and shell.page_id == page_id:
+        return shell
+    return build_shell_model("forge", page_id, state, ("home", "system"))
 
 
-def _dial(draw, center, radius, value, *, label, unit="", warn=False):
+def _attention_color(shell: BeastShellModel):
+    if shell.attention.level in {"critical", "warning"}:
+        return _WARN
+    if shell.attention.level == "normal":
+        return _OK
+    return _EDGE
+
+
+def forge_home_metadata(state: dict[str, Any]) -> dict[str, Any]:
+    state = dict(state or {})
+    attention = state.get("overview.attention")
+
+    cpu = reading(state, "system.cpu.total", unit="%")
+    temp = reading(state, "system.temp.cpu_c", unit="°C")
+    memory = reading(state, "system.memory.used_pct", unit="%")
+    channel = reading(state, "radio.primary.channel")
+    ethernet = reading(state, "network.ethernet.carrier")
+    power = reading(state, "power.telemetry.available")
+    capabilities = reading(state, "capabilities.count")
+    governor = reading(state, "governor.mode")
+    monitor = reading(state, "radio.monitor.state")
+
+    return {
+        # Established public keys remain available for callers/tests.
+        "core_state": str(state.get("health.core.state") or "unknown"),
+        "cpu_pct": _number(cpu.value) if cpu.known else None,
+        "temp_c": _number(temp.value) if temp.known else None,
+        "memory_pct": _number(memory.value) if memory.known else None,
+        "channel": _int_or_none(channel.value) if channel.known else None,
+        "band": str(state.get("radio.primary.band") or "?") if "radio.primary.band" in state else "?",
+        "ethernet": bool(ethernet.value) if ethernet.known else None,
+        "power_available": bool(power.value) if power.known else None,
+        "ups_state": str(state.get("power.ups.state") or "unknown"),
+        "governor": str(governor.value) if governor.known else "unknown",
+        "capabilities": _int_or_none(capabilities.value) if capabilities.known else None,
+        "attention_count": len(attention) if isinstance(attention, list) else None,
+        "attention_known": isinstance(attention, list),
+        # Truth-bearing forms for rendering.
+        "cpu_reading": cpu,
+        "temp_reading": temp,
+        "memory_reading": memory,
+        "channel_reading": channel,
+        "ethernet_reading": ethernet,
+        "power_reading": power,
+        "capabilities_reading": capabilities,
+        "governor_reading": governor,
+        "monitor_reading": monitor,
+    }
+
+
+def _draw_header(draw: ImageDraw.ImageDraw, shell: BeastShellModel, rt=None):
+    col = _attention_color(shell)
+    draw.rectangle((0, 0, 479, 33), fill=(31, 30, 27))
+    draw.line((0, 32, 479, 32), fill=_EDGE, width=2)
+    draw.text((10, 6), "FORGE", fill=_AMBER, font=_font(SHELL_TYPE.label))
+    draw.text((67, 9), "MACHINE BAY", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    draw.ellipse((292, 11, 302, 21), fill=col)
+    box = draw.textbbox((0, 0), shell.status_sentence, font=_font(SHELL_TYPE.caption))
+    draw.text((468 - (box[2] - box[0]), 8), shell.status_sentence,
+              fill=_INK if shell.attention.level != "notice" else _MUTED,
+              font=_font(SHELL_TYPE.caption))
+    _register(rt, SceneLayerSpec(
+        f"forge.{shell.page_id}.shell_status", "text", (0, 0, 480, 34),
+        signals=("health.core.state", "system.temp.cpu_c", "pwnagotchi.service.state",
+                 "bettercap.service.state", "radio.monitor.state"), update_class="live",
+    ))
+    if shell.page_id == "home":
+        _register(rt, SceneLayerSpec(
+            "forge.header", "text", (0, 0, 480, 34),
+            signals=("health.core.state",), update_class="live",
+        ))
+    else:
+        _register(rt, SceneLayerSpec(
+            "forge_system.header", "text", (0, 0, 480, 34),
+            signals=("health.core.state",), update_class="live",
+        ))
+
+
+def _draw_nav(draw: ImageDraw.ImageDraw, shell: BeastShellModel, rt=None):
+    nav = shell.navigation
+    y = nav.footer_y
+    draw.rectangle((0, y, 479, 319), fill=(31, 30, 27))
+    draw.line((0, y, 479, y), fill=_EDGE, width=2)
+    draw.line((160, y + 8, 160, 312), fill=_METAL_2)
+    draw.line((320, y + 8, 320, 312), fill=_METAL_2)
+
+    if nav.previous_enabled:
+        text = f"‹ {nav.previous_page.upper()}"
+        draw.text((18, y + 18), text, fill=_AMBER, font=_font(SHELL_TYPE.caption))
+        _register(rt, SceneLayerSpec(
+            f"forge.{nav.page_id}.nav_previous", "interaction", nav.previous_box,
+            touch=f"experience_page:{nav.previous_page}", update_class="interaction",
+        ))
+
+    center = nav.position_text
+    box = draw.textbbox((0, 0), center, font=_font(SHELL_TYPE.body))
+    draw.text((240 - (box[2] - box[0]) // 2, y + 18), center,
+              fill=_MUTED, font=_font(SHELL_TYPE.body))
+    _register(rt, SceneLayerSpec(
+        f"forge.{nav.page_id}.nav_position", "text", nav.center_box,
+        update_class="static",
+    ))
+
+    if nav.next_enabled:
+        text = f"{nav.next_page.upper()} ›"
+        box = draw.textbbox((0, 0), text, font=_font(SHELL_TYPE.caption))
+        draw.text((462 - (box[2] - box[0]), y + 18), text,
+                  fill=_AMBER, font=_font(SHELL_TYPE.caption))
+        _register(rt, SceneLayerSpec(
+            f"forge.{nav.page_id}.nav_next", "interaction", nav.next_box,
+            touch=f"experience_page:{nav.next_page}", update_class="interaction",
+        ))
+
+
+def _chassis(draw: ImageDraw.ImageDraw):
+    outer = [(8, 46), (18, 38), (461, 38), (471, 48), (471, 252), (461, 260), (18, 260), (8, 252)]
+    inner = [(13, 58), (21, 52), (458, 52), (466, 59), (466, 246), (458, 253), (21, 253), (13, 246)]
+    draw.polygon(outer, fill=(35, 34, 30), outline=_EDGE)
+    draw.polygon(inner, fill=(27, 27, 24), outline=_METAL_2)
+    for x in (160, 320):
+        draw.line((x, 55, x, 246), fill=_METAL_2, width=3)
+        for y in (66, 139, 207, 241):
+            draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill=_EDGE, outline=_BG)
+    for x, y in ((23, 61), (456, 61), (23, 244), (456, 244)):
+        draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill=_EDGE, outline=_BG)
+
+
+def _bay_label(draw, x1, x2, label, state_text="", state_color=_MUTED):
+    draw.line((x1, 58, x2, 58), fill=_EDGE)
+    draw.text((x1 + 6, 42), label, fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    if state_text:
+        box = draw.textbbox((0, 0), state_text, font=_font(10))
+        draw.text((x2 - 6 - (box[2] - box[0]), 43), state_text,
+                  fill=state_color, font=_font(10))
+
+
+def _dial(draw, center, radius, reading_row, *, warn=False):
     cx, cy = center
     edge = _WARN if warn else _OK
-    draw.arc((cx-radius, cy-radius, cx+radius, cy+radius), 205, 335, fill=_EDGE, width=3)
-    draw.arc((cx-radius, cy-radius, cx+radius, cy+radius), 205, 205 + int(130 * max(0.0, min(100.0, value)) / 100.0), fill=edge, width=4)
-    angle = 205 + 130 * max(0.0, min(100.0, value)) / 100.0
-    import math
-    rad = math.radians(angle)
-    nx = cx + int((radius-8) * math.cos(rad))
-    ny = cy + int((radius-8) * math.sin(rad))
-    draw.line((cx, cy, nx, ny), fill=_INK, width=2)
-    draw.ellipse((cx-3, cy-3, cx+3, cy+3), fill=_AMBER)
-    draw.text((cx-radius+3, cy+radius-12), label, fill=_MUTED, font=_font(7))
-    value_text = f"{value:.0f}{unit}"
-    tw = draw.textbbox((0,0), value_text, font=_font(12))[2]
-    draw.text((cx-tw//2, cy-7), value_text, fill=_INK, font=_font(12))
+    draw.arc((cx - radius, cy - radius, cx + radius, cy + radius), 205, 335, fill=_EDGE, width=3)
+    value = _number(reading_row.value) if reading_row.known else None
+    if value is not None:
+        bounded = max(0.0, min(100.0, value))
+        draw.arc((cx - radius, cy - radius, cx + radius, cy + radius),
+                 205, 205 + int(130 * bounded / 100.0), fill=edge, width=4)
+        angle = math.radians(205 + 130 * bounded / 100.0)
+        nx = cx + int((radius - 7) * math.cos(angle))
+        ny = cy + int((radius - 7) * math.sin(angle))
+        draw.line((cx, cy, nx, ny), fill=_INK, width=2)
+        draw.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), fill=_AMBER)
+    text = format_reading(reading_row)
+    font = _font(SHELL_TYPE.title)
+    box = draw.textbbox((0, 0), text, font=font)
+    draw.text((cx - (box[2] - box[0]) // 2, cy - 10), text,
+              fill=_INK if reading_row.known else _MUTED, font=font)
 
 
-def _bay_title(draw, x1, x2, label, state_text, *, state_color=_MUTED):
-    draw.line((x1, 49, x2, 49), fill=_EDGE, width=1)
-    draw.text((x1+6, 37), label, fill=_MUTED, font=_font(8))
-    bbox = draw.textbbox((0,0), state_text, font=_font(7))
-    draw.text((x2-6-(bbox[2]-bbox[0]), 38), state_text, fill=state_color, font=_font(7))
+def _port(draw, x, y, state: bool | None):
+    col = _OK if state is True else _EDGE
+    draw.rectangle((x, y, x + 24, y + 15), outline=col, width=2)
+    draw.line((x + 5, y + 5, x + 19, y + 5), fill=col)
+    draw.line((x + 5, y + 10, x + 19, y + 10), fill=col)
 
 
-def _port(draw, x, y, *, active=False):
-    col = _OK if active else _EDGE
-    draw.rectangle((x, y, x+18, y+12), outline=col, width=1)
-    draw.line((x+4, y+4, x+14, y+4), fill=col)
-    draw.line((x+4, y+8, x+14, y+8), fill=col)
+def _beast_core(draw, shell: BeastShellModel, phase: float):
+    cx, cy = 240, 157
+    col = _attention_color(shell) if shell.attention.level in {"critical", "warning"} else _AMBER
+    draw.rectangle((24, 153, 455, 161), fill=_METAL_2)
+    draw.line((24, 157, 455, 157), fill=_AMBER, width=2)
+    for x in (54, 127, 201, 279, 353, 426):
+        draw.ellipse((x - 4, 153, x + 4, 161), fill=_AMBER, outline=_BG)
+    draw.polygon([(cx, cy - 27), (cx + 24, cy - 14), (cx + 24, cy + 14),
+                  (cx, cy + 27), (cx - 24, cy + 14), (cx - 24, cy - 14)],
+                 fill=_BG, outline=col, width=2)
+    draw.polygon([(cx, cy - 13), (cx + 12, cy), (cx, cy + 13), (cx - 12, cy)], outline=_INK)
+    draw.text((cx - 18, cy - 6), "BEAST", fill=_INK, font=_font(8))
+
+    pulse = 0.5 + 0.5 * math.sin(float(phase) * 2.2)
+    r = 29 + int(round(pulse * 2))
+    draw.arc((cx - r, cy - r, cx + r, cy + r), 205, 335, fill=_EDGE, width=1)
 
 
-def _bus(draw):
-    draw.line((46, 150, 434, 150), fill=_EDGE, width=3)
-    for x in (82, 232, 386):
-        draw.ellipse((x-5, 145, x+5, 155), fill=_AMBER, outline=_BG)
-    draw.text((194, 139), "SYSTEM BUS", fill=_MUTED, font=_font(8))
+def _monitor_text(meta) -> tuple[str, tuple[int, int, int]]:
+    row = meta["monitor_reading"]
+    if not row.known:
+        return "MONITOR —", _MUTED
+    word = str(row.value).strip().lower()
+    if word in {"up", "active", "ready", "monitor", "running"}:
+        return "MONITOR UP", _OK
+    if word in {"offline", "down", "failed", "failure"}:
+        return "MONITOR DOWN", _WARN
+    return f"MONITOR {str(row.value).upper()[:8]}", _MUTED
 
 
-def _core_emblem(draw, state):
-    cx, cy = 236, 151
-    draw.ellipse((cx-28, cy-28, cx+28, cy+28), fill=_BG, outline=_AMBER, width=2)
-    draw.polygon([(cx, cy-17), (cx+15, cy), (cx, cy+17), (cx-15, cy)], outline=_INK)
-    draw.text((cx-17, cy-5), "BEAST", fill=_INK, font=_font(8))
-
-
-def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
-    """Forge Home as one continuous machine-bay scene, not a card dashboard."""
+def render_forge_home(state: dict[str, Any], *, phase: float = 0.0,
+                      scene_runtime: SceneRuntime | None = None) -> Image.Image:
+    """Forge Home: one readable machine chassis, not a pile of mini dashboards."""
     state = dict(state or {})
     meta = forge_home_metadata(state)
+    shell = _shell(state, "home")
     rt = scene_runtime
     if rt is not None:
         rt.begin(page_id="home", scene_id="experience:forge:home", theme_id="experience.forge")
@@ -131,204 +261,128 @@ def render_forge_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtim
 
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
-    health = meta["core_state"].upper()
-    health_col = _OK if health == "HEALTHY" else _WARN
+    _draw_header(d, shell, rt)
+    _chassis(d)
 
-    # Header: stamped machine identity, deliberately flat/no card chrome.
-    d.rectangle((0, 0, 479, 29), fill=(31, 30, 27))
-    d.rectangle((0, 28, 479, 30), fill=_EDGE)
-    d.text((10, 6), "FORGE", fill=_AMBER, font=_font(15))
-    d.text((70, 9), "MACHINE BAY // ACTIVE CHASSIS", fill=_MUTED, font=_font(8))
-    d.ellipse((445, 9, 455, 19), fill=health_col)
-    d.text((386, 9), health, fill=health_col, font=_font(8))
+    # Compute bay: one gauge, temperature and memory. No tiny duplicate telemetry.
+    temp_text = format_reading(meta["temp_reading"])
+    temp_num = meta["temp_c"]
+    _bay_label(d, 14, 158, "COMPUTE", temp_text,
+               _WARN if temp_num is not None and temp_num >= 75 else _OK if temp_num is not None else _MUTED)
+    _dial(d, (77, 103), 37, meta["cpu_reading"], warn=temp_num is not None and temp_num >= 75)
+    d.text((56, 132), "CPU", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    mem_text = format_reading(meta["memory_reading"])
+    d.text((112, 84), "MEM", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    d.text((112, 104), mem_text, fill=_INK if meta["memory_reading"].known else _MUTED,
+           font=_font(SHELL_TYPE.label))
     _register(rt, SceneLayerSpec(
-        "forge.header", "text", (0, 0, 480, 31),
-        signals=("health.core.state",), update_class="live",
-    ))
-
-    # One chassis occupies the screen. Subsystems are separated by frame rails,
-    # not rounded independent cards.
-    chassis = [
-        (8, 44), (18, 36), (461, 36), (471, 46),
-        (471, 265), (461, 275), (18, 275), (8, 265),
-    ]
-    d.polygon(chassis, fill=(35, 34, 30), outline=_EDGE)
-    inner = [
-        (13, 57), (21, 51), (458, 51), (466, 58),
-        (466, 257), (458, 264), (21, 264), (13, 257),
-    ]
-    d.polygon(inner, fill=(27, 27, 24), outline=_METAL_2)
-
-    # Exposed structural rails, braces and fasteners rather than card dividers.
-    for x in (160, 320):
-        d.line((x, 54, x, 260), fill=_METAL_2, width=3)
-        d.line((x-8, 62, x, 54, x+8, 62), fill=_EDGE, width=1)
-        d.line((x-8, 252, x, 260, x+8, 252), fill=_EDGE, width=1)
-        for y in (69, 132, 205, 246):
-            d.ellipse((x-3, y-3, x+3, y+3), fill=_EDGE, outline=_BG)
-    for x,y in ((23,61),(456,61),(23,252),(456,252)):
-        d.ellipse((x-3,y-3,x+3,y+3), fill=_EDGE, outline=_BG)
-    d.line((18, 172, 47, 197), fill=(70, 66, 55), width=2)
-    d.line((462, 171, 431, 199), fill=(70, 66, 55), width=2)
-
-    # COMPUTE bay: one physical gauge plus memory rail.
-    _bay_title(d, 14, 158, "COMPUTE CORE", f"{meta['temp_c']:.0f}C", state_color=_OK if meta["temp_c"] < 75 else _WARN)
-    _dial(d, (75, 102), 39, meta["cpu_pct"], label="CPU LOAD", unit="%", warn=meta["temp_c"] >= 75)
-    mem = max(0.0, min(100.0, meta["memory_pct"]))
-    d.text((118, 73), "MEM", fill=_MUTED, font=_font(7))
-    d.rectangle((120, 87, 132, 132), outline=_EDGE)
-    fill_h = int(43 * mem / 100.0)
-    d.rectangle((122, 130-fill_h, 130, 130), fill=_AMBER)
-    d.text((109, 137), f"{mem:.0f}%", fill=_INK, font=_font(9))
-    _register(rt, SceneLayerSpec(
-        "forge.compute", "instrument", (14, 34, 158, 148),
+        "forge.compute", "instrument", (14, 38, 158, 148),
         signals=("system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct"), update_class="live",
     ))
 
-    # Heat-sink fins and conduit make the compute bay feel physically installed.
-    d.text((21, 130), "HEAT SINK", fill=_MUTED, font=_font(6))
-    for vx in range(24, 143, 11):
-        d.line((vx, 141, vx+7, 141), fill=(80, 76, 63), width=2)
-    d.line((145, 91, 151, 91, 151, 139), fill=_EDGE, width=1)
-
-    # RADIO bay: frequency ruler and channel are embedded in the chassis.
-    _bay_title(d, 164, 318, "RADIO DECK", meta["band"], state_color=_OK)
-    d.text((181, 66), "CHANNEL", fill=_MUTED, font=_font(7))
-    d.text((181, 78), f"{meta['channel']:02d}", fill=_INK, font=_font(30))
-    ap_count = _i(state, "wifi.ap_count")
-    d.text((257, 81), f"{ap_count} AP", fill=_AMBER, font=_font(10))
-    d.line((176, 121, 306, 121), fill=_EDGE, width=2)
-    for idx, x in enumerate(range(178, 307, 16)):
-        h = 9 if idx % 2 == 0 else 5
-        d.line((x, 121-h, x, 121+h), fill=_MUTED)
-    pos = 178 + int(126 * max(0, min(165, meta["channel"])) / 165.0)
-    d.polygon([(pos,108),(pos-5,116),(pos+5,116)], fill=_AMBER)
-    d.text((176, 134), "RF FABRIC ONLINE", fill=_OK, font=_font(7))
+    # Radio bay: channel/band/observed AP count without a fake linear channel ruler.
+    band = meta["band"].upper() if meta["band"] != "?" else "BAND —"
+    _bay_label(d, 164, 318, "RADIO", band, _OK if meta["band"] != "?" else _MUTED)
+    d.text((178, 69), "CHANNEL", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    ch_text = format_reading(meta["channel_reading"])
+    d.text((178, 86), ch_text, fill=_INK if meta["channel_reading"].known else _MUTED,
+           font=_font(30))
+    aps = reading(state, "wifi.ap_count")
+    ap_text = f"{format_reading(aps)} AP" if aps.known else "AP —"
+    d.text((254, 94), ap_text, fill=_AMBER if aps.known else _MUTED,
+           font=_font(SHELL_TYPE.body))
+    d.line((176, 126, 306, 126), fill=_EDGE, width=2)
+    for x in range(178, 307, 21):
+        d.line((x, 121, x, 131), fill=_MUTED)
+    monitor_text, monitor_col = _monitor_text(meta)
+    d.text((176, 135), monitor_text, fill=monitor_col, font=_font(10))
     _register(rt, SceneLayerSpec(
-        "forge.radio", "instrument", (164, 34, 318, 148),
-        signals=("radio.primary.channel", "radio.primary.band", "wifi.ap_count"), update_class="live",
+        "forge.radio", "instrument", (164, 38, 318, 148),
+        signals=("radio.primary.channel", "radio.primary.band", "wifi.ap_count", "radio.monitor.state"),
+        update_class="live",
     ))
 
-    d.text((274, 135), "RF COUPLER", fill=_MUTED, font=_font(6))
-    d.line((286, 128, 302, 128, 307, 133), fill=_EDGE, width=1)
-    d.arc((303, 126, 315, 138), 205, 335, fill=_AMBER, width=1)
-
-    # POWER bay is truthful about absent telemetry; still looks like hardware.
-    power_col = _OK if meta["power_available"] else _EDGE
-    power_state = "SENSOR ONLINE" if meta["power_available"] else "NO SENSOR"
-    _bay_title(d, 324, 465, "POWER TRAIN", power_state, state_color=power_col)
-    d.line((341, 82, 341, 132), fill=power_col, width=3)
+    # Power bay: absence is an explicit fact, not fabricated telemetry.
+    if meta["power_available"] is True:
+        power_state, power_col = "SENSOR", _OK
+        power_primary = "KNOWN"
+    elif meta["power_available"] is False:
+        power_state, power_col = "NO SENSOR", _EDGE
+        power_primary = "UNAVAILABLE"
+    else:
+        power_state, power_col = "STATUS —", _MUTED
+        power_primary = "UNKNOWN"
+    _bay_label(d, 324, 465, "POWER", power_state, power_col)
+    d.line((343, 82, 343, 132), fill=power_col, width=3)
     for y in (84, 100, 116, 132):
-        d.line((335, y, 347, y), fill=power_col, width=2)
-    d.text((359, 78), "TELEMETRY", fill=_MUTED, font=_font(7))
-    d.text((359, 94), "KNOWN" if meta["power_available"] else "UNAVAILABLE", fill=power_col, font=_font(10))
-    d.text((359, 115), meta["ups_state"].replace("_"," ").upper()[:16], fill=_AMBER, font=_font(7))
+        d.line((336, y, 350, y), fill=power_col, width=2)
+    d.text((360, 78), "TELEMETRY", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    d.text((360, 98), power_primary, fill=power_col, font=_font(SHELL_TYPE.body))
+    ups = meta["ups_state"].replace("_", " ").upper()
+    d.text((360, 124), ups[:15], fill=_AMBER if ups != "UNKNOWN" else _MUTED, font=_font(10))
     _register(rt, SceneLayerSpec(
-        "forge.power", "instrument", (324, 34, 466, 148),
+        "forge.power", "instrument", (324, 38, 466, 148),
         signals=("power.telemetry.available", "power.ups.state"), update_class="live",
     ))
 
-    d.text((389, 133), "POWER BUS", fill=_MUTED, font=_font(6))
-    d.line((451, 74, 456, 74, 456, 139, 446, 139), fill=power_col, width=1)
-
-    # Shared bus physically binds every subsystem. Beast is the machine core.
-    d.rectangle((24, 155, 455, 163), fill=_METAL_2)
-    d.line((24, 159, 455, 159), fill=_AMBER, width=2)
-    for x in (53, 127, 201, 279, 353, 427):
-        d.ellipse((x-4, 155, x+4, 163), fill=_AMBER, outline=_BG)
-    cx, cy = 240, 159
-    d.polygon([(cx,cy-28),(cx+24,cy-14),(cx+24,cy+14),(cx,cy+28),(cx-24,cy+14),(cx-24,cy-14)],
-              fill=_BG, outline=_AMBER)
-    d.polygon([(cx,cy-14),(cx+12,cy),(cx,cy+14),(cx-12,cy)], outline=_INK)
-    d.text((cx-15,cy-4),"BEAST",fill=_INK,font=_font(7))
+    _beast_core(d, shell, phase)
     _register(rt, SceneLayerSpec(
-        "forge.machine_bus", "shape", (20, 130, 460, 190),
+        "forge.machine_bus", "shape", (20, 130, 460, 184),
         signals=("health.core.state",), update_class="live",
     ))
     _register(rt, SceneLayerSpec(
-        "forge.beast_core", "creature", (214, 130, 266, 188),
+        "forge.beast_core", "creature", (214, 130, 266, 184),
         signals=("progression.level", "pwnagotchi.mood", "beast.expression"), update_class="live",
     ))
-
-    # Decorative machine-life pulse: this never moves gauges, channel markers,
-    # power truth or any other measured state.
-    pulse = 0.5 + 0.5 * math.sin(float(phase) * 2.2)
-    ambient_col = (
-        int(_EDGE[0] + (_AMBER[0] - _EDGE[0]) * pulse),
-        int(_EDGE[1] + (_AMBER[1] - _EDGE[1]) * pulse),
-        int(_EDGE[2] + (_AMBER[2] - _EDGE[2]) * pulse),
-    )
-    for x in (53, 127, 353, 427):
-        r = 2 + int(round(pulse))
-        d.ellipse((x-r, 159-r, x+r, 159+r), outline=ambient_col)
-    d.arc((cx-31, cy-31, cx+31, cy+31), 205, 335, fill=ambient_col, width=1)
     _register(rt, SceneLayerSpec(
-        "forge.ambient_chassis", "ambient", (20, 128, 460, 190),
+        "forge.ambient_chassis", "ambient", (20, 128, 460, 186),
         update_class="ambient", reduced_motion="static", decorative=True,
     ))
 
-    # Lower machine floor: open service area, not another dashboard row.
-    d.line((18, 194, 286, 194), fill=_EDGE)
-    d.line((300, 194, 459, 194), fill=_EDGE)
-    d.line((291, 188, 296, 194, 291, 200), fill=_AMBER, width=2)
-    d.text((18, 181), "I/O FABRIC", fill=_MUTED, font=_font(8))
-    ethernet = bool(meta["ethernet"])
-    _port(d, 20, 207, active=ethernet)
-    _port(d, 45, 207, active=meta["channel"] > 0)
-    _port(d, 70, 207, active=meta["capabilities"] > 0)
-    d.text((20, 226), f"{meta['capabilities']} CAPABILITIES", fill=_INK, font=_font(11))
-    d.text((20, 244), "ETH LINK UP" if ethernet else "ETH NO LINK", fill=_OK if ethernet else _MUTED, font=_font(8))
-    d.text((120, 244), f"RADIO CH {meta['channel']}", fill=_AMBER, font=_font(8))
-    for x in range(20, 284, 18):
-        d.line((x, 256, x+10, 256), fill=_METAL_2)
+    # Service floor: two readable zones rather than a row of tiny labels.
+    d.line((18, 188, 286, 188), fill=_EDGE)
+    d.text((20, 194), "I/O FABRIC", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    _port(d, 20, 216, meta["ethernet"])
+    _port(d, 54, 216, True if meta["channel"] is not None else None)
+    _port(d, 88, 216, True if meta["capabilities"] is not None and meta["capabilities"] > 0 else None)
+    eth_text = "ETH UP" if meta["ethernet"] is True else "ETH DOWN" if meta["ethernet"] is False else "ETH —"
+    caps_text = "CAP —" if meta["capabilities"] is None else f"CAP {meta['capabilities']}"
+    d.text((128, 211), eth_text, fill=_OK if meta["ethernet"] is True else _MUTED,
+           font=_font(SHELL_TYPE.body))
+    d.text((128, 232), caps_text, fill=_INK if meta["capabilities"] is not None else _MUTED,
+           font=_font(SHELL_TYPE.body))
     _register(rt, SceneLayerSpec(
-        "forge.io", "instrument", (14, 178, 294, 263),
+        "forge.io", "instrument", (14, 188, 294, 254),
         signals=("capabilities.count", "network.ethernet.carrier", "radio.primary.channel"), update_class="live",
     ))
 
-    # Doctor/governor is stencilled directly onto the service plate.
-    d.text((309, 204), "DOCTOR // GOVERNOR", fill=_MUTED, font=_font(8))
-    attention = meta["attention_count"]
-    doctor_text = "READY" if attention == 0 and health == "HEALTHY" else f"{attention} ATTENTION"
-    led_col = _OK if doctor_text == "READY" else _WARN
-    d.ellipse((310, 225, 324, 239), fill=led_col)
-    d.ellipse((306, 221, 328, 243), outline=(64, 62, 52), width=1)
-    d.text((337, 221), doctor_text, fill=_INK, font=_font(11))
-    d.text((337, 240), f"GOV {meta['governor'].upper()}", fill=_AMBER, font=_font(8))
-    d.line((304, 254, 454, 254), fill=(70, 67, 56), width=1)
-    for x in (309, 347, 385, 423):
-        d.line((x, 250, x+18, 250), fill=_METAL_2, width=2)
+    d.line((300, 188, 459, 188), fill=_EDGE)
+    d.text((310, 194), "DOCTOR / GOVERNOR", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    if meta["attention_known"] and meta["attention_count"] == 0 and shell.attention.level == "normal":
+        doctor_text, doctor_col = "READY", _OK
+    elif meta["attention_known"] and meta["attention_count"] is not None:
+        doctor_text, doctor_col = f"{meta['attention_count']} ATTENTION", _WARN
+    else:
+        doctor_text, doctor_col = "STATUS —", _MUTED
+    d.ellipse((310, 222, 326, 238), fill=doctor_col)
+    d.text((338, 217), doctor_text, fill=_INK, font=_font(SHELL_TYPE.body))
+    gov = format_reading(meta["governor_reading"])
+    d.text((338, 239), f"GOV {gov}", fill=_AMBER if meta["governor_reading"].known else _MUTED,
+           font=_font(10))
     _register(rt, SceneLayerSpec(
-        "forge.doctor", "instrument", (302, 198, 460, 262),
+        "forge.doctor", "instrument", (302, 188, 460, 254),
         signals=("overview.attention", "health.core.state", "governor.mode"), update_class="live",
     ))
 
-    # Bottom machine rail: concise context, no app/nav chrome.
-    d.rectangle((8, 282, 471, 311), fill=_METAL)
-    d.rectangle((8, 282, 471, 284), fill=_EDGE)
-    d.text((18, 292), "MACHINE", fill=_MUTED, font=_font(7))
-    d.text((63, 290), health, fill=health_col, font=_font(9))
-    d.text((162, 292), "DOCK", fill=_MUTED, font=_font(7))
-    d.text((195, 290), str(state.get("dock.state") or "?").upper()[:10], fill=_INK, font=_font(9))
-    d.text((302, 292), "GOV", fill=_MUTED, font=_font(7))
-    d.text((330, 290), meta["governor"].upper()[:12], fill=_AMBER, font=_font(9))
-    _register(rt, SceneLayerSpec(
-        "forge.state_rail", "text", (8, 282, 472, 312),
-        signals=("health.core.state", "dock.state", "governor.mode"), update_class="live",
-    ))
-
+    _draw_nav(d, shell, rt)
     return im
 
 
-
-def render_forge_system(
-    state: dict[str, Any],
-    *,
-    scene_runtime: SceneRuntime | None = None,
-) -> Image.Image:
-    """Forge System as a deeper view into the same continuous machine chassis."""
+def render_forge_system(state: dict[str, Any], *, scene_runtime: SceneRuntime | None = None) -> Image.Image:
+    """Forge System: service access to the same chassis with truthful subsystem facts."""
     state = dict(state or {})
     meta = forge_home_metadata(state)
+    shell = _shell(state, "system")
     rt = scene_runtime
     if rt is not None:
         rt.begin(page_id="system", scene_id="experience:forge:system", theme_id="experience.forge")
@@ -336,106 +390,93 @@ def render_forge_system(
 
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
-    health = meta["core_state"].upper()
-    health_col = _OK if health == "HEALTHY" else _WARN
+    _draw_header(d, shell, rt)
 
-    d.rectangle((0,0,479,29), fill=(31,30,27))
-    d.rectangle((0,28,479,30), fill=_EDGE)
-    d.text((10,6),"FORGE",fill=_AMBER,font=_font(15))
-    d.text((70,9),"SYSTEM BAY // SERVICE CHASSIS",fill=_MUTED,font=_font(8))
-    d.ellipse((445,9,455,19),fill=health_col)
-    d.text((386,9),health,fill=health_col,font=_font(8))
+    d.rectangle((8, 39, 471, 258), fill=(35, 34, 30), outline=_EDGE, width=2)
+    d.rectangle((13, 55, 466, 252), fill=(27, 27, 24), outline=_METAL_2)
+    d.rectangle((238, 55, 242, 252), fill=_METAL_2)
+
+    # Compute service bay.
+    d.text((20, 44), "COMPUTE SERVICE", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    _dial(d, (78, 112), 41, meta["cpu_reading"],
+          warn=meta["temp_c"] is not None and meta["temp_c"] >= 75)
+    d.text((58, 145), "CPU", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    temp = format_reading(meta["temp_reading"])
+    mem = format_reading(meta["memory_reading"])
+    d.text((137, 83), "THERMAL", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    d.text((137, 102), temp, fill=_WARN if meta["temp_c"] is not None and meta["temp_c"] >= 75 else _INK,
+           font=_font(SHELL_TYPE.label))
+    d.text((137, 132), "MEMORY", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    d.text((137, 151), mem, fill=_INK if meta["memory_reading"].known else _MUTED,
+           font=_font(SHELL_TYPE.label))
     _register(rt, SceneLayerSpec(
-        "forge_system.header","text",(0,0,480,31),
-        signals=("health.core.state",),update_class="live",
+        "forge_system.compute", "instrument", (14, 39, 236, 176),
+        signals=("system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct"), update_class="live",
     ))
 
-    # One chassis, split into two service bays.
-    d.rectangle((8,36,471,274),fill=(35,34,30),outline=_EDGE,width=2)
-    d.rectangle((12,53,467,263),fill=(27,27,24),outline=_METAL_2)
-    d.rectangle((238,52,242,263),fill=_METAL_2)
-    for y in (62,132,205,252):
-        d.ellipse((236,y-2,244,y+6),fill=_EDGE,outline=_BG)
-
-    # Compute service bay: gauge + thermal/memory rails.
-    _bay_title(d,14,236,"COMPUTE SERVICE",f"{meta['temp_c']:.0f}C",
-               state_color=_OK if meta["temp_c"] < 75 else _WARN)
-    _dial(d,(76,104),42,meta["cpu_pct"],label="CPU LOAD",unit="%",warn=meta["temp_c"]>=75)
-    mem=max(0.0,min(100.0,meta["memory_pct"]))
-    d.text((132,72),"MEMORY BUS",fill=_MUTED,font=_font(7))
-    d.rectangle((132,88,213,101),outline=_EDGE)
-    d.rectangle((134,90,134+int(77*mem/100.0),99),fill=_AMBER)
-    d.text((132,108),f"{mem:.1f}% USED",fill=_INK,font=_font(9))
-    d.text((132,128),f"THERMAL {meta['temp_c']:.0f} C",fill=_OK if meta["temp_c"]<75 else _WARN,font=_font(8))
+    # I/O service bay.
+    d.text((252, 44), "I/O SERVICE", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    _port(d, 258, 82, meta["ethernet"])
+    _port(d, 296, 82, True if meta["channel"] is not None else None)
+    _port(d, 334, 82, True if meta["capabilities"] is not None and meta["capabilities"] > 0 else None)
+    _port(d, 372, 82, meta["power_available"])
+    caps = "—" if meta["capabilities"] is None else str(meta["capabilities"])
+    channel = format_reading(meta["channel_reading"])
+    d.text((258, 117), f"CAPABILITIES {caps}", fill=_INK if meta["capabilities"] is not None else _MUTED,
+           font=_font(SHELL_TYPE.body))
+    d.text((258, 143), f"RADIO CH {channel}", fill=_AMBER if meta["channel_reading"].known else _MUTED,
+           font=_font(SHELL_TYPE.body))
+    eth = "LINK UP" if meta["ethernet"] is True else "NO LINK" if meta["ethernet"] is False else "LINK —"
+    d.text((258, 166), eth, fill=_OK if meta["ethernet"] is True else _MUTED,
+           font=_font(SHELL_TYPE.caption))
     _register(rt, SceneLayerSpec(
-        "forge_system.compute","instrument",(14,34,236,150),
-        signals=("system.cpu.total","system.temp.cpu_c","system.memory.used_pct"),
-        update_class="live",
+        "forge_system.io", "instrument", (244, 39, 466, 176),
+        signals=("network.ethernet.carrier", "capabilities.count", "radio.primary.channel"), update_class="live",
     ))
 
-    # I/O service bay: ports + radio/capability fabric.
-    ethernet=bool(meta["ethernet"])
-    _bay_title(d,244,465,"I/O FABRIC","LINK UP" if ethernet else "NO LINK",
-               state_color=_OK if ethernet else _MUTED)
-    for idx,active in enumerate((ethernet,meta["channel"]>0,meta["capabilities"]>0,meta["power_available"])):
-        _port(d,258+idx*42,82,active=active)
-    d.text((258,108),f"{meta['capabilities']} CAPABILITIES",fill=_INK,font=_font(11))
-    d.text((258,127),f"RADIO CH {meta['channel']} // {meta['band']}",fill=_AMBER,font=_font(8))
-    d.text((370,127),"ETH UP" if ethernet else "ETH DOWN",fill=_OK if ethernet else _MUTED,font=_font(8))
+    # Decorative shared service bus.
+    d.rectangle((24, 181, 456, 189), fill=_METAL_2)
+    d.line((24, 185, 456, 185), fill=_AMBER, width=2)
+    for x in (58, 130, 202, 278, 350, 422):
+        d.ellipse((x - 4, 181, x + 4, 189), fill=_AMBER, outline=_BG)
     _register(rt, SceneLayerSpec(
-        "forge_system.io","instrument",(244,34,466,150),
-        signals=("network.ethernet.carrier","capabilities.count","radio.primary.channel"),
-        update_class="live",
+        "forge_system.bus", "shape", (22, 178, 458, 192),
+        signals=(), update_class="static", decorative=True,
     ))
 
-    # Shared bus physically connects both service bays.
-    d.rectangle((26,157,454,165),fill=_METAL_2)
-    d.line((26,161,454,161),fill=_AMBER,width=2)
-    for x in (58,130,202,278,350,422):
-        d.ellipse((x-5,156,x+5,166),fill=_AMBER,outline=_BG)
-    d.text((198,146),"MACHINE BUS",fill=_MUTED,font=_font(7))
+    # Lower power train.
+    power_col = _OK if meta["power_available"] is True else _EDGE if meta["power_available"] is False else _MUTED
+    d.text((20, 198), "POWER TRAIN", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    d.line((24, 218, 24, 246), fill=power_col, width=3)
+    for y in (220, 232, 244):
+        d.line((17, y, 31, y), fill=power_col, width=2)
+    power_word = "ONLINE" if meta["power_available"] is True else "NO SENSOR" if meta["power_available"] is False else "UNKNOWN"
+    d.text((45, 216), power_word, fill=power_col, font=_font(SHELL_TYPE.body))
+    d.text((45, 239), meta["ups_state"].replace("_", " ").upper()[:20],
+           fill=_AMBER if meta["ups_state"] != "unknown" else _MUTED, font=_font(10))
     _register(rt, SceneLayerSpec(
-        "forge_system.bus","shape",(22,142,458,176),
-        signals=(),update_class="static",decorative=True,
+        "forge_system.power", "instrument", (14, 194, 226, 252),
+        signals=("power.telemetry.available", "power.ups.state"), update_class="live",
     ))
 
-    # Lower power train is an exposed mechanism, not a module card.
-    power_col=_OK if meta["power_available"] else _EDGE
-    d.text((18,181),"POWER TRAIN",fill=_MUTED,font=_font(8))
-    d.line((22,204,22,252),fill=power_col,width=3)
-    for y in (206,220,234,248):
-        d.line((16,y,28,y),fill=power_col,width=2)
-    d.text((42,197),"TELEMETRY",fill=_MUTED,font=_font(7))
-    d.text((42,214),"ONLINE" if meta["power_available"] else "NO SENSOR",fill=power_col,font=_font(12))
-    d.text((42,235),meta["ups_state"].replace("_"," ").upper()[:22],fill=_AMBER,font=_font(8))
+    # Doctor/governor service stack.
+    d.line((242, 196, 242, 252), fill=_METAL_2, width=2)
+    d.text((258, 198), "DOCTOR / GOVERNOR", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    if meta["attention_known"] and meta["attention_count"] == 0 and shell.attention.level == "normal":
+        doctor, doctor_col = "NO ACTIVE FAULTS", _OK
+    elif meta["attention_known"] and meta["attention_count"] is not None:
+        doctor, doctor_col = f"{meta['attention_count']} ATTENTION", _WARN
+    else:
+        doctor, doctor_col = "FAULT STATE —", _MUTED
+    d.ellipse((258, 222, 274, 238), fill=doctor_col)
+    d.text((286, 216), doctor, fill=_INK, font=_font(SHELL_TYPE.body))
+    gov = format_reading(meta["governor_reading"])
+    d.text((286, 239), f"GOV {gov}", fill=_AMBER if meta["governor_reading"].known else _MUTED,
+           font=_font(10))
     _register(rt, SceneLayerSpec(
-        "forge_system.power","instrument",(14,178,226,260),
-        signals=("power.telemetry.available","power.ups.state"),update_class="live",
+        "forge_system.doctor", "instrument", (244, 194, 466, 252),
+        signals=("overview.attention", "health.core.state", "governor.mode"), update_class="live",
     ))
 
-    # Doctor/governor fault stack is mounted in the right lower bay.
-    attention=meta["attention_count"]
-    doctor_primary="NO ACTIVE FAULTS" if attention==0 and health=="HEALTHY" else f"{attention} ATTENTION"
-    d.line((244,178,244,260),fill=_METAL_2,width=2)
-    d.text((258,181),"DOCTOR / GOVERNOR",fill=_MUTED,font=_font(8))
-    d.ellipse((258,207,274,223),fill=_OK if doctor_primary=="NO ACTIVE FAULTS" else _WARN)
-    d.text((286,202),doctor_primary,fill=_INK,font=_font(11))
-    d.text((286,222),f"GOVERNOR {meta['governor'].upper()}",fill=_AMBER,font=_font(8))
-    d.text((286,240),"POLICY GUARDS ACTIVE",fill=_MUTED,font=_font(7))
-    _register(rt, SceneLayerSpec(
-        "forge_system.doctor","instrument",(244,178,466,260),
-        signals=("overview.attention","health.core.state","governor.mode"),update_class="live",
-    ))
-
-    d.rectangle((8,282,471,311),fill=_METAL)
-    d.rectangle((8,282,471,284),fill=_EDGE)
-    d.text((18,291),f"CORE {health}",fill=health_col,font=_font(8))
-    d.text((164,291),f"GOV {meta['governor'].upper()}",fill=_AMBER,font=_font(8))
-    d.text((302,291),f"POWER {'KNOWN' if meta['power_available'] else 'UNKNOWN'}",fill=_MUTED,font=_font(8))
-    _register(rt, SceneLayerSpec(
-        "forge_system.rail","text",(8,282,472,312),
-        signals=("health.core.state","governor.mode","power.telemetry.available"),
-        update_class="live",
-    ))
+    _draw_nav(d, shell, rt)
     return im
-
