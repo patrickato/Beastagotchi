@@ -196,6 +196,10 @@ Focus on:
 - repair/approval buttons;
 - brief results.
 
+TFT presentation is **function-first and resource-aware**. It must remain easy to read and touch on the 480x320 reference display and must not spend CPU/GPU/RAM/storage/thermal budget on character animation or decorative effects that interfere with responsiveness, diagnosis, battery life or thermal headroom.
+
+A "live Beast as Doctor" personality treatment is optional presentation flavor, not a requirement for Doctor to function. Richer character animation may be enabled by an Experience/Profile when resources allow, while the default TFT path may use a lightweight icon/portrait/status treatment.
+
 ### Studio/WebUI
 Can provide:
 - detailed case timeline;
@@ -207,19 +211,20 @@ Can provide:
 - raw technical output;
 - repair history.
 
-The two surfaces should represent the same Doctor case, not separate systems.
+Phone/WebUI may use richer responsive visuals because they are not constrained by the Pi's 480x320 display budget in the same way, while still representing the same underlying Doctor case.
+
+The surfaces should represent the same Doctor case, not separate systems.
 
 ## 10. Doctor personality / character question
 
-Open for later creative discussion:
+Doctor may have a visual/personality identity integrated with Beastagotchi, but should never obscure technical truth or impose unnecessary resource cost.
 
-Doctor may have a visual/personality identity integrated with Beastagotchi, but should never obscure technical truth.
-
-Possible range:
-- purely professional system physician;
-- subtle character/medical-bay visual language;
-- creature-linked Doctor expressions/animations;
-- optional more playful presentation.
+Current direction:
+- no requirement for a separate permanent Doctor character;
+- no requirement that the active Beast run elaborate live personality/animation on TFT;
+- optional creature-linked Doctor expressions/role presentation remain available for Experiences that can afford them;
+- simple professional/medical visual language is always acceptable;
+- phone/WebUI may express richer personality independently of the constrained TFT surface.
 
 Do not finalize visual character before broader UI/Experience work and physical 480x320 validation.
 
@@ -235,6 +240,46 @@ Collective evidence can be surfaced compactly:
 Expanded view explains matching dimensions and source/evidence tiers.
 
 Never turn popularity alone into automatic truth.
+
+## 12. Heart / vitals line motif — strong visual candidate
+
+Owner explicitly likes a **heart/vitals waveform line** as a Doctor visual motif.
+
+Candidate behavior:
+
+- compact ECG/monitor-like line used in Doctor headers/status strips or treatment views;
+- waveform/color/pace reflect truthful Doctor/system state rather than arbitrary decoration;
+- calm/steady when healthy or idle;
+- more active while probing/working;
+- caution state may shift visual treatment;
+- critical/fault state may become more urgent;
+- resolved/recovered state returns toward normal;
+- animation cadence should be bounded and lightweight on TFT;
+- color must not be the only state cue; pair with icon/text/pattern for accessibility.
+
+The waveform does **not** need to pretend to represent literal biological heart-rate data. It is a visual health/status language for the machine/Doctor unless an actual sensor-backed metric is explicitly being shown.
+
+Potential value:
+- instantly recognizable Doctor identity;
+- can remain visible while the rest of the UI changes;
+- gives the user a live sense that work is ongoing;
+- works across TFT, phone and WebUI;
+- can become a subtle ambient health indicator outside full Doctor view.
+
+## 13. Resource hierarchy for Doctor visuals
+
+Doctor presentation should degrade gracefully by surface/resource budget:
+
+1. **Essential:** text status, actionable controls, progress/stage, severity, next step.
+2. **Useful:** dependency path, vitals line, small icons, compact evidence summary.
+3. **Optional:** creature pose/portrait, contextual animations, richer transitions.
+4. **Luxury:** elaborate live character choreography/effects.
+
+Resource Governor/Experience policy may suppress tiers 3-4 without losing Doctor capability.
+
+Principle:
+
+> **Doctor must remain fully useful when every decorative layer is turned off.**
 
 ## Principle
 
