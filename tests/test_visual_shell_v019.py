@@ -68,10 +68,22 @@ def test_shared_attention_promotes_critical_temperature():
     assert attn.summary == "THERMAL CRITICAL"
 
 
-def test_navigation_model_is_wraparound_and_touch_sized():
+def test_specific_critical_cause_beats_generic_aggregate_health_wording():
+    attn = attention_state({
+        "health.core.state": "critical",
+        "system.temp.cpu_c": 81.0,
+    })
+    assert attn.level == "critical"
+    assert attn.summary == "THERMAL CRITICAL"
+    assert attn.source == "system.temp.cpu_c"
+
+
+def test_navigation_model_is_wraparound_and_touch_sized_for_three_plus_pages():
     nav = navigation_model("atlas", "recon", ("home", "recon", "map"))
     assert nav.previous_page == "home"
     assert nav.next_page == "map"
+    assert nav.previous_enabled is True
+    assert nav.next_enabled is True
     assert nav.footer_h >= 48
     for box in (nav.previous_box, nav.home_box, nav.next_box):
         x1, y1, x2, y2 = box
@@ -82,13 +94,27 @@ def test_navigation_model_is_wraparound_and_touch_sized():
     assert wrapped.previous_page == "map"
 
 
-def test_shell_status_sentence_uses_only_known_values():
+def test_two_page_navigation_does_not_repeat_same_destination_on_both_sides():
+    home = navigation_model("monolith", "home", ("home", "overview"))
+    assert home.previous_enabled is False
+    assert home.next_enabled is True
+    assert home.next_page == "overview"
+
+    overview = navigation_model("monolith", "overview", ("home", "overview"))
+    assert overview.previous_enabled is True
+    assert overview.previous_page == "home"
+    assert overview.next_enabled is False
+
+
+def test_shell_status_sentence_is_attention_language_not_duplicate_body_metrics():
     shell = build_shell_model("monolith", "home", {
         "health.core.state": "healthy",
         "radio.primary.channel": 11,
+        "wifi.ap_count": 18,
     }, ("home", "overview"))
-    assert shell.status_sentence == "CH 11"
-    assert "0 NEARBY" not in shell.status_sentence
+    assert shell.status_sentence == "SYSTEM READY"
+    assert "CH 11" not in shell.status_sentence
+    assert "18 NEARBY" not in shell.status_sentence
 
 
 def test_shell_unknown_state_is_explicit_not_nominal():
