@@ -57,14 +57,14 @@ def test_monolith_keeps_primary_information_intentionally_sparse():
     assert snap["scene"] == "experience:monolith:home"
     rows = {row["id"]: row for row in snap["layers"]}
     assert rows["monolith.ambient_halo"]["decorative"] is True
-    # Shared shell adds one status layer plus three touch-sized navigation
-    # interactions without changing Monolith's sparse body hierarchy.
     assert "monolith.home.shell_status" in rows
-    for suffix in ("nav_previous", "nav_home", "nav_next"):
-        row = rows[f"monolith.home.{suffix}"]
-        x1, y1, x2, y2 = row["bounds"]
-        assert x2 - x1 >= 48
-        assert y2 - y1 >= 48
+    assert rows["monolith.home.nav_position"]["update_class"] == "static"
+    # Home is first of two pages, so only the forward destination is active.
+    assert "monolith.home.nav_previous" not in rows
+    nxt = rows["monolith.home.nav_next"]
+    x1, y1, x2, y2 = nxt["bounds"]
+    assert x2 - x1 >= 48
+    assert y2 - y1 >= 48
 
 
 def test_habitat_and_monolith_are_visually_distinct():
