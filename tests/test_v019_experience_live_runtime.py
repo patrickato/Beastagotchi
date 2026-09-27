@@ -4,7 +4,8 @@ from pathlib import Path
 from PIL import Image
 
 from beastui.experience_live import ExperienceBeastUI, ExperienceSession
-from beastui.experience_registry import available_experience_pages
+from beastui.experience_registry import available_experience_pages, render_experience_page
+from beastui.scene_runtime import SceneRuntime
 
 
 FIXTURE = Path("tests/fixtures/v018_target_sanitized_state.json")
@@ -20,6 +21,24 @@ def test_experience_page_order_is_authored_not_alphabetical():
     assert available_experience_pages("observatory") == ("home", "spectrum")
     assert available_experience_pages("habitat") == ("home", "beast")
     assert available_experience_pages("monolith") == ("home", "overview")
+
+
+def test_registry_runtime_contract_renders_every_page_with_phase():
+    state = _state()
+    for experience_id in ("atlas", "forge", "observatory", "habitat", "monolith"):
+        for page_id in available_experience_pages(experience_id):
+            rt = SceneRuntime()
+            image = render_experience_page(
+                experience_id,
+                page_id,
+                state,
+                phase=0.5,
+                scene_runtime=rt,
+            )
+            assert image.size == (480, 320)
+            snap = rt.snapshot()
+            assert snap["page"] == page_id
+            assert snap["scene"] == f"experience:{experience_id}:{page_id}"
 
 
 def test_experience_session_navigation_is_bounded_and_invalid_page_falls_back():
