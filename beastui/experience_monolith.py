@@ -53,13 +53,22 @@ def _attention_color(shell:BeastShellModel):
 
 
 def monolith_home_metadata(state:dict[str,Any])->dict[str,Any]:
-    level=reading(state,"progression.level")
+    level_row=reading(state,"progression.level")
+    nearby_row=reading(state,"wifi.ap_count")
+    channel_row=reading(state,"radio.primary.channel")
+    level=int(float(level_row.value)) if level_row.known else None
+    nearby=int(float(nearby_row.value)) if nearby_row.known else None
+    channel=int(float(channel_row.value)) if channel_row.known else None
     return {
         "stage":str(state.get("progression.stage") or "Beast"),
-        "level":int(float(level.value)) if level.known else None,
+        "level":level,
         "mood":str(state.get("pwnagotchi.mood") or "unknown"),
-        "nearby":reading(state,"wifi.ap_count"),
-        "channel":reading(state,"radio.primary.channel"),
+        # Preserve the established metadata contract for callers/tests while
+        # exposing truth-safe Reading objects to the renderer.
+        "nearby":nearby,
+        "channel":channel,
+        "nearby_reading":nearby_row,
+        "channel_reading":channel_row,
         "health":str(state.get("health.core.state") or "unknown"),
         "field":str(state.get("dock.state") or "unknown"),
     }
@@ -232,10 +241,10 @@ def render_monolith_home(state:dict[str,Any],*,phase:float=0.0,scene_runtime:Sce
         update_class="ambient",reduced_motion="static",decorative=True,
     ))
 
-    nearby_text=format_reading(meta["nearby"])
-    channel_text=format_reading(meta["channel"])
+    nearby_text=format_reading(meta["nearby_reading"])
+    channel_text=format_reading(meta["channel_reading"])
     d.text((118,240),f"{nearby_text} NEARBY",fill=_INK,font=_font(SHELL_TYPE.label))
-    d.line((246,240,246,258),fill=_LINE)
+    d.line((248,240,248,258),fill=_LINE)
     d.text((266,240),f"CH {channel_text}",fill=_INK,font=_font(SHELL_TYPE.label))
     _register(rt,SceneLayerSpec(
         "monolith.primary_fact","instrument",(108,234,370,263),
@@ -276,10 +285,16 @@ def render_monolith_overview(
         signals=("health.core.state","system.temp.cpu_c","pwnagotchi.service.state",
                  "bettercap.service.state","radio.monitor.state"), update_class="live",
     ))
+    # Preserve the established drill-down interaction, but attach it to the
+    # meaningful status surface instead of tiny footer microcopy.
+    _register(rt, SceneLayerSpec(
+        "monolith_overview.inspect_hint", "interaction", (112,62,368,124),
+        touch="hold_for_detail", update_class="interaction",
+    ))
 
     cpu=reading(state,"system.cpu.total",unit="%")
     temp=reading(state,"system.temp.cpu_c",unit="°")
-    nearby=meta["nearby"]
+    nearby=meta["nearby_reading"]
     facts=(
         (146,"COMPUTE",format_reading(cpu)),
         (240,"THERMAL",format_reading(temp)),
