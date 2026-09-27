@@ -33,11 +33,6 @@ def _font(size=11):
         return ImageFont.load_default()
 
 
-def _i(state:dict[str,Any],key:str,default=0)->int:
-    try:return int(float(state.get(key,default) or default))
-    except Exception:return int(default)
-
-
 def _shell(state:dict[str,Any], page_id:str)->BeastShellModel:
     shell=state.get("_beast_shell")
     if isinstance(shell,BeastShellModel) and shell.page_id==page_id:
@@ -86,28 +81,30 @@ def _draw_shell_nav(draw, shell:BeastShellModel, rt=None):
     draw.line((160,y+8,160,312),fill=_LINE)
     draw.line((320,y+8,320,312),fill=_LINE)
 
-    prev=f"‹ {nav.previous_page.upper()}"
-    nxt=f"{nav.next_page.upper()} ›"
-    center="HOME" if nav.page_id!="home" else "BEAST"
+    if nav.previous_enabled:
+        prev=f"‹ {nav.previous_page.upper()}"
+        draw.text((18,y+18),prev,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+        _register(rt,SceneLayerSpec(
+            f"monolith.{nav.page_id}.nav_previous","interaction",nav.previous_box,
+            touch=f"experience_page:{nav.previous_page}",update_class="interaction",
+        ))
 
-    draw.text((18,y+18),prev,fill=_MUTED,font=_font(SHELL_TYPE.caption))
-    cb=draw.textbbox((0,0),center,font=_font(SHELL_TYPE.label));cw=cb[2]-cb[0]
-    draw.text((240-cw//2,y+16),center,fill=_ACCENT,font=_font(SHELL_TYPE.label))
-    nb=draw.textbbox((0,0),nxt,font=_font(SHELL_TYPE.caption));nw=nb[2]-nb[0]
-    draw.text((462-nw,y+18),nxt,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+    center=nav.position_text
+    cb=draw.textbbox((0,0),center,font=_font(SHELL_TYPE.body));cw=cb[2]-cb[0]
+    draw.text((240-cw//2,y+18),center,fill=_ACCENT,font=_font(SHELL_TYPE.body))
+    _register(rt,SceneLayerSpec(
+        f"monolith.{nav.page_id}.nav_position","text",nav.center_box,
+        update_class="static",
+    ))
 
-    _register(rt,SceneLayerSpec(
-        f"monolith.{nav.page_id}.nav_previous","interaction",nav.previous_box,
-        touch=f"experience_page:{nav.previous_page}",update_class="interaction",
-    ))
-    _register(rt,SceneLayerSpec(
-        f"monolith.{nav.page_id}.nav_home","interaction",nav.home_box,
-        touch="experience_page:home",update_class="interaction",
-    ))
-    _register(rt,SceneLayerSpec(
-        f"monolith.{nav.page_id}.nav_next","interaction",nav.next_box,
-        touch=f"experience_page:{nav.next_page}",update_class="interaction",
-    ))
+    if nav.next_enabled:
+        nxt=f"{nav.next_page.upper()} ›"
+        nb=draw.textbbox((0,0),nxt,font=_font(SHELL_TYPE.caption));nw=nb[2]-nb[0]
+        draw.text((462-nw,y+18),nxt,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+        _register(rt,SceneLayerSpec(
+            f"monolith.{nav.page_id}.nav_next","interaction",nav.next_box,
+            touch=f"experience_page:{nav.next_page}",update_class="interaction",
+        ))
 
 
 def _draw_shell_status(draw, shell:BeastShellModel, rt=None):
@@ -117,7 +114,7 @@ def _draw_shell_status(draw, shell:BeastShellModel, rt=None):
     _register(rt,SceneLayerSpec(
         f"monolith.{shell.page_id}.shell_status","text",(12,8,466,34),
         signals=("health.core.state","system.temp.cpu_c","pwnagotchi.service.state",
-                 "bettercap.service.state","radio.monitor.state","radio.primary.channel","wifi.ap_count"),
+                 "bettercap.service.state","radio.monitor.state"),
         update_class="live",
     ))
 
@@ -285,8 +282,6 @@ def render_monolith_overview(
         signals=("health.core.state","system.temp.cpu_c","pwnagotchi.service.state",
                  "bettercap.service.state","radio.monitor.state"), update_class="live",
     ))
-    # Preserve the established drill-down interaction, but attach it to the
-    # meaningful status surface instead of tiny footer microcopy.
     _register(rt, SceneLayerSpec(
         "monolith_overview.inspect_hint", "interaction", (112,62,368,124),
         touch="hold_for_detail", update_class="interaction",
