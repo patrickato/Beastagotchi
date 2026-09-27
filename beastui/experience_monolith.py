@@ -5,6 +5,13 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .beast_shell import (
+    BeastShellModel,
+    SHELL_TYPE,
+    build_shell_model,
+    format_reading,
+    reading,
+)
 from .scene_runtime import SceneLayerSpec, SceneRuntime
 
 
@@ -15,6 +22,8 @@ _MUTED=(132,132,128)
 _LINE=(62,62,60)
 _ACCENT=(194,184,153)
 _OK=(145,178,146)
+_WARN=(205,151,91)
+_CRITICAL=(207,103,84)
 
 
 def _font(size=11):
@@ -29,15 +38,30 @@ def _i(state:dict[str,Any],key:str,default=0)->int:
     except Exception:return int(default)
 
 
+def _shell(state:dict[str,Any], page_id:str)->BeastShellModel:
+    shell=state.get("_beast_shell")
+    if isinstance(shell,BeastShellModel) and shell.page_id==page_id:
+        return shell
+    return build_shell_model("monolith",page_id,state,("home","overview"))
+
+
+def _attention_color(shell:BeastShellModel):
+    if shell.attention.level=="critical":return _CRITICAL
+    if shell.attention.level=="warning":return _WARN
+    if shell.attention.level=="normal":return _OK
+    return _ACCENT
+
+
 def monolith_home_metadata(state:dict[str,Any])->dict[str,Any]:
+    level=reading(state,"progression.level")
     return {
         "stage":str(state.get("progression.stage") or "Beast"),
-        "level":_i(state,"progression.level"),
-        "mood":str(state.get("pwnagotchi.mood") or "awake"),
-        "nearby":_i(state,"wifi.ap_count"),
-        "channel":_i(state,"radio.primary.channel"),
+        "level":int(float(level.value)) if level.known else None,
+        "mood":str(state.get("pwnagotchi.mood") or "unknown"),
+        "nearby":reading(state,"wifi.ap_count"),
+        "channel":reading(state,"radio.primary.channel"),
         "health":str(state.get("health.core.state") or "unknown"),
-        "field":str(state.get("dock.state") or "field"),
+        "field":str(state.get("dock.state") or "unknown"),
     }
 
 
@@ -45,7 +69,51 @@ def _register(rt,spec):
     if rt is not None:rt.register(spec)
 
 
-def _draw_focal(draw,meta):
+def _draw_shell_nav(draw, shell:BeastShellModel, rt=None):
+    nav=shell.navigation
+    y=nav.footer_y
+    draw.line((0,y,480,y),fill=_LINE,width=1)
+    draw.rectangle((0,y+1,479,319),fill=(15,15,15))
+    draw.line((160,y+8,160,312),fill=_LINE)
+    draw.line((320,y+8,320,312),fill=_LINE)
+
+    prev=f"‹ {nav.previous_page.upper()}"
+    nxt=f"{nav.next_page.upper()} ›"
+    center="HOME" if nav.page_id!="home" else "BEAST"
+
+    draw.text((18,y+18),prev,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+    cb=draw.textbbox((0,0),center,font=_font(SHELL_TYPE.label));cw=cb[2]-cb[0]
+    draw.text((240-cw//2,y+16),center,fill=_ACCENT,font=_font(SHELL_TYPE.label))
+    nb=draw.textbbox((0,0),nxt,font=_font(SHELL_TYPE.caption));nw=nb[2]-nb[0]
+    draw.text((462-nw,y+18),nxt,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+
+    _register(rt,SceneLayerSpec(
+        f"monolith.{nav.page_id}.nav_previous","interaction",nav.previous_box,
+        touch=f"experience_page:{nav.previous_page}",update_class="interaction",
+    ))
+    _register(rt,SceneLayerSpec(
+        f"monolith.{nav.page_id}.nav_home","interaction",nav.home_box,
+        touch="experience_page:home",update_class="interaction",
+    ))
+    _register(rt,SceneLayerSpec(
+        f"monolith.{nav.page_id}.nav_next","interaction",nav.next_box,
+        touch=f"experience_page:{nav.next_page}",update_class="interaction",
+    ))
+
+
+def _draw_shell_status(draw, shell:BeastShellModel, rt=None):
+    col=_attention_color(shell)
+    draw.ellipse((18,17,27,26),fill=col)
+    draw.text((38,14),shell.status_sentence,fill=_INK,font=_font(SHELL_TYPE.caption))
+    _register(rt,SceneLayerSpec(
+        f"monolith.{shell.page_id}.shell_status","text",(12,8,466,34),
+        signals=("health.core.state","system.temp.cpu_c","pwnagotchi.service.state",
+                 "bettercap.service.state","radio.monitor.state","radio.primary.channel","wifi.ap_count"),
+        update_class="live",
+    ))
+
+
+def _draw_focal(draw,meta,shell:BeastShellModel):
     """Premium sculptural Beast bust: dimensional, restrained, never logo-like."""
     cx = 240
     shadow = (22, 22, 21)
@@ -53,93 +121,86 @@ def _draw_focal(draw,meta):
     facet = (31, 31, 29)
     facet_2 = (38, 37, 34)
     facet_hi = (45, 43, 38)
-    health_col = _OK if meta["health"].lower()=="healthy" else _ACCENT
+    health_col = _attention_color(shell)
 
-    # Quiet halo establishes depth behind the sculpture. Broken arcs avoid a badge/ring read.
-    draw.arc((146, 47, 334, 238), 212, 326, fill=_LINE, width=1)
-    draw.arc((154, 55, 326, 230), 30, 148, fill=(43,43,41), width=1)
-    draw.arc((167, 68, 313, 218), 188, 246, fill=(34,34,33), width=1)
-    draw.arc((167, 68, 313, 218), 294, 352, fill=(34,34,33), width=1)
+    draw.arc((146, 47, 334, 230), 212, 326, fill=_LINE, width=1)
+    draw.arc((154, 55, 326, 222), 30, 148, fill=(43,43,41), width=1)
+    draw.arc((167, 68, 313, 212), 188, 246, fill=(34,34,33), width=1)
+    draw.arc((167, 68, 313, 212), 294, 352, fill=(34,34,33), width=1)
 
-    # Neck / plinth anchors the Beast as a sculptural bust rather than a floating mask.
-    draw.polygon([(215,204),(265,204),(281,230),(267,242),(213,242),(199,230)],
+    draw.polygon([(215,198),(265,198),(281,224),(267,236),(213,236),(199,224)],
                  fill=shadow, outline=(54,53,49))
-    draw.polygon([(220,205),(260,205),(269,225),(258,233),(222,233),(211,225)],
+    draw.polygon([(220,199),(260,199),(269,219),(258,227),(222,227),(211,219)],
                  fill=shadow_2, outline=_LINE)
 
-    # Slightly asymmetric head silhouette with ears integrated into the skull.
     head = [
-        (168, 111), (174, 82), (188, 88), (201, 51), (219, 83),
-        (239, 74), (262, 81), (279, 52), (292, 88), (305, 80),
-        (311, 110), (314, 148), (305, 178), (286, 205),
-        (259, 223), (239, 229), (217, 222), (194, 207),
-        (176, 181), (166, 151),
+        (168, 107), (174, 78), (188, 84), (201, 47), (219, 79),
+        (239, 70), (262, 77), (279, 48), (292, 84), (305, 76),
+        (311, 106), (314, 144), (305, 174), (286, 201),
+        (259, 219), (239, 225), (217, 218), (194, 203),
+        (176, 177), (166, 147),
     ]
     draw.polygon(head, fill=shadow, outline=_ACCENT)
     draw.line(head + [head[0]], fill=_ACCENT, width=2, joint="curve")
 
-    # Ear recesses and temple shelves create actual volume.
-    draw.polygon([(178,86),(201,56),(214,88),(198,105)], fill=(27,27,25), outline=_LINE)
-    draw.polygon([(266,88),(279,57),(301,88),(283,105)], fill=(27,27,25), outline=_LINE)
-    draw.line((185,84,199,66,207,88), fill=(72,69,59))
-    draw.line((273,88,280,67,294,86), fill=(72,69,59))
+    draw.polygon([(178,82),(201,52),(214,84),(198,101)], fill=(27,27,25), outline=_LINE)
+    draw.polygon([(266,84),(279,53),(301,84),(283,101)], fill=(27,27,25), outline=_LINE)
+    draw.line((185,80,199,62,207,84), fill=(72,69,59))
+    draw.line((273,84,280,63,294,82), fill=(72,69,59))
 
-    # Major facial planes. The center plane is narrow/high; cheeks fall away to darker values.
-    draw.polygon([(206,92),(239,77),(274,91),(260,126),(241,142),(222,126)],
+    draw.polygon([(206,88),(239,73),(274,87),(260,122),(241,138),(222,122)],
                  fill=facet_hi, outline=(55,54,50))
-    draw.polygon([(176,112),(206,92),(222,126),(208,168),(182,184),(169,150)],
+    draw.polygon([(176,108),(206,88),(222,122),(208,164),(182,180),(169,146)],
                  fill=facet, outline=_LINE)
-    draw.polygon([(305,110),(274,91),(260,126),(274,167),(299,181),(313,148)],
+    draw.polygon([(305,106),(274,87),(260,122),(274,163),(299,177),(313,144)],
                  fill=facet, outline=_LINE)
-    draw.polygon([(208,168),(241,142),(274,167),(262,202),(240,216),(218,202)],
+    draw.polygon([(208,164),(241,138),(274,163),(262,198),(240,212),(218,198)],
                  fill=facet_2, outline=(56,55,51))
-
-    # Lower cheek planes add mass while leaving the central muzzle clean.
-    draw.polygon([(181,184),(208,168),(218,202),(204,214),(188,202)],
+    draw.polygon([(181,180),(208,164),(218,198),(204,210),(188,198)],
                  fill=(28,28,26), outline=(48,48,45))
-    draw.polygon([(299,181),(274,167),(262,202),(277,213),(291,201)],
+    draw.polygon([(299,177),(274,163),(262,198),(277,209),(291,197)],
                  fill=(28,28,26), outline=(48,48,45))
 
-    # Brow shelves / recessed eyes. Eyes remain tiny; health is a subtle glint, not an LED face.
-    draw.line((190,130,219,126), fill=_INK, width=2)
-    draw.line((261,126,289,131), fill=_INK, width=2)
-    draw.polygon([(194,132),(219,129),(213,140),(198,140)], fill=(17,17,17))
-    draw.polygon([(261,129),(286,132),(281,140),(266,140)], fill=(17,17,17))
-    draw.ellipse((205,132,210,137), fill=health_col)
-    draw.ellipse((270,132,275,137), fill=health_col)
-    draw.point((207,132), fill=_INK)
-    draw.point((272,132), fill=_INK)
+    draw.line((190,126,219,122), fill=_INK, width=2)
+    draw.line((261,122,289,127), fill=_INK, width=2)
+    draw.polygon([(194,128),(219,125),(213,136),(198,136)], fill=(17,17,17))
+    draw.polygon([(261,125),(286,128),(281,136),(266,136)], fill=(17,17,17))
+    draw.ellipse((205,128,210,133), fill=health_col)
+    draw.ellipse((270,128,275,133), fill=health_col)
+    draw.point((207,128), fill=_INK)
+    draw.point((272,128), fill=_INK)
 
-    # Nose/muzzle bridge breaks the old symmetric-mask silhouette.
-    draw.polygon([(230,156),(250,156),(246,166),(240,171),(234,166)],
-                 fill=_ACCENT)
-    draw.line((240,171,240,180), fill=(88,85,74), width=1)
-    draw.arc((217,166,241,192), 20, 108, fill=(172,168,149), width=1)
-    draw.arc((239,166,264,192), 72, 160, fill=(172,168,149), width=1)
+    draw.polygon([(230,152),(250,152),(246,162),(240,167),(234,162)], fill=_ACCENT)
+    draw.line((240,167,240,176), fill=(88,85,74), width=1)
+    draw.arc((217,162,241,188), 20, 108, fill=(172,168,149), width=1)
+    draw.arc((239,162,264,188), 72, 160, fill=(172,168,149), width=1)
 
     mood = meta["mood"].lower()
-    if mood in {"awake","happy","excited"}:
-        draw.arc((220,174,260,195), 18, 162, fill=_INK, width=2)
+    fault=shell.attention.level in {"critical","warning"}
+    if fault:
+        draw.line((223,186,257,186), fill=health_col, width=2)
+    elif mood in {"awake","happy","excited"}:
+        draw.arc((220,170,260,191), 18, 162, fill=_INK, width=2)
     elif mood in {"sad","bored"}:
-        draw.arc((220,181,260,201), 200, 340, fill=_INK, width=2)
+        draw.arc((220,177,260,197), 200, 340, fill=_INK, width=2)
     else:
-        draw.line((223,190,257,190), fill=_INK, width=2)
+        draw.line((223,186,257,186), fill=_INK, width=2)
 
-    # Sparse highlight edges sell the sculptural planes without adding ornament.
-    draw.line((202,105,214,94,229,86), fill=(85,81,69), width=1)
-    draw.line((277,98,289,111,299,140), fill=(74,71,61), width=1)
-    draw.line((197,203,217,218,239,224), fill=(66,64,57), width=1)
+    draw.line((202,101,214,90,229,82), fill=(85,81,69), width=1)
+    draw.line((277,94,289,107,299,136), fill=(74,71,61), width=1)
+    draw.line((197,199,217,214,239,220), fill=(66,64,57), width=1)
 
-    # Engraved identity on the plinth: quiet and deliberately separate from the face.
-    identity = f"{meta['stage'].upper()[:3]} / {meta['level']:02d}"
-    iw = draw.textbbox((0,0), identity, font=_font(7))[2]
-    draw.line((cx-30, 225, cx+30, 225), fill=(59,58,53), width=1)
-    draw.text((cx-iw//2, 231), identity, fill=_MUTED, font=_font(7))
+    level_text="—" if meta["level"] is None else f"{meta['level']:02d}"
+    identity = f"{meta['stage'].upper()[:3]} / {level_text}"
+    iw = draw.textbbox((0,0), identity, font=_font(SHELL_TYPE.caption))[2]
+    draw.line((cx-36, 219, cx+36, 219), fill=(59,58,53), width=1)
+    draw.text((cx-iw//2, 226), identity, fill=_MUTED, font=_font(SHELL_TYPE.caption))
 
 
 def render_monolith_home(state:dict[str,Any],*,phase:float=0.0,scene_runtime:SceneRuntime|None=None)->Image.Image:
     state=dict(state or {})
     meta=monolith_home_metadata(state)
+    shell=_shell(state,"home")
     rt=scene_runtime
     if rt is not None:
         rt.begin(page_id="home",scene_id="experience:monolith:home",theme_id="experience.monolith")
@@ -148,53 +209,40 @@ def render_monolith_home(state:dict[str,Any],*,phase:float=0.0,scene_runtime:Sce
     im=Image.new("RGB",SIZE,_BG)
     d=ImageDraw.Draw(im)
 
-    d.text((18,16),"BEAST",fill=_MUTED,font=_font(8))
-    health=meta["health"].upper()
-    d.ellipse((449,17,456,24),fill=_OK if health=="HEALTHY" else _ACCENT)
-    _register(rt,SceneLayerSpec(
-        "monolith.status","text",(12,10,466,30),
-        signals=("health.core.state",),update_class="live",
-    ))
+    _draw_shell_status(d,shell,rt)
 
-    _draw_focal(d,meta)
+    _draw_focal(d,meta,shell)
     _register(rt,SceneLayerSpec(
-        "monolith.focal","creature",(146,40,334,232),
-        signals=("progression.stage","progression.level","pwnagotchi.mood","beast.expression"),
+        "monolith.focal","creature",(146,36,334,238),
+        signals=("progression.stage","progression.level","pwnagotchi.mood","beast.expression",
+                 "health.core.state","pwnagotchi.service.state","bettercap.service.state"),
         update_class="live",
     ))
 
-    # Quiet decorative breath around the focal sculpture only.
     pulse=0.5+0.5*math.sin(float(phase)*1.25)
     halo=(
         int(_LINE[0]+(_ACCENT[0]-_LINE[0])*pulse),
         int(_LINE[1]+(_ACCENT[1]-_LINE[1])*pulse),
         int(_LINE[2]+(_ACCENT[2]-_LINE[2])*pulse),
     )
-    d.arc((142,44,338,240),205,335,fill=halo,width=1)
-    d.arc((156,58,324,226),25,155,fill=halo,width=1)
+    d.arc((142,40,338,236),205,335,fill=halo,width=1)
+    d.arc((156,54,324,222),25,155,fill=halo,width=1)
     _register(rt,SceneLayerSpec(
-        "monolith.ambient_halo","ambient",(138,40,342,244),
+        "monolith.ambient_halo","ambient",(138,36,342,240),
         update_class="ambient",reduced_motion="static",decorative=True,
     ))
 
-    # Exactly one primary fact row.
-    d.text((164,250),f"{meta['nearby']} NEARBY",fill=_INK,font=_font(15))
-    d.line((248,251,248,267),fill=_LINE)
-    d.text((266,250),f"CH {meta['channel']}",fill=_INK,font=_font(15))
+    nearby_text=format_reading(meta["nearby"])
+    channel_text=format_reading(meta["channel"])
+    d.text((118,240),f"{nearby_text} NEARBY",fill=_INK,font=_font(SHELL_TYPE.label))
+    d.line((246,240,246,258),fill=_LINE)
+    d.text((266,240),f"CH {channel_text}",fill=_INK,font=_font(SHELL_TYPE.label))
     _register(rt,SceneLayerSpec(
-        "monolith.primary_fact","instrument",(150,244,332,272),
+        "monolith.primary_fact","instrument",(108,234,370,263),
         signals=("wifi.ap_count","radio.primary.channel"),update_class="live",
     ))
 
-    # Minimal contextual footer; large negative space remains intentional.
-    d.line((170,291,310,291),fill=_LINE)
-    d.text((182,299),meta["field"].upper(),fill=_MUTED,font=_font(8))
-    d.text((236,299),meta["mood"].upper(),fill=_MUTED,font=_font(8))
-    d.text((286,299),health,fill=_MUTED,font=_font(8))
-    _register(rt,SceneLayerSpec(
-        "monolith.context","text",(170,286,310,316),
-        signals=("dock.state","pwnagotchi.mood","health.core.state"),update_class="live",
-    ))
+    _draw_shell_nav(d,shell,rt)
     return im
 
 
@@ -204,9 +252,10 @@ def render_monolith_overview(
     *,
     scene_runtime: SceneRuntime | None = None,
 ) -> Image.Image:
-    """Monolith translation of Overview: deliberately sparse, high-value status only."""
+    """Monolith translation of Overview: sparse body over the shared Beast shell."""
     state = dict(state or {})
     meta = monolith_home_metadata(state)
+    shell=_shell(state,"overview")
     rt = scene_runtime
     if rt is not None:
         rt.begin(page_id="overview", scene_id="experience:monolith:overview",
@@ -216,61 +265,48 @@ def render_monolith_overview(
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
 
-    # Tiny identity/header; negative space is part of the Experience contract.
-    d.text((18, 16), "OVERVIEW", fill=_MUTED, font=_font(8))
-    health = meta["health"].upper()
-    d.ellipse((449,17,456,24), fill=_OK if health == "HEALTHY" else _ACCENT)
+    _draw_shell_status(d,shell,rt)
+
+    primary=shell.attention.summary
+    pb=d.textbbox((0,0),primary,font=_font(SHELL_TYPE.hero));pw=pb[2]-pb[0]
+    d.text((240-pw//2,70),primary,fill=_INK,font=_font(SHELL_TYPE.hero))
+    d.line((120,110,360,110),fill=_LINE)
     _register(rt, SceneLayerSpec(
-        "monolith_overview.status", "text", (12,10,466,30),
-        signals=("health.core.state",), update_class="live",
+        "monolith_overview.primary", "text", (112,62,368,118),
+        signals=("health.core.state","system.temp.cpu_c","pwnagotchi.service.state",
+                 "bettercap.service.state","radio.monitor.state"), update_class="live",
     ))
 
-    # One focal status statement rather than a module grid.
-    primary = "SYSTEM READY" if health == "HEALTHY" else health
-    d.text((145, 82), primary, fill=_INK, font=_font(24))
-    d.line((145, 116, 335, 116), fill=_LINE)
+    cpu=reading(state,"system.cpu.total",unit="%")
+    temp=reading(state,"system.temp.cpu_c",unit="°")
+    nearby=meta["nearby"]
+    facts=(
+        (146,"COMPUTE",format_reading(cpu)),
+        (240,"THERMAL",format_reading(temp)),
+        (334,"NEARBY",format_reading(nearby)),
+    )
+    for idx,(cx,label,value) in enumerate(facts):
+        vb=d.textbbox((0,0),value,font=_font(SHELL_TYPE.hero));vw=vb[2]-vb[0]
+        d.text((cx-vw//2,138),value,fill=_INK,font=_font(SHELL_TYPE.hero))
+        lb=d.textbbox((0,0),label,font=_font(SHELL_TYPE.caption));lw=lb[2]-lb[0]
+        d.text((cx-lw//2,173),label,fill=_MUTED,font=_font(SHELL_TYPE.caption))
+        if idx<2:d.line((cx+47,136,cx+47,194),fill=_LINE)
     _register(rt, SceneLayerSpec(
-        "monolith_overview.primary", "text", (138,72,342,122),
-        signals=("health.core.state",), update_class="live",
-    ))
-
-    # Only three compact facts: compute, field context, nearby environment.
-    cpu = _i(state, "system.cpu.total")
-    temp = _i(state, "system.temp.cpu_c")
-    nearby = meta["nearby"]
-    d.text((154, 148), f"{cpu:02d}%", fill=_INK, font=_font(20))
-    d.text((154, 174), "COMPUTE", fill=_MUTED, font=_font(8))
-    d.line((224,146,224,190), fill=_LINE)
-
-    d.text((246, 148), f"{temp:02d}°", fill=_INK, font=_font(20))
-    d.text((246, 174), "THERMAL", fill=_MUTED, font=_font(8))
-    d.line((314,146,314,190), fill=_LINE)
-
-    d.text((336, 148), f"{nearby:02d}", fill=_INK, font=_font(20))
-    d.text((336, 174), "NEARBY", fill=_MUTED, font=_font(8))
-    _register(rt, SceneLayerSpec(
-        "monolith_overview.facts", "instrument", (145,140,390,192),
+        "monolith_overview.facts", "instrument", (88,130,392,198),
         signals=("system.cpu.total", "system.temp.cpu_c", "wifi.ap_count"),
         update_class="live",
     ))
 
-    # Context line stays quiet and readable.
     expedition = "EXPEDITION" if bool(state.get("expedition.active")) else meta["field"].upper()
-    governor = str(state.get("governor.mode") or "unknown").upper()
-    d.text((170, 232), expedition, fill=_ACCENT, font=_font(9))
-    d.text((246, 232), "·", fill=_LINE, font=_font(9))
-    d.text((260, 232), governor, fill=_MUTED, font=_font(9))
+    governor = str(state.get("governor.mode") or "UNKNOWN").upper()
+    context=f"{expedition} · {governor}"
+    cb=d.textbbox((0,0),context,font=_font(SHELL_TYPE.body));cw=cb[2]-cb[0]
+    d.text((240-cw//2,220),context,fill=_ACCENT,font=_font(SHELL_TYPE.body))
     _register(rt, SceneLayerSpec(
-        "monolith_overview.context", "text", (166,224,330,248),
+        "monolith_overview.context", "text", (120,212,360,244),
         signals=("expedition.active", "dock.state", "governor.mode"),
         update_class="live",
     ))
 
-    # Universal depth hint: detail is intentionally drill-in rather than always visible.
-    d.line((188, 283, 292, 283), fill=_LINE)
-    d.text((200, 291), "HOLD FOR DETAIL", fill=_MUTED, font=_font(7))
-    _register(rt, SceneLayerSpec(
-        "monolith_overview.inspect_hint", "interaction", (184,276,296,312),
-        touch="hold_for_detail", update_class="interaction",
-    ))
+    _draw_shell_nav(d,shell,rt)
     return im
