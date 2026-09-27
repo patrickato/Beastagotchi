@@ -6,6 +6,7 @@ from pathlib import Path
 
 from beastui.experience_atlas import atlas_home_metadata, render_atlas_home
 from beastui.scene_runtime import SceneRuntime
+from tools.proof_json import json_safe
 
 
 def main() -> int:
@@ -39,7 +40,7 @@ def main() -> int:
         "truth": atlas_home_metadata(state),
         "frames": scene_rows,
     }
-    (root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (root / "manifest.json").write_text(json.dumps(json_safe(manifest), indent=2) + "\n")
     print(root)
     return 0
 
