@@ -5,6 +5,16 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .beast_shell import (
+    BeastShellModel,
+    SHELL_TYPE,
+    QUALITY_CAPTURED,
+    QUALITY_LIVE,
+    QUALITY_STALE,
+    build_shell_model,
+    format_reading,
+    reading,
+)
 from .scene_runtime import SceneLayerSpec, SceneRuntime
 
 
@@ -18,6 +28,7 @@ _MUTED = (139, 153, 151)
 _TRACE = (147, 195, 177)
 _TRACE_2 = (111, 155, 181)
 _WARN = (203, 150, 91)
+_CRITICAL = (210, 104, 86)
 
 
 def _font(size=11):
@@ -27,171 +38,281 @@ def _font(size=11):
         return ImageFont.load_default()
 
 
-def _f(state: dict[str, Any], key: str, default=0.0) -> float:
-    try:
-        return float(state.get(key, default) or default)
-    except Exception:
-        return float(default)
-
-
-def _i(state: dict[str, Any], key: str, default=0) -> int:
-    try:
-        return int(float(state.get(key, default) or default))
-    except Exception:
-        return int(default)
-
-
-def observatory_home_metadata(state: dict[str, Any]) -> dict[str, Any]:
-    aps = [x for x in (state.get("wifi.aps") or []) if isinstance(x, dict)]
-    capture = state.get("_beast_capture") or {}
-    channels = sorted({int(x.get("channel") or 0) for x in aps if x.get("channel") is not None})
-    rssis = []
-    for row in aps:
-        try:
-            rssis.append(float(row.get("rssi")))
-        except Exception:
-            pass
-    return {
-        "ap_count": len(aps),
-        "channels": channels,
-        "rssi_min": min(rssis) if rssis else None,
-        "rssi_max": max(rssis) if rssis else None,
-        "cpu_pct": _f(state, "system.cpu.total"),
-        "temp_c": _f(state, "system.temp.cpu_c"),
-        "memory_pct": _f(state, "system.memory.used_pct"),
-        "capture_kind": str(capture.get("kind") or "live"),
-        "capture_date": str(capture.get("captured_date") or ""),
-        "gps_fix": bool(state.get("gps.fix")),
-        "channel": _i(state, "radio.primary.channel"),
-    }
-
-
 def _register(rt, spec):
     if rt is not None:
         rt.register(spec)
 
 
-def _plot_frame(draw, box, title):
+def _shell(state: dict[str, Any], page_id: str) -> BeastShellModel:
+    shell = state.get("_beast_shell")
+    if isinstance(shell, BeastShellModel) and shell.page_id == page_id:
+        return shell
+    return build_shell_model("observatory", page_id, state, ("home", "spectrum"))
+
+
+def _number(value: Any) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_none(value: Any) -> int | None:
+    n = _number(value)
+    return None if n is None else int(n)
+
+
+def _attention_color(shell: BeastShellModel):
+    if shell.attention.level == "critical":
+        return _CRITICAL
+    if shell.attention.level == "warning":
+        return _WARN
+    if shell.attention.level == "normal":
+        return _TRACE
+    return _TRACE_2
+
+
+def observatory_home_metadata(state: dict[str, Any]) -> dict[str, Any]:
+    state = dict(state or {})
+    aps_present = "wifi.aps" in state and isinstance(state.get("wifi.aps"), list)
+    aps = [x for x in (state.get("wifi.aps") or []) if isinstance(x, dict)] if aps_present else []
+    capture = state.get("_beast_capture") or {}
+
+    channels = sorted({int(x.get("channel")) for x in aps if _int_or_none(x.get("channel")) is not None})
+    rssis = [float(x["rssi"]) for x in aps if _number(x.get("rssi")) is not None]
+
+    aps_reading = reading(state, "wifi.aps")
+    ap_count = len(aps) if aps_present else None
+    channel_reading = reading(state, "radio.primary.channel")
+    cpu_reading = reading(state, "system.cpu.total", unit="%")
+    temp_reading = reading(state, "system.temp.cpu_c", unit="°C")
+    memory_reading = reading(state, "system.memory.used_pct", unit="%")
+
+    capture_kind = str(capture.get("kind") or ("live" if aps_present else "unknown"))
+    capture_date = str(capture.get("captured_date") or "")
+    observation_quality = aps_reading.quality
+    if capture and observation_quality == QUALITY_LIVE:
+        observation_quality = QUALITY_CAPTURED
+
+    return {
+        # Preserve established metadata keys for callers/tests.
+        "ap_count": ap_count,
+        "channels": channels,
+        "rssi_min": min(rssis) if rssis else None,
+        "rssi_max": max(rssis) if rssis else None,
+        "cpu_pct": _number(cpu_reading.value),
+        "temp_c": _number(temp_reading.value),
+        "memory_pct": _number(memory_reading.value),
+        "capture_kind": capture_kind,
+        "capture_date": capture_date,
+        "gps_fix": bool(state.get("gps.fix")) if "gps.fix" in state else None,
+        "channel": _int_or_none(channel_reading.value),
+        # Truth-bearing forms used by the renderer.
+        "aps": aps,
+        "aps_reading": aps_reading,
+        "channel_reading": channel_reading,
+        "cpu_reading": cpu_reading,
+        "temp_reading": temp_reading,
+        "memory_reading": memory_reading,
+        "observation_quality": observation_quality,
+        "observation_source": str(state.get("wifi.aps.source") or capture_kind or ""),
+        "observation_age_s": _number(state.get("wifi.aps.age_s")),
+    }
+
+
+def _draw_shell_status(draw: ImageDraw.ImageDraw, shell: BeastShellModel, rt=None):
+    col = _attention_color(shell)
+    draw.line((10, 32, 470, 32), fill=_EDGE)
+    draw.ellipse((12, 12, 22, 22), fill=col)
+    draw.text((31, 9), shell.status_sentence, fill=_INK, font=_font(SHELL_TYPE.caption))
+    draw.text((400, 9), "OBSERVE", fill=_TRACE, font=_font(SHELL_TYPE.caption))
+    _register(rt, SceneLayerSpec(
+        f"observatory.{shell.page_id}.shell_status", "text", (8, 4, 472, 34),
+        signals=("health.core.state", "system.temp.cpu_c", "pwnagotchi.service.state",
+                 "bettercap.service.state", "radio.monitor.state"), update_class="live",
+    ))
+
+
+def _draw_shell_nav(draw: ImageDraw.ImageDraw, shell: BeastShellModel, rt=None):
+    nav = shell.navigation
+    y = nav.footer_y
+    draw.rectangle((0, y, 479, 319), fill=(15, 19, 21))
+    draw.line((0, y, 479, y), fill=_TRACE_2)
+    draw.line((160, y + 8, 160, 312), fill=_EDGE)
+    draw.line((320, y + 8, 320, 312), fill=_EDGE)
+
+    if nav.previous_enabled:
+        text = f"‹ {nav.previous_page.upper()}"
+        draw.text((18, y + 18), text, fill=_TRACE_2, font=_font(SHELL_TYPE.caption))
+        _register(rt, SceneLayerSpec(
+            f"observatory.{nav.page_id}.nav_previous", "interaction", nav.previous_box,
+            touch=f"experience_page:{nav.previous_page}", update_class="interaction",
+        ))
+
+    center = nav.position_text
+    box = draw.textbbox((0, 0), center, font=_font(SHELL_TYPE.body))
+    draw.text((240 - (box[2] - box[0]) // 2, y + 18), center,
+              fill=_TRACE, font=_font(SHELL_TYPE.body))
+    _register(rt, SceneLayerSpec(
+        f"observatory.{nav.page_id}.nav_position", "text", nav.center_box,
+        update_class="static",
+    ))
+
+    if nav.next_enabled:
+        text = f"{nav.next_page.upper()} ›"
+        box = draw.textbbox((0, 0), text, font=_font(SHELL_TYPE.caption))
+        draw.text((462 - (box[2] - box[0]), y + 18), text,
+                  fill=_TRACE_2, font=_font(SHELL_TYPE.caption))
+        _register(rt, SceneLayerSpec(
+            f"observatory.{nav.page_id}.nav_next", "interaction", nav.next_box,
+            touch=f"experience_page:{nav.next_page}", update_class="interaction",
+        ))
+
+
+def _channel_x(channel: int, x1: int, x2: int) -> int:
+    """Split-band projection: never imply that Wi-Fi channel numbers are linear frequency."""
+    span = x2 - x1
+    split = x1 + int(span * 0.43)
+    gap = 18
+    if channel <= 14:
+        return x1 + int(max(0, min(13, channel - 1)) / 13.0 * max(1, split - x1 - gap // 2))
+    lo = split + gap // 2
+    return lo + int(max(0, min(129, channel - 36)) / 129.0 * max(1, x2 - lo))
+
+
+def _draw_rf_spectrum(draw: ImageDraw.ImageDraw, state: dict[str, Any], box, meta):
     x1, y1, x2, y2 = box
-    draw.rectangle(box, fill=_PANEL, outline=_EDGE, width=1)
-    draw.text((x1+8, y1+5), title, fill=_MUTED, font=_font(8))
-    # Sparse scientific axes, not decorative grid.
-    draw.line((x1+24, y2-18, x2-8, y2-18), fill=_EDGE)
-    draw.line((x1+24, y1+22, x1+24, y2-18), fill=_EDGE)
+    px1, py1, px2, py2 = x1 + 30, y1 + 28, x2 - 8, y2 - 22
+    draw.line((px1, py2, px2, py2), fill=_EDGE)
+    draw.line((px1, py1, px1, py2), fill=_EDGE)
 
+    # Useful, labelled scale. Minor ticks may be small; primary meaning is not.
+    for db in (-30, -50, -70, -90):
+        frac = max(0.0, min(1.0, (db + 100.0) / 70.0))
+        y = py2 - int(frac * (py2 - py1))
+        draw.line((px1 - 4, y, px1, y), fill=_EDGE)
+        draw.text((x1 + 2, y - 5), str(db), fill=_MUTED, font=_font(9))
+    split = px1 + int((px2 - px1) * 0.43)
+    draw.line((split, py1, split, py2), fill=(48, 58, 60))
+    draw.text((px1 + 34, py2 + 5), "2.4 GHz", fill=_MUTED, font=_font(9))
+    draw.text((split + 46, py2 + 5), "5 GHz", fill=_MUTED, font=_font(9))
 
-def _draw_rf_spectrum(draw, state, box):
-    x1, y1, x2, y2 = box
-    aps = [x for x in (state.get("wifi.aps") or []) if isinstance(x, dict)]
-    px1, py1, px2, py2 = x1+24, y1+22, x2-8, y2-18
-    span_x = max(1, px2-px1)
-    span_y = max(1, py2-py1)
-
-    for row in aps[:32]:
-        try:
-            channel = int(row.get("channel") or 0)
-            rssi = float(row.get("rssi") or -100)
-        except Exception:
+    for row in meta["aps"][:32]:
+        ch = _int_or_none(row.get("channel"))
+        rssi = _number(row.get("rssi"))
+        if ch is None or rssi is None:
             continue
-        x = px1 + int(max(0, min(165, channel)) / 165.0 * span_x)
+        x = _channel_x(ch, px1, px2)
         strength = max(0.0, min(1.0, (rssi + 100.0) / 70.0))
-        y = py2 - int(strength * span_y)
+        y = py2 - int(strength * (py2 - py1))
         color = _TRACE_2 if bool(row.get("handshake")) else _TRACE
         draw.line((x, py2, x, y), fill=color, width=2)
-        draw.ellipse((x-3, y-3, x+3, y+3), outline=color, fill=_BG)
+        draw.ellipse((x - 3, y - 3, x + 3, y + 3), outline=color, fill=_BG)
 
-    # Real current tuned channel marker.
-    ch = _i(state, "radio.primary.channel")
-    cx = px1 + int(max(0, min(165, ch)) / 165.0 * span_x)
-    draw.line((cx, py1, cx, py2), fill=_WARN, width=1)
-    draw.text((max(px1, cx-12), py1), f"CH {ch}", fill=_WARN, font=_font(7))
+    if meta["channel_reading"].known:
+        ch = int(float(meta["channel_reading"].value))
+        cx = _channel_x(ch, px1, px2)
+        draw.line((cx, py1, cx, py2), fill=_WARN, width=1)
+        draw.text((max(px1, cx - 16), py1), f"CH {ch}", fill=_WARN, font=_font(10))
 
 
-def _draw_channel_distribution(draw, state, box):
+def _draw_band_counts(draw: ImageDraw.ImageDraw, box, meta):
     x1, y1, x2, y2 = box
-    aps = [x for x in (state.get("wifi.aps") or []) if isinstance(x, dict)]
-    buckets = {"2.4": 0, "5L": 0, "5H": 0}
-    for row in aps:
-        try:
-            ch = int(row.get("channel") or 0)
-        except Exception:
+    buckets = (("2.4", 0), ("5 LOW", 0), ("5 HIGH", 0))
+    vals = {label: 0 for label, _ in buckets}
+    for row in meta["aps"]:
+        ch = _int_or_none(row.get("channel"))
+        if ch is None:
             continue
         if ch <= 14:
-            buckets["2.4"] += 1
+            vals["2.4"] += 1
         elif ch <= 64:
-            buckets["5L"] += 1
+            vals["5 LOW"] += 1
         else:
-            buckets["5H"] += 1
-    maxv = max(1, max(buckets.values()))
-    sx = x1+42
-    base = y2-16
-    for idx, (lab, val) in enumerate(buckets.items()):
-        bx = sx + idx*84
-        h = int((val/maxv) * 46)
-        draw.rectangle((bx, base-h, bx+28, base), fill=_TRACE_2 if idx else _TRACE)
-        draw.text((bx+5, base+3), lab, fill=_MUTED, font=_font(7))
-        draw.text((bx+8, base-h-11), str(val), fill=_INK, font=_font(8))
+            vals["5 HIGH"] += 1
+
+    draw.line((x1, y1, x2, y1), fill=_EDGE)
+    draw.text((x1 + 2, y1 + 7), "CURRENT BAND COUNT", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    maxv = max(1, max(vals.values()))
+    for idx, label in enumerate(("2.4", "5 LOW", "5 HIGH")):
+        bx = x1 + 112 + idx * 72
+        val = vals[label]
+        h = int((val / maxv) * 31)
+        draw.rectangle((bx, y2 - h - 14, bx + 24, y2 - 14), fill=_TRACE if idx == 0 else _TRACE_2)
+        draw.text((bx + 6, y2 - h - 28), str(val), fill=_INK, font=_font(SHELL_TYPE.caption))
+        draw.text((bx - 5, y2 - 10), label, fill=_MUTED, font=_font(9))
 
 
-def _observer(draw, state):
-    """Observer identity as a research optic, not a smiley inside a badge."""
-    cx, cy = 410, 92
-    mood = str(state.get("pwnagotchi.mood") or "awake").lower()
-    expression = str(state.get("beast.expression") or "").lower()
-    alert = mood in {"angry", "intense", "focused", "hunting"} or expression in {"hunting", "fault"}
+def _observer(draw: ImageDraw.ImageDraw, state: dict[str, Any], shell: BeastShellModel):
+    cx, cy = 411, 88
+    mood = str(state.get("pwnagotchi.mood") or "unknown").lower()
+    alert = shell.attention.level in {"critical", "warning"}
+    eye_col = _attention_color(shell)
 
-    # Outer optical assembly: broken rings, registration ticks and a quiet instrument body.
-    draw.ellipse((cx-37, cy-37, cx+37, cy+37), fill=(22, 27, 29), outline=_EDGE)
-    draw.arc((cx-42, cy-42, cx+42, cy+42), 198, 344, fill=_TRACE, width=2)
-    draw.arc((cx-42, cy-42, cx+42, cy+42), 18, 153, fill=_TRACE_2, width=1)
-    for dx, dy, horizontal in (
-        (0,-43,True),(0,43,True),(-43,0,False),(43,0,False),
-    ):
-        if horizontal:
-            draw.line((cx-6, cy+dy, cx+6, cy+dy), fill=_EDGE)
-        else:
-            draw.line((cx+dx, cy-6, cx+dx, cy+6), fill=_EDGE)
-
-    # Faceted observer shell sits inside the lens. It reads as a companion seen
-    # through scientific optics rather than a generic UI avatar.
-    shell = [
-        (cx, cy-29), (cx+20, cy-23), (cx+29, cy-7),
-        (cx+27, cy+15), (cx+15, cy+29), (cx, cy+34),
-        (cx-15, cy+29), (cx-27, cy+15), (cx-29, cy-7),
-        (cx-20, cy-23),
+    draw.ellipse((cx - 34, cy - 34, cx + 34, cy + 34), fill=(22, 27, 29), outline=_EDGE)
+    draw.arc((cx - 40, cy - 40, cx + 40, cy + 40), 198, 344, fill=_TRACE, width=2)
+    draw.arc((cx - 40, cy - 40, cx + 40, cy + 40), 18, 153, fill=_TRACE_2, width=1)
+    shell_pts = [
+        (cx, cy - 27), (cx + 19, cy - 21), (cx + 27, cy - 6),
+        (cx + 25, cy + 14), (cx + 14, cy + 27), (cx, cy + 31),
+        (cx - 14, cy + 27), (cx - 25, cy + 14), (cx - 27, cy - 6),
+        (cx - 19, cy - 21),
     ]
-    draw.polygon(shell, fill=_PANEL_2, outline=_TRACE if not alert else _WARN)
-    draw.line((cx,cy-28,cx,cy+30), fill=(58,70,71))
-    draw.line((cx-27,cy-7,cx,cy+5,cx+27,cy-7), fill=(58,70,71))
-    draw.line((cx-20,cy+22,cx,cy+5,cx+20,cy+22), fill=(49,61,62))
-
-    # Narrow sensor-eyes, central aperture and a restrained mouth/expression cue.
-    eye_col = _WARN if alert else _TRACE
-    draw.line((cx-18,cy-5,cx-6,cy-7), fill=eye_col, width=2)
-    draw.line((cx+6,cy-7,cx+18,cy-5), fill=eye_col, width=2)
-    draw.ellipse((cx-2,cy-1,cx+2,cy+3), fill=_INK)
-    if mood in {"happy","excited","awake"} and not alert:
-        draw.arc((cx-14,cy+5,cx+14,cy+22), 18, 162, fill=_TRACE, width=2)
-    elif mood in {"sad","bored"}:
-        draw.arc((cx-14,cy+12,cx+14,cy+27), 198, 342, fill=_TRACE_2, width=2)
+    draw.polygon(shell_pts, fill=_PANEL_2, outline=eye_col)
+    draw.line((cx - 16, cy - 5, cx - 6, cy - 7), fill=eye_col, width=2)
+    draw.line((cx + 6, cy - 7, cx + 16, cy - 5), fill=eye_col, width=2)
+    draw.ellipse((cx - 2, cy - 1, cx + 2, cy + 3), fill=_INK)
+    if alert:
+        draw.line((cx - 10, cy + 15, cx + 10, cy + 15), fill=eye_col, width=2)
+    elif mood in {"happy", "excited", "awake"}:
+        draw.arc((cx - 12, cy + 5, cx + 12, cy + 20), 18, 162, fill=_TRACE, width=2)
     else:
-        draw.line((cx-11,cy+16,cx+11,cy+16), fill=eye_col, width=2)
-
-    # Optical glint and a tiny mode label anchor the observer to the lab margin.
-    draw.ellipse((cx+11,cy-20,cx+14,cy-17), fill=_INK)
-    observer_label = "OBSERVER"
-    observer_font = _font(7)
-    observer_w = draw.textbbox((0,0), observer_label, font=observer_font)[2]
-    mood_label = mood.upper()[:8]
-    mood_w = draw.textbbox((0,0), mood_label, font=observer_font)[2]
-    draw.text((cx-observer_w//2, cy+44), observer_label, fill=_MUTED, font=observer_font)
-    draw.text((cx-mood_w//2, cy+54), mood_label, fill=eye_col, font=observer_font)
+        draw.line((cx - 10, cy + 15, cx + 10, cy + 15), fill=_TRACE_2, width=2)
 
 
-def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0, scene_runtime: SceneRuntime | None = None) -> Image.Image:
-    """Observatory Home as one continuous measurement station, not boxed widgets."""
+def _quality_label(meta) -> str:
+    q = str(meta["observation_quality"] or "unknown").upper()
+    if q == QUALITY_CAPTURED.upper() and meta["capture_date"]:
+        return "CAPTURED"
+    return q
+
+
+def _draw_provenance(draw: ImageDraw.ImageDraw, state: dict[str, Any], meta, shell, rt=None):
+    draw.line((350, 39, 350, 258), fill=_TRACE)
+    _observer(draw, state, shell)
+    _register(rt, SceneLayerSpec(
+        "observatory.observer", "creature", (370, 44, 452, 132),
+        signals=("pwnagotchi.mood", "beast.expression", "health.core.state",
+                 "pwnagotchi.service.state", "bettercap.service.state"), update_class="live",
+    ))
+
+    draw.line((360, 137, 470, 137), fill=_EDGE)
+    draw.text((360, 145), "PROVENANCE", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    source = str(meta["observation_source"] or "UNKNOWN").replace("_", " ").upper()[:17]
+    draw.text((360, 166), source, fill=_INK, font=_font(SHELL_TYPE.caption))
+    q = _quality_label(meta)
+    qcol = _WARN if q in {"STALE", "UNKNOWN", "ERROR"} else _TRACE
+    draw.text((360, 187), q, fill=qcol, font=_font(SHELL_TYPE.label))
+    if meta["capture_date"]:
+        draw.text((360, 211), meta["capture_date"][:16], fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    elif meta["observation_age_s"] is not None:
+        draw.text((360, 211), f"AGE {meta['observation_age_s']:.0f}s", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    gps = "GPS FIX" if meta["gps_fix"] is True else "GPS NO FIX" if meta["gps_fix"] is False else "GPS —"
+    draw.text((360, 234), gps, fill=_TRACE if meta["gps_fix"] else _MUTED, font=_font(SHELL_TYPE.caption))
+    _register(rt, SceneLayerSpec(
+        "observatory.provenance", "instrument", (350, 137, 474, 260),
+        signals=("wifi.aps", "wifi.aps.quality", "wifi.aps.source", "wifi.aps.age_s", "gps.fix"),
+        update_class="live",
+    ))
+
+
+def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0,
+                            scene_runtime: SceneRuntime | None = None) -> Image.Image:
     state = dict(state or {})
     meta = observatory_home_metadata(state)
+    shell = _shell(state, "home")
     rt = scene_runtime
     if rt is not None:
         rt.begin(page_id="home", scene_id="experience:observatory:home", theme_id="experience.observatory")
@@ -199,106 +320,31 @@ def render_observatory_home(state: dict[str, Any], *, phase: float = 0.0, scene_
 
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
+    _draw_shell_status(d, shell, rt)
 
-    # Quiet lab header.
-    d.rectangle((0, 0, 479, 30), fill=(23, 28, 30))
-    d.text((10, 7), "OBSERVATORY", fill=_TRACE, font=_font(14))
-    d.text((112, 9), "MEASUREMENT STATION // LIVE OBSERVATION", fill=_MUTED, font=_font(7))
-    d.text((432, 9), f"{meta['ap_count']} AP", fill=_INK, font=_font(8))
+    d.text((12, 43), "RF OBSERVATION", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    _draw_rf_spectrum(d, state, (10, 38, 342, 198), meta)
     _register(rt, SceneLayerSpec(
-        "observatory.header", "text", (0, 0, 480, 31),
-        signals=("wifi.ap_count",), update_class="live",
-    ))
-
-    # Main instrument occupies a continuous lab surface. Sparse axes provide
-    # measurement structure without a card/panel container.
-    primary = (10, 40, 342, 205)
-    d.text((12, 42), "RF OBSERVATION // CHANNEL / RSSI", fill=_MUTED, font=_font(8))
-    d.line((34, 64, 34, 190), fill=_EDGE)
-    d.line((34, 190, 336, 190), fill=_EDGE)
-    # Tick marks are functional axis cues, not decorative grid.
-    for x in range(34, 337, 50):
-        d.line((x, 187, x, 193), fill=_EDGE)
-    for y in range(70, 191, 30):
-        d.line((31, y, 37, y), fill=_EDGE)
-    _draw_rf_spectrum(d, state, (10, 42, 342, 208))
-    _register(rt, SceneLayerSpec(
-        "observatory.spectrum", "graph", primary,
+        "observatory.spectrum", "graph", (10, 38, 342, 198),
         signals=("wifi.aps", "radio.primary.channel"), update_class="live",
     ))
 
-    # Secondary distribution is an integrated comparison strip under the main
-    # phenomenon rather than another framed plot card.
-    secondary = (10, 214, 342, 284)
-    d.line((10, 214, 342, 214), fill=_EDGE)
-    d.text((12, 220), "OBSERVED BAND DISTRIBUTION", fill=_MUTED, font=_font(7))
-    d.line((34, 271, 336, 271), fill=_EDGE)
-    _draw_channel_distribution(d, state, (10, 218, 342, 287))
+    _draw_band_counts(d, (10, 202, 342, 258), meta)
     _register(rt, SceneLayerSpec(
-        "observatory.distribution", "graph", secondary,
+        "observatory.distribution", "graph", (10, 202, 342, 258),
         signals=("wifi.aps",), update_class="live",
     ))
 
-    # A ruled observation margin holds identity + provenance. It is visually
-    # part of the laboratory page, not a separate dashboard card.
-    d.line((350, 38, 350, 286), fill=_TRACE, width=1)
-    _observer(d, state)
-    _register(rt, SceneLayerSpec(
-        "observatory.observer", "creature", (366, 46, 454, 158),
-        signals=("pwnagotchi.mood", "beast.expression"), update_class="live",
-    ))
-
-    # Ambient optics cue only. Measurement traces/axes never animate from phase.
-    optical = 0.5 + 0.5 * math.sin(float(phase) * 1.7)
-    arc_col = (
-        int(_EDGE[0] + (_TRACE[0] - _EDGE[0]) * optical),
-        int(_EDGE[1] + (_TRACE[1] - _EDGE[1]) * optical),
-        int(_EDGE[2] + (_TRACE[2] - _EDGE[2]) * optical),
-    )
-    d.arc((365, 43, 455, 133), 210, 330, fill=arc_col, width=1)
-    d.ellipse((456, 84, 458, 86), fill=arc_col)
-    _register(rt, SceneLayerSpec(
-        "observatory.ambient_optics", "ambient", (362, 40, 462, 138),
-        update_class="ambient", reduced_motion="static", decorative=True,
-    ))
-
-    d.line((358, 166, 470, 166), fill=_EDGE)
-    d.text((360, 173), "PROVENANCE", fill=_MUTED, font=_font(7))
-    kind = meta["capture_kind"].replace("_", " ").upper()
-    d.text((360, 190), kind[:18], fill=_INK, font=_font(8))
-    if meta["capture_date"]:
-        d.text((360, 204), meta["capture_date"], fill=_MUTED, font=_font(7))
-    d.line((358, 221, 470, 221), fill=_EDGE)
-    gps = "FIX" if meta["gps_fix"] else "NO FIX"
-    d.text((360, 228), f"GPS {gps}", fill=_WARN if not meta["gps_fix"] else _TRACE, font=_font(8))
-    d.text((360, 244), f"CPU {meta['cpu_pct']:.0f}%  //  {meta['temp_c']:.0f} C", fill=_INK, font=_font(7))
-    d.text((360, 260), f"MEM {meta['memory_pct']:.1f}%", fill=_INK, font=_font(7))
-    d.text((360, 274), f"TUNED CH {meta['channel']}", fill=_WARN, font=_font(7))
-    _register(rt, SceneLayerSpec(
-        "observatory.provenance", "instrument", (350, 166, 470, 286),
-        signals=("gps.fix", "system.cpu.total", "system.temp.cpu_c", "system.memory.used_pct", "radio.primary.channel"),
-        update_class="live",
-    ))
-
-    # Footer labels data truth explicitly.
-    d.line((10, 298, 470, 298), fill=_EDGE)
-    d.text((12, 304), "LIVE/CAPTURED OBSERVATIONS // NO SYNTHETIC HISTORY", fill=_MUTED, font=_font(8))
-    _register(rt, SceneLayerSpec(
-        "observatory.truth_footer", "text", (10, 294, 470, 318),
-        signals=(), update_class="static",
-    ))
+    _draw_provenance(d, state, meta, shell, rt)
+    _draw_shell_nav(d, shell, rt)
     return im
 
 
-
-def render_observatory_spectrum(
-    state: dict[str, Any],
-    *,
-    scene_runtime: SceneRuntime | None = None,
-) -> Image.Image:
-    """Observatory Spectrum as an open measurement bench, not boxed panels."""
+def render_observatory_spectrum(state: dict[str, Any], *, phase: float = 0.0,
+                                scene_runtime: SceneRuntime | None = None) -> Image.Image:
     state = dict(state or {})
     meta = observatory_home_metadata(state)
+    shell = _shell(state, "spectrum")
     rt = scene_runtime
     if rt is not None:
         rt.begin(page_id="spectrum", scene_id="experience:observatory:spectrum",
@@ -307,102 +353,60 @@ def render_observatory_spectrum(
 
     im = Image.new("RGB", SIZE, _BG)
     d = ImageDraw.Draw(im)
+    _draw_shell_status(d, shell, rt)
 
-    d.rectangle((0,0,479,30), fill=(23,28,30))
-    d.text((10,7),"OBSERVATORY",fill=_TRACE,font=_font(14))
-    d.text((112,9),"SPECTRUM LAB // LIVE OCCUPANCY",fill=_MUTED,font=_font(7))
-    d.text((431,9),f"CH {meta['channel']}",fill=_WARN,font=_font(8))
+    d.text((12, 43), "CHANNEL OCCUPANCY", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    _draw_rf_spectrum(d, state, (10, 38, 390, 196), meta)
     _register(rt, SceneLayerSpec(
-        "observatory_spectrum.header","text",(0,0,480,31),
-        signals=("radio.primary.channel",),update_class="live",
+        "observatory_spectrum.occupancy", "graph", (10, 38, 390, 196),
+        signals=("wifi.aps", "radio.primary.channel"), update_class="live",
     ))
 
-    aps=[x for x in (state.get("wifi.aps") or []) if isinstance(x,dict)]
-    by_channel={}
-    for row in aps:
-        try:
-            ch=int(row.get("channel") or 0)
-            rssi=float(row.get("rssi") or -100)
-        except Exception:
-            continue
-        bucket=by_channel.setdefault(ch,{"count":0,"peak":-100.0,"handshakes":0})
-        bucket["count"]+=1
-        bucket["peak"]=max(bucket["peak"],rssi)
-        if bool(row.get("handshake")):
-            bucket["handshakes"]+=1
-
-    # Main occupancy surface uses open axes like Observatory Home.
-    box=(10,42,390,222)
-    d.text((12,44),"OBSERVED CHANNEL OCCUPANCY",fill=_MUTED,font=_font(8))
-    x1,y1,x2,y2=34,68,384,204
-    d.line((x1,y2,x2,y2),fill=_EDGE)
-    d.line((x1,y1,x1,y2),fill=_EDGE)
-    for x in range(x1,x2+1,50):
-        d.line((x,y2-3,x,y2+3),fill=_EDGE)
-    for y in range(y1,y2+1,34):
-        d.line((x1-3,y,x1+3,y),fill=_EDGE)
-
-    channels=sorted(by_channel)
-    if channels:
-        max_count=max(1,max(by_channel[ch]["count"] for ch in channels))
-        for ch in channels:
-            x=x1+int(max(0,min(165,ch))/165.0*(x2-x1))
-            row=by_channel[ch]
-            h=max(3,int(row["count"]/max_count*(y2-y1-18)))
-            color=_TRACE_2 if row["handshakes"] else _TRACE
-            d.rectangle((x-4,y2-h,x+4,y2),fill=color)
-            d.text((x-5,y2+5),str(ch),fill=_MUTED,font=_font(6))
-            if row["peak"] > -50:
-                d.ellipse((x-3,y2-h-9,x+3,y2-h-3),outline=_WARN)
-    tuned=meta["channel"]
-    tx=x1+int(max(0,min(165,tuned))/165.0*(x2-x1))
-    d.line((tx,y1,tx,y2),fill=_WARN,width=1)
-    d.text((max(x1,tx-13),y1-12),f"TUNE {tuned}",fill=_WARN,font=_font(7))
+    # Measurement margin stays factual. Unknown is a dash, not zero.
+    draw_x = 400
+    d.line((draw_x, 40, draw_x, 258), fill=_TRACE)
+    d.text((410, 46), "MEASURE", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    ap_text = "—" if meta["ap_count"] is None else str(meta["ap_count"])
+    chs_text = "—" if not meta["aps_reading"].known else str(len(meta["channels"]))
+    peak_text = "—" if meta["rssi_max"] is None else f"{meta['rssi_max']:.0f}"
+    d.text((410, 70), f"APS {ap_text}", fill=_INK, font=_font(SHELL_TYPE.label))
+    d.text((410, 96), f"CHS {chs_text}", fill=_INK, font=_font(SHELL_TYPE.label))
+    d.text((410, 122), f"PEAK {peak_text}", fill=_INK, font=_font(SHELL_TYPE.caption))
+    d.line((408, 145, 470, 145), fill=_EDGE)
+    d.text((410, 155), "QUALITY", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    q = _quality_label(meta)
+    d.text((410, 178), q[:10], fill=_WARN if q == "STALE" else _TRACE,
+           font=_font(SHELL_TYPE.label))
+    tuned = format_reading(meta["channel_reading"])
+    d.text((410, 215), f"CH {tuned}", fill=_WARN if meta["channel_reading"].known else _MUTED,
+           font=_font(SHELL_TYPE.label))
     _register(rt, SceneLayerSpec(
-        "observatory_spectrum.occupancy","graph",box,
-        signals=("wifi.aps","radio.primary.channel"),update_class="live",
+        "observatory_spectrum.measure", "instrument", (400, 40, 474, 258),
+        signals=("wifi.aps", "wifi.aps.quality", "radio.primary.channel"), update_class="live",
     ))
 
-    # Right measurement margin: ruled readout, no enclosing panel.
-    d.line((400,40,400,286),fill=_TRACE)
-    d.text((410,48),"MEASURE",fill=_MUTED,font=_font(7))
-    d.text((410,68),f"APS {meta['ap_count']}",fill=_INK,font=_font(9))
-    d.text((410,87),f"CHS {len(channels)}",fill=_INK,font=_font(9))
-    peak="?" if meta["rssi_max"] is None else f"{meta['rssi_max']:.0f}"
-    d.text((410,106),f"PEAK {peak}",fill=_INK,font=_font(8))
-    d.line((408,126,470,126),fill=_EDGE)
-    d.text((410,136),"QUALITY",fill=_MUTED,font=_font(7))
-    d.text((410,153),"CAPTURED",fill=_TRACE,font=_font(8))
-    gps="GPS FIX" if meta["gps_fix"] else "GPS NO"
-    d.text((410,171),gps,fill=_TRACE if meta["gps_fix"] else _WARN,font=_font(7))
-    d.text((410,192),str(meta["capture_date"] or "")[:10],fill=_MUTED,font=_font(7))
-    d.line((408,212,470,212),fill=_EDGE)
-    d.text((410,222),"TUNED",fill=_MUTED,font=_font(7))
-    d.text((410,238),f"CH {meta['channel']}",fill=_WARN,font=_font(10))
+    d.line((10, 202, 390, 202), fill=_EDGE)
+    d.text((12, 210), "CURRENT OBSERVATION", fill=_MUTED, font=_font(SHELL_TYPE.caption))
+    strongest = max(meta["aps"], key=lambda row: _number(row.get("rssi")) or -1000, default=None)
+    if strongest is not None and _number(strongest.get("rssi")) is not None:
+        sch = _int_or_none(strongest.get("channel"))
+        srssi = _number(strongest.get("rssi"))
+        text = f"STRONGEST  CH {sch if sch is not None else '—'}  {srssi:.0f} dBm"
+    elif meta["aps_reading"].known:
+        text = "NO OBSERVATIONS IN CURRENT SAMPLE"
+    else:
+        text = "OBSERVATION INPUT UNKNOWN"
+    d.text((12, 235), text, fill=_INK, font=_font(SHELL_TYPE.body))
     _register(rt, SceneLayerSpec(
-        "observatory_spectrum.measure","instrument",(400,40,472,286),
-        signals=("wifi.aps","gps.fix","radio.primary.channel"),update_class="live",
+        "observatory_spectrum.summary", "instrument", (10, 202, 390, 258),
+        signals=("wifi.aps",), update_class="live",
     ))
 
-    # Current-observation summary is an integrated lower readout strip.
-    d.line((10,232,390,232),fill=_EDGE)
-    d.text((12,240),"CURRENT OBSERVATION SUMMARY",fill=_MUTED,font=_font(7))
-    strongest=max(aps,key=lambda row:float(row.get("rssi") or -100),default=None)
-    if strongest:
-        d.text((12,258),f"STRONGEST // CH {int(strongest.get('channel') or 0)} // {float(strongest.get('rssi') or -100):.0f} dBm",
-               fill=_INK,font=_font(8))
-    d.text((238,258),f"HANDSHAKE APS {_i(state,'wifi.handshake_ap_count')}",
-           fill=_INK,font=_font(8))
+    # Static semantic marker replaces the old developer-facing truth disclaimer.
     _register(rt, SceneLayerSpec(
-        "observatory_spectrum.summary","instrument",(10,232,390,282),
-        signals=("wifi.aps","wifi.handshake_ap_count"),update_class="live",
+        "observatory_spectrum.truth", "semantic", (0, 0, 1, 1),
+        signals=(), update_class="static", decorative=True,
     ))
 
-    d.line((10,298,470,298),fill=_EDGE)
-    d.text((12,304),"LIVE/CAPTURED SPECTRUM // NO INVENTED TIME SERIES",fill=_MUTED,font=_font(8))
-    _register(rt, SceneLayerSpec(
-        "observatory_spectrum.truth","text",(10,294,470,318),
-        signals=(),update_class="static",
-    ))
+    _draw_shell_nav(d, shell, rt)
     return im
-
