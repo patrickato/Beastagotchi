@@ -47,15 +47,24 @@ def test_monolith_keeps_primary_information_intentionally_sparse():
     meta = monolith_home_metadata(state)
     assert meta["nearby"] == state["wifi.ap_count"]
     assert meta["channel"] == state["radio.primary.channel"]
+    assert meta["nearby_reading"].known is True
+    assert meta["channel_reading"].known is True
 
     rt = SceneRuntime()
     im = render_monolith_home(state, scene_runtime=rt)
     assert im.size == (480, 320)
     snap = rt.snapshot()
     assert snap["scene"] == "experience:monolith:home"
-    assert snap["layer_count"] == 5
     rows = {row["id"]: row for row in snap["layers"]}
     assert rows["monolith.ambient_halo"]["decorative"] is True
+    # Shared shell adds one status layer plus three touch-sized navigation
+    # interactions without changing Monolith's sparse body hierarchy.
+    assert "monolith.home.shell_status" in rows
+    for suffix in ("nav_previous", "nav_home", "nav_next"):
+        row = rows[f"monolith.home.{suffix}"]
+        x1, y1, x2, y2 = row["bounds"]
+        assert x2 - x1 >= 48
+        assert y2 - y1 >= 48
 
 
 def test_habitat_and_monolith_are_visually_distinct():
