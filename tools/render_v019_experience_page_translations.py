@@ -5,11 +5,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from beastui.experience_atlas import render_atlas_home, render_atlas_recon
-from beastui.experience_observatory import render_observatory_home, render_observatory_spectrum
-from beastui.experience_habitat import render_habitat_home, render_habitat_beast
-from beastui.experience_forge import render_forge_home, render_forge_system
-from beastui.experience_monolith import render_monolith_home, render_monolith_overview
+from beastui.experience_registry import render_experience_page
 from beastui.scene_runtime import SceneRuntime
 
 
@@ -29,22 +25,23 @@ def main()->int:
     root.mkdir(parents=True,exist_ok=True)
 
     cases=[
-        ("atlas_home",render_atlas_home),
-        ("atlas_recon",render_atlas_recon),
-        ("observatory_home",render_observatory_home),
-        ("observatory_spectrum",render_observatory_spectrum),
-        ("habitat_home",render_habitat_home),
-        ("habitat_beast",render_habitat_beast),
-        ("forge_home",render_forge_home),
-        ("forge_system",render_forge_system),
-        ("monolith_home",render_monolith_home),
-        ("monolith_overview",render_monolith_overview),
+        ("atlas","home"),
+        ("atlas","recon"),
+        ("observatory","home"),
+        ("observatory","spectrum"),
+        ("habitat","home"),
+        ("habitat","beast"),
+        ("forge","home"),
+        ("forge","system"),
+        ("monolith","home"),
+        ("monolith","overview"),
     ]
-    manifest={"purpose":"cross-page Experience-DNA translation proof","pages":{}}
+    manifest={"purpose":"active-registry cross-page Experience-DNA translation proof","pages":{}}
     cards=[]
-    for name,renderer in cases:
+    for experience_id,page_id in cases:
+        name=f"{experience_id}_{page_id}"
         rt=SceneRuntime()
-        im=renderer(state,scene_runtime=rt)
+        im=render_experience_page(experience_id,page_id,state,scene_runtime=rt)
         fp=root/f"{name}.png"
         im.save(fp)
         manifest["pages"][name]={"file":fp.name,"scene":rt.snapshot()}
