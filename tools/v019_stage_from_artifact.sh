@@ -25,9 +25,9 @@ What it does:
   - extracts the exact commit-pinned source
   - preserves an existing Beast Core config
   - installs Beast Core + Beast UI/Studio using the project installers
-  - starts Beast Core only
+  - restarts Beast Core only so newly installed unit/runtime settings are active
   - optionally prepares qrcode==8.2 in /opt/beast-python/site-packages
-  - runs beast-v019-accept preflight
+  - runs beast-v019-accept preflight against the new deployment provenance
 
 What it does NOT do:
   - does not enable or start Beast UI
@@ -150,9 +150,13 @@ echo "Installing Beast UI/Studio from $SHORT ..."
 bash "$SOURCE_ROOT/install_ui.sh"
 
 echo
-echo "Starting Beast Core only. Physical display ownership remains with Pwnagotchi."
-systemctl start beast-core.service
+echo "Restarting Beast Core only. Physical display ownership remains with Pwnagotchi."
+systemctl restart beast-core.service
 sleep 3
+
+# Publish the new staging provenance before preflight so the evidence produced
+# by this run cannot accidentally describe the previous deployment.
+ln -sfn "$SESSION" "$DEPLOY_ROOT/current-staged"
 
 if [[ $PREPARE_QR -eq 1 ]]; then
   echo
@@ -164,7 +168,6 @@ echo
 echo "Running target preflight..."
 /usr/local/bin/beast-v019-accept preflight
 
-ln -sfn "$SESSION" "$DEPLOY_ROOT/current-staged"
 if [[ $KEEP_SOURCE -eq 0 ]]; then
   rm -rf "$SOURCE_ROOT"
 fi
