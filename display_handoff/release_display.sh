@@ -7,6 +7,14 @@ BACKUP=$STATE_DIR/config.toml.pre-beast
 PY=/opt/beast-ui/bin/display_config.py
 OVERRIDE_DIR=/run/systemd/system/beast-ui.service.d
 EXPERIENCE_OVERRIDE=$OVERRIDE_DIR/90-beast-experience-test.conf
+WATCHDOG_UNIT=beast-display-watchdog.service
+
+# Stop the independent acceptance watchdog before intentionally stopping the UI.
+# When the watchdog itself invokes rollback, it must not stop/wait on itself.
+if [[ ${BEAST_DISPLAY_WATCHDOG:-0} != 1 ]]; then
+  systemctl stop "$WATCHDOG_UNIT" 2>/dev/null || true
+  systemctl reset-failed "$WATCHDOG_UNIT" 2>/dev/null || true
+fi
 
 systemctl stop beast-ui.service 2>/dev/null || true
 systemctl stop beast-studio.service 2>/dev/null || true
