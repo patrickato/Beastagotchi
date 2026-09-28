@@ -177,10 +177,12 @@ echo "NEXT:"
 if [[ $PREPARE_QR -eq 0 ]]; then
   echo "  Optional QR gate: sudo beast-v019-accept prepare-qr"
 fi
-echo "  Start bounded TFT session: sudo beast-v019-accept start 15"
-echo "  During use:                sudo beast-v019-accept sample 60"
-echo "  Finish without deciding:   sudo beast-v019-accept finish observe"
-echo "  Or rollback immediately:   sudo beast-v019-accept finish rollback"
+echo "  First Experience TFT pass:  sudo beast-v019-accept start 15 atlas home"
+echo "  Other Experience examples:  forge home | observatory home | habitat home | monolith home"
+echo "  Legacy/default TFT pass:     sudo beast-v019-accept start 15"
+echo "  During use:                  sudo beast-v019-accept sample 60"
+echo "  Safe staging finish:         sudo beast-v019-accept finish rollback"
+echo "  Bundle only/no owner change: sudo beast-v019-accept finish observe"
 echo
 echo "Deployment provenance: $SESSION/provenance.json"
 echo "============================================================"
