@@ -134,6 +134,20 @@ print(json.dumps(result,indent=2,sort_keys=True))
 PY
 }
 
+capture_service_evidence() {
+  local out label
+  out="$1"
+  label="$(safe_label "${2:-services}")"
+  systemctl show beast-ui.service \
+    -p ActiveState -p SubState -p Result -p ExecMainCode -p ExecMainStatus \
+    -p NRestarts -p ActiveEnterTimestamp -p InactiveEnterTimestamp \
+    > "$out/${label}-beast-ui-show.txt" 2>&1 || true
+  systemctl status pwnagotchi.service bettercap.service beast-core.service beast-ui.service beast-studio.service \
+    --no-pager -l > "$out/${label}-services.txt" 2>&1 || true
+  journalctl -u beast-ui.service -b --no-pager -n 320 > "$out/${label}-beast-ui-journal.txt" 2>&1 || true
+  journalctl -u beast-core.service -b -p warning..alert --no-pager -n 180 > "$out/${label}-beast-core-warnings.txt" 2>&1 || true
+}
+
 capture_one() {
   local out label
   out="$(session_dir)"
@@ -160,7 +174,7 @@ sample_window() {
   echo "Sampling objective UI/Core telemetry for ${seconds}s."
   echo "Use the TFT normally during this window: swipe pages, open Apps, open Capsules, cycle QR frames, open/close Control Center."
   SECONDS_TO_SAMPLE="$seconds" OUTFILE="$out/runtime-samples.jsonl" "$PY" - <<'PY'
-import json, os, pathlib, time, urllib.request
+import json, os, pathlib, subprocess, time, urllib.request
 seconds=int(os.environ["SECONDS_TO_SAMPLE"])
 out=pathlib.Path(os.environ["OUTFILE"])
 deadline=time.monotonic()+seconds
@@ -180,15 +194,29 @@ with out.open("a", buffering=1) as fh:
                 row["state"]={k:obj.get(k) for k in keep}
         except Exception as exc:
             row["state_error"]=type(exc).__name__
+        runtime_path=pathlib.Path("/run/beastagotchi/ui-runtime.json")
         try:
-            obj=json.loads(pathlib.Path("/run/beastagotchi/ui-runtime.json").read_text())
+            obj=json.loads(runtime_path.read_text())
             if isinstance(obj,dict): row["runtime"]=obj
         except Exception as exc:
             row["runtime_error"]=type(exc).__name__
+            row["runtime_path_exists"]=runtime_path.exists()
+            try:
+                st=runtime_path.parent.stat()
+                row["runtime_dir"]={"mode":oct(st.st_mode & 0o777),"uid":st.st_uid,"gid":st.st_gid}
+            except Exception as stat_exc:
+                row["runtime_dir_error"]=type(stat_exc).__name__
+            try:
+                row["ui_service_state"]=subprocess.run(
+                    ["systemctl","is-active","beast-ui.service"],capture_output=True,text=True,timeout=1
+                ).stdout.strip() or "unknown"
+            except Exception as service_exc:
+                row["ui_service_error"]=type(service_exc).__name__
         fh.write(json.dumps(row,separators=(",",":"))+"\n")
         time.sleep(1.0)
 PY
   cp -a /run/beastagotchi/touch-gestures.jsonl "$out/touch-gestures.jsonl" 2>/dev/null || true
+  capture_service_evidence "$out" "after-sample"
   capture_one "after-sample"
 }
 
@@ -201,6 +229,7 @@ finalize_evidence() {
   capture_state_subset "$out/state-final.json"
   cp -a /run/beastagotchi/ui-runtime.json "$out/ui-runtime-final.json" 2>/dev/null || true
   cp -a /run/beastagotchi/touch-gestures.jsonl "$out/touch-gestures.jsonl" 2>/dev/null || true
+  capture_service_evidence "$out" "final-before-owner-decision"
   capture_one "final-before-owner-decision"
 
   cat > "$out/physical-observations.txt" <<'EOF'
@@ -244,9 +273,10 @@ EOF
   esac
 
   "$STATUS" > "$out/display-status-after.txt" 2>&1 || true
-  systemctl status pwnagotchi.service bettercap.service beast-core.service beast-ui.service beast-studio.service --no-pager -l > "$out/services-after.txt" 2>&1 || true
-  journalctl -u beast-ui.service --no-pager -n 260 > "$out/beast-ui-journal.txt" 2>&1 || true
-  journalctl -u beast-core.service -p warning..alert --no-pager -n 160 > "$out/beast-core-warnings.txt" 2>&1 || true
+  capture_service_evidence "$out" "after-owner-decision"
+  cp -a "$out/after-owner-decision-services.txt" "$out/services-after.txt" 2>/dev/null || true
+  cp -a "$out/final-before-owner-decision-beast-ui-journal.txt" "$out/beast-ui-journal.txt" 2>/dev/null || true
+  cp -a "$out/final-before-owner-decision-beast-core-warnings.txt" "$out/beast-core-warnings.txt" 2>/dev/null || true
 
   bundle="/home/pi/beast-v019-physical-acceptance-${stamp}.tar.gz"
   tar -czf "$bundle" -C "$ROOT" "$stamp"
