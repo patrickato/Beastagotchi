@@ -7,7 +7,7 @@ from typing import Any, Callable
 from PIL import Image
 
 from .beast_shell import build_shell_model
-from .experience_atlas_fieldbook_v21 import render_atlas_home, render_atlas_recon
+from .experience_atlas_fieldbook_v22 import render_atlas_home, render_atlas_recon
 from .experience_forge import render_forge_home, render_forge_system
 from .experience_habitat import render_habitat_home, render_habitat_beast
 from .experience_monolith import render_monolith_home, render_monolith_overview
@@ -102,9 +102,6 @@ def render_experience_page(
     if row is None:
         raise KeyError(f"Experience page renderer unavailable: {experience_id}:{page_id}")
 
-    # Every Experience receives the same semantic shell model before it paints
-    # its own visual grammar. Renderers may adopt shell pieces incrementally,
-    # but truth/attention/navigation semantics no longer need to be re-invented.
     render_state = dict(state or {})
     render_state["_beast_shell"] = build_shell_model(
         row.experience_id,
