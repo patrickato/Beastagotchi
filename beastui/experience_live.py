@@ -83,6 +83,17 @@ class ExperienceBeastUI(BeastUI):
             ",".join(self.experience.pages),
         )
 
+    def _background_cadence(self, opts):
+        """Use an Experience-owned idle cadence instead of the legacy theme cadence.
+
+        Experience pages do not render the inherited theme background. Reusing
+        the legacy theme scheduler therefore wastes Pi CPU/heat by redrawing a
+        layer that is not present. One idle frame per second preserves gentle
+        phase-based motion and live feel; input/data dirties still render at the
+        normal responsive frame budget.
+        """
+        return 1.0
+
     def _sync_legacy_page_index(self) -> None:
         """Keep inherited runtime telemetry anchored to the equivalent page id."""
         try:
