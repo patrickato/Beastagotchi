@@ -96,6 +96,7 @@ def render_experience_page(
     state: dict[str, Any],
     *,
     scene_runtime: SceneRuntime | None = None,
+    navigation_pages: tuple[str, ...] | list[str] | None = None,
     **kwargs,
 ) -> Image.Image:
     row = get_experience_renderer(experience_id, page_id)
@@ -107,7 +108,7 @@ def render_experience_page(
         row.experience_id,
         row.page_id,
         render_state,
-        available_experience_pages(row.experience_id),
+        navigation_pages or available_experience_pages(row.experience_id),
     )
     return row.renderer(
         render_state,
