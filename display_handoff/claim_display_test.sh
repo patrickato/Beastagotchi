@@ -2,8 +2,8 @@
 set -euo pipefail
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo 'Run with sudo.'; exit 1; }
 MINUTES=${1:-10}
-EXPERIENCE=${2:-}
-EXPERIENCE_PAGE=${3:-home}
+EXPERIENCE=${2:-${BEAST_ACCEPT_EXPERIENCE:-}}
+EXPERIENCE_PAGE=${3:-${BEAST_ACCEPT_EXPERIENCE_PAGE:-home}}
 [[ "$MINUTES" =~ ^[0-9]+$ ]] || { echo 'Usage: sudo claim_display_test.sh [rollback-minutes] [experience] [experience-page]'; exit 2; }
 CFG=/etc/pwnagotchi/config.toml
 STATE_DIR=/var/lib/beastagotchi/display-handoff
