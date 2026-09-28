@@ -7,7 +7,7 @@ from typing import Any, Callable
 from PIL import Image
 
 from .beast_shell import build_shell_model
-from .experience_atlas import render_atlas_home, render_atlas_recon
+from .experience_atlas_fieldbook import render_atlas_home, render_atlas_recon
 from .experience_forge import render_forge_home, render_forge_system
 from .experience_habitat import render_habitat_home, render_habitat_beast
 from .experience_monolith import render_monolith_home, render_monolith_overview
