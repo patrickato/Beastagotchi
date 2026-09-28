@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from tools.v019_acceptance_report import summarize_session
@@ -36,6 +37,12 @@ def test_bounded_display_handoff_requires_telemetry_and_arms_independent_watchdo
     assert release.index('systemctl stop "$WATCHDOG_UNIT"') < release.index("systemctl stop beast-ui.service")
     assert 'BEAST_DISPLAY_WATCHDOG:-0' in release
     assert 'systemctl stop "$WATCHDOG_UNIT"' in confirm
+
+
+def test_all_display_handoff_scripts_pass_shell_syntax():
+    scripts = sorted(str(p) for p in (ROOT / "display_handoff").glob("*.sh"))
+    assert scripts
+    subprocess.run(["bash", "-n", *scripts], check=True)
 
 
 def test_acceptance_captures_failure_evidence_before_owner_decision():
