@@ -6,21 +6,11 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from beastui.experience_atlas import render_atlas_home
-from beastui.experience_forge import render_forge_home
-from beastui.experience_observatory import render_observatory_home
-from beastui.experience_habitat import render_habitat_home
-from beastui.experience_monolith import render_monolith_home
+from beastui.experience_registry import render_experience_page
 from beastui.scene_runtime import SceneRuntime
 
 
-RENDERERS = {
-    "atlas": render_atlas_home,
-    "forge": render_forge_home,
-    "observatory": render_observatory_home,
-    "habitat": render_habitat_home,
-    "monolith": render_monolith_home,
-}
+EXPERIENCES = ("atlas", "forge", "observatory", "habitat", "monolith")
 
 
 def main() -> int:
@@ -34,13 +24,13 @@ def main() -> int:
     root.mkdir(parents=True, exist_ok=True)
 
     manifest = {
-        "purpose": "first five non-legacy Experience-DNA Home proofs from sanitized real target state",
+        "purpose": "first five active-registry Experience-DNA Home proofs from sanitized real target state",
         "source_state_kind": (state.get("_beast_capture") or {}).get("kind"),
         "experiences": {},
     }
-    for experience_id, renderer in RENDERERS.items():
+    for experience_id in EXPERIENCES:
         rt = SceneRuntime()
-        im = renderer(state, scene_runtime=rt)
+        im = render_experience_page(experience_id, "home", state, scene_runtime=rt)
         name = f"{experience_id}_home.png"
         im.save(root / name)
         manifest["experiences"][experience_id] = {
@@ -50,7 +40,7 @@ def main() -> int:
 
     # Side-by-side comparison is intentionally a review artifact, not a runtime UI.
     cards = []
-    for experience_id in RENDERERS:
+    for experience_id in EXPERIENCES:
         im = Image.open(root / f"{experience_id}_home.png").convert("RGB")
         card = Image.new("RGB", (480, 350), (12, 12, 12))
         card.paste(im, (0, 30))
