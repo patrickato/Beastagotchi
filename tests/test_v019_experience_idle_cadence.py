@@ -1,4 +1,4 @@
-from beastui.experience_live import ExperienceBeastUI
+from beastui.experience_live_optimized import ExperienceBeastUI
 
 
 def _idle_ui():
