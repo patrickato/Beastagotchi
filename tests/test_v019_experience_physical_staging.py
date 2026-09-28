@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 
@@ -91,3 +92,30 @@ def test_experience_acceptance_session_records_exact_staged_target():
     assert '"page": os.environ["PAGE"].strip().lower()' in entry
     assert '"saved_ui_preferences_modified": False' in entry
     assert '"permanent_service_modified": False' in entry
+
+
+def test_acceptance_report_surfaces_exact_staged_experience(tmp_path):
+    from tools.v019_acceptance_report import summarize_session, write_text_report
+
+    (tmp_path / "experience-staging.json").write_text(json.dumps({
+        "schema": 1,
+        "mode": "staging_only",
+        "experience": "atlas",
+        "page": "home",
+        "saved_ui_preferences_modified": False,
+        "permanent_service_modified": False,
+    }))
+
+    summary = summarize_session(tmp_path)
+    staged = summary["experience"]
+    assert staged["mode"] == "staging_only"
+    assert staged["experience"] == "atlas"
+    assert staged["page"] == "home"
+    assert staged["saved_ui_preferences_modified"] is False
+    assert staged["permanent_service_modified"] is False
+
+    text = write_text_report(summary)
+    assert "Experience staging" in text
+    assert "target: atlas:home" in text
+    assert "saved UI preferences modified: False" in text
+    assert "permanent service modified: False" in text
