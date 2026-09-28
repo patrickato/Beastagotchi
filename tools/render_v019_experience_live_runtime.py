@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from beastui.experience_live import ExperienceBeastUI
+from beastui.experience_live_optimized import ExperienceBeastUI
 
 
 EXPERIENCES = ("atlas", "forge", "observatory", "habitat", "monolith")
