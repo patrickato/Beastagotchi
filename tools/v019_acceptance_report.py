@@ -66,6 +66,7 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
     samples = _read_jsonl(root / "runtime-samples.jsonl")
     preflight = _read_json(root / "preflight.json")
     capsule = _read_json(root / "capsule-export.json")
+    experience_staging = _read_json(root / "experience-staging.json")
     final_state_raw = _read_json(root / "state-final.json")
     final_state = final_state_raw.get("state") if isinstance(final_state_raw.get("state"), dict) else final_state_raw
     runtime_final = _read_json(root / "ui-runtime-final.json")
@@ -148,6 +149,13 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
             "archive_sha256": deployment.get("archive_sha256"),
             "staged_at_utc": deployment.get("staged_at_utc"),
         },
+        "experience": {
+            "mode": experience_staging.get("mode"),
+            "experience": experience_staging.get("experience"),
+            "page": experience_staging.get("page"),
+            "saved_ui_preferences_modified": experience_staging.get("saved_ui_preferences_modified"),
+            "permanent_service_modified": experience_staging.get("permanent_service_modified"),
+        },
         "metrics": {
             "cpu_temp_c": temp,
             "cpu_pct": cpu,
@@ -185,6 +193,10 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
 
 def write_text_report(summary: dict[str, Any]) -> str:
     m = summary.get("metrics") or {}
+    experience = summary.get("experience") or {}
+    target = None
+    if experience.get("experience"):
+        target = f"{experience.get('experience')}:{experience.get('page') or 'home'}"
     lines = [
         "Beastagotchi v0.19 Physical Acceptance Evidence",
         "=" * 47,
@@ -193,6 +205,12 @@ def write_text_report(summary: dict[str, Any]) -> str:
         f"Source commit: {(summary.get('deployment') or {}).get('source_commit')}",
         f"CI-tested commit: {(summary.get('deployment') or {}).get('ci_tested_commit')}",
         f"Source archive SHA-256: {(summary.get('deployment') or {}).get('archive_sha256')}",
+        "",
+        "Experience staging",
+        f"- target: {target or 'not recorded (legacy/default acceptance path)'}",
+        f"- mode: {experience.get('mode')}",
+        f"- saved UI preferences modified: {experience.get('saved_ui_preferences_modified')}",
+        f"- permanent service modified: {experience.get('permanent_service_modified')}",
         "",
         "Objective telemetry",
     ]
