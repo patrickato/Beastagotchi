@@ -56,13 +56,13 @@ def _state(*, live: bool) -> dict:
     return state
 
 
-def test_atlas_registry_uses_fieldbook_v22_without_changing_page_order():
+def test_atlas_registry_uses_fieldscene_v30_without_changing_page_order():
     assert available_experience_pages("atlas") == ("home", "recon")
     home = get_experience_renderer("atlas", "home")
     recon = get_experience_renderer("atlas", "recon")
     assert home is not None and recon is not None
-    assert home.renderer.__module__ == "beastui.experience_atlas_fieldbook_v22"
-    assert recon.renderer.__module__ == "beastui.experience_atlas_fieldbook_v22"
+    assert home.renderer.__module__ == "beastui.experience_atlas_fieldscene_v30"
+    assert recon.renderer.__module__ == "beastui.experience_atlas_fieldscene_v30"
 
 
 def test_atlas_fieldbook_renders_empty_and_live_truth_states():
@@ -89,7 +89,7 @@ def test_atlas_fieldbook_keeps_route_truth_gate_from_validated_atlas_model():
     assert live["draw_route"] is True
 
 
-def test_atlas_fieldbook_v22_keeps_stable_runtime_scene_ids():
+def test_atlas_fieldscene_v30_keeps_stable_runtime_scene_ids():
     state = _state(live=True)
     for page in ("home", "recon"):
         runtime = SceneRuntime()
