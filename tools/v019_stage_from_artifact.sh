@@ -132,18 +132,22 @@ fi
 echo "Extracting exact source commit $SOURCE_SHA ..."
 tar -xzf "$ARCHIVE" -C "$SOURCE_ROOT" --strip-components=1
 
-[[ -x "$SOURCE_ROOT/install.sh" && -x "$SOURCE_ROOT/install_ui.sh" ]] || {
+# Git archives preserve tracked mode bits. Some project installer scripts are
+# intentionally tracked as ordinary text files (0644), so staging must test for
+# file presence rather than requiring an executable bit. Invoke them explicitly
+# through bash to make source-archive staging independent of tracked mode.
+[[ -f "$SOURCE_ROOT/install.sh" && -f "$SOURCE_ROOT/install_ui.sh" ]] || {
   echo "Extracted source is missing expected installers."
   exit 7
 }
 
 echo
 echo "Installing Beast Core from $SHORT ..."
-"$SOURCE_ROOT/install.sh"
+bash "$SOURCE_ROOT/install.sh"
 
 echo
 echo "Installing Beast UI/Studio from $SHORT ..."
-"$SOURCE_ROOT/install_ui.sh"
+bash "$SOURCE_ROOT/install_ui.sh"
 
 echo
 echo "Starting Beast Core only. Physical display ownership remains with Pwnagotchi."
