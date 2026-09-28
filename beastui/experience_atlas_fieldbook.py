@@ -152,8 +152,8 @@ def _field_frame(draw: ImageDraw.ImageDraw, box=(8, 40, 350, 226)) -> None:
 
 
 def _contours(draw: ImageDraw.ImageDraw, phase: float, *, box=(8, 40, 350, 226)) -> None:
-    """Decorative fieldbook contours only: no geographic/elevation claim."""
     x1, y1, x2, y2 = box
+    # Decorative fieldbook contours only: no geographic/elevation claim.
     for row in range(7):
         base = y1 + 17 + row * 25
         pts = []
@@ -208,7 +208,7 @@ def _rf_plot(draw: ImageDraw.ImageDraw, state: dict[str, Any], *, origin=(181, 1
 
 
 def _beast_fieldmark(draw: ImageDraw.ImageDraw, meta: dict[str, Any]) -> None:
-    """Field-sketch companion, deliberately secondary to the expedition canvas."""
+    # Deliberately a field-sketch companion, not a dashboard avatar.
     x, y = 22, 168
     mood = str(meta.get("expression") or "awake").lower()
     alert = mood in {"focused", "hunting", "intense", "angry"}
@@ -287,7 +287,7 @@ def render_atlas_home(
     shell = _shell(state, "home")
     rt = scene_runtime
     if rt is not None:
-        rt.begin(page_id="home", scene_id="experience:atlas:home-v2", theme_id="experience.atlas")
+        rt.begin(page_id="home", scene_id="experience:atlas:home", theme_id="experience.atlas")
         rt.update_signals(state)
 
     im = Image.new("RGB", SIZE, _BG)
@@ -380,7 +380,7 @@ def render_atlas_recon(
     shell = _shell(state, "recon")
     rt = scene_runtime
     if rt is not None:
-        rt.begin(page_id="recon", scene_id="experience:atlas:recon-v2", theme_id="experience.atlas")
+        rt.begin(page_id="recon", scene_id="experience:atlas:recon", theme_id="experience.atlas")
         rt.update_signals(state)
 
     im = Image.new("RGB", SIZE, _BG)
