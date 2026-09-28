@@ -136,9 +136,10 @@ systemctl is-active --quiet beast-ui.service || { journalctl -u beast-ui.service
 
 # The physical test is not considered armed until UI runtime telemetry exists
 # and contains valid JSON. This turns telemetry loss into a start failure rather
-# than a silent blind spot discovered after the test.
+# than a silent blind spot discovered after the test. Give a slower Pi up to
+# ten additional seconds after the initial service settle time to publish it.
 runtime_ok=0
-for _ in $(seq 1 20); do
+for _ in $(seq 1 40); do
   if [[ -s "$RUNTIME" ]] && "$UI_PY" - "$RUNTIME" <<'PYJSON' >/dev/null 2>&1
 import json, sys
 with open(sys.argv[1]) as fh:
