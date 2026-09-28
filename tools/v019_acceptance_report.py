@@ -83,6 +83,10 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
     bytes_written = _metric(_nested(r, "runtime", "framebuffer", "bytes_written") for r in samples)
     target_fps = _metric(_nested(r, "runtime", "target_fps") for r in samples)
     lifetime_fps = _metric(_nested(r, "runtime", "lifetime_fps") for r in samples)
+    runtime_sample_count = sum(
+        1 for r in samples
+        if isinstance(r.get("runtime"), dict) and isinstance((r.get("runtime") or {}).get("avg_render_ms"), (int, float))
+    )
 
     frame_bytes = None
     write_ratios = []
@@ -128,6 +132,10 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
     warnings = []
     if not samples:
         warnings.append("No runtime sample window was captured.")
+    elif runtime_sample_count == 0:
+        warnings.append("UI runtime telemetry was absent from every captured sample; render/FPS evidence is invalid.")
+    elif runtime_sample_count < len(samples):
+        warnings.append(f"UI runtime telemetry was missing from {len(samples)-runtime_sample_count} of {len(samples)} samples.")
     if qr and qr.get("available") is False:
         warnings.append("Optional QR renderer is unavailable on this target.")
     if not capsule_ok:
@@ -143,6 +151,7 @@ def summarize_session(root: str | Path) -> dict[str, Any]:
         "evidence_class": "target_physical_session",
         "physical_user_judgment": "required",
         "sample_count": len(samples),
+        "runtime_sample_count": runtime_sample_count,
         "deployment": {
             "source_commit": deployment.get("source_commit"),
             "ci_tested_commit": deployment.get("ci_tested_commit"),
@@ -202,6 +211,7 @@ def write_text_report(summary: dict[str, Any]) -> str:
         "=" * 47,
         f"Session: {summary.get('session_dir')}",
         f"Samples: {summary.get('sample_count')}",
+        f"UI runtime samples: {summary.get('runtime_sample_count')}",
         f"Source commit: {(summary.get('deployment') or {}).get('source_commit')}",
         f"CI-tested commit: {(summary.get('deployment') or {}).get('ci_tested_commit')}",
         f"Source archive SHA-256: {(summary.get('deployment') or {}).get('archive_sha256')}",
