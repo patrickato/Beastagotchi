@@ -4,7 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from beastui.experience_atlas import atlas_home_metadata, render_atlas_home
+from beastui.experience_atlas import atlas_home_metadata
+from beastui.experience_registry import render_experience_page
 from beastui.scene_runtime import SceneRuntime
 from tools.proof_json import json_safe
 
@@ -25,7 +26,9 @@ def main() -> int:
     for i in range(frames):
         phase = i / max(1, frames - 1) * 3.0
         rt = SceneRuntime()
-        im = render_atlas_home(state, phase=phase, scene_runtime=rt)
+        im = render_experience_page(
+            "atlas", "home", state, phase=phase, scene_runtime=rt
+        )
         name = f"atlas_home_{i:02d}.png"
         im.save(root / name)
         row = rt.snapshot()
@@ -35,7 +38,7 @@ def main() -> int:
 
     manifest = {
         "experience": "atlas",
-        "purpose": "first non-legacy Experience-DNA Home proof from sanitized real target state",
+        "purpose": "active-registry Atlas Home Experience proof from sanitized real target state",
         "source_state_kind": (state.get("_beast_capture") or {}).get("kind"),
         "truth": atlas_home_metadata(state),
         "frames": scene_rows,
