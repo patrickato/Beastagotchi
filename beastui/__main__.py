@@ -4,7 +4,7 @@ import argparse
 import logging
 
 from .engine import BeastUI
-from .experience_live import ExperienceBeastUI
+from .experience_live_optimized import ExperienceBeastUI
 from .experience_registry import experience_renderer_summary
 
 
