@@ -4,6 +4,7 @@ set -euo pipefail
 STATE_DIR=/var/lib/beastagotchi/display-handoff
 OVERRIDE_DIR=/run/systemd/system/beast-ui.service.d
 EXPERIENCE_OVERRIDE=$OVERRIDE_DIR/90-beast-experience-test.conf
+WATCHDOG_UNIT=beast-display-watchdog.service
 /opt/beast-ui/bin/display_config.py --config /etc/pwnagotchi/config.toml require-disabled >/dev/null
 systemctl is-active --quiet beast-ui.service || { echo 'beast-ui is not active; refusing to confirm.'; exit 2; }
 
@@ -16,6 +17,8 @@ if [[ -f "$EXPERIENCE_OVERRIDE" ]]; then
   systemctl daemon-reload
 fi
 
+systemctl stop "$WATCHDOG_UNIT" 2>/dev/null || true
+systemctl reset-failed "$WATCHDOG_UNIT" 2>/dev/null || true
 systemctl stop beast-display-rollback.timer beast-display-rollback.service 2>/dev/null || true
 systemctl reset-failed beast-display-rollback.service 2>/dev/null || true
 rm -f /run/beastagotchi/ui-test-mode
