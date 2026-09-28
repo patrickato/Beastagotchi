@@ -81,7 +81,7 @@ write_preflight() {
   fi
 
   PREFLIGHT_DEPLOYMENT="$out/deployment-provenance.json" PYTHONPATH="$CORE_ROOT:$UI_ROOT:$BEAST_SITE" "$PY" - <<'PY' > "$out/preflight.json"
-import hashlib, importlib.util, json, pathlib, time
+import hashlib, importlib.util, json, os, pathlib, time
 result={"ts":time.time()}
 deployment_path=pathlib.Path(os.environ.get("PREFLIGHT_DEPLOYMENT",""))
 if deployment_path.is_file():
