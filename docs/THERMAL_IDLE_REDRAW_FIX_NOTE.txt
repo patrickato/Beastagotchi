@@ -1,1 +1,0 @@
-Temporary implementation note: Experience idle redraw regression is covered by tests/test_v019_experience_idle_cadence.py. The runtime patch prevents staged Experience pages from treating the absent legacy background cache as a continuous redraw request while preserving dirty/input and transient animation responsiveness.
