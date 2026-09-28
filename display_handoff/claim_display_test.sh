@@ -12,6 +12,8 @@ PY=/opt/beast-ui/bin/display_config.py
 UI_PY=/opt/.pwn/bin/python3
 OVERRIDE_DIR=/run/systemd/system/beast-ui.service.d
 EXPERIENCE_OVERRIDE=$OVERRIDE_DIR/90-beast-experience-test.conf
+WATCHDOG_UNIT=beast-display-watchdog.service
+RUNTIME=/run/beastagotchi/ui-runtime.json
 
 if [[ -n "$EXPERIENCE" ]]; then
   [[ "$EXPERIENCE" =~ ^[A-Za-z0-9_-]+$ ]] || {
@@ -57,6 +59,8 @@ rollback_now() {
 }
 trap 'echo "ERROR during display handoff"; rollback_now' ERR
 
+systemctl stop "$WATCHDOG_UNIT" 2>/dev/null || true
+systemctl reset-failed "$WATCHDOG_UNIT" 2>/dev/null || true
 systemctl stop beast-ui.service 2>/dev/null || true
 systemctl disable beast-ui.service 2>/dev/null || true
 systemctl stop beast-display-rollback.timer 2>/dev/null || true
@@ -105,7 +109,13 @@ systemctl is-active --quiet pwnagotchi.service || { echo 'Pwnagotchi failed to r
 sleep 5
 systemctl start beast-core.service
 systemctl start beast-studio.service
+# Reassert the volatile telemetry contract before the unprivileged UI starts.
+# A stale root-owned runtime file from an interrupted/manual test must not make
+# telemetry silently disappear.
 mkdir -p /run/beastagotchi
+chgrp beastagotchi /run/beastagotchi
+chmod 0775 /run/beastagotchi
+rm -f "$RUNTIME" /run/beastagotchi/.ui-runtime.json.*.tmp
 touch /run/beastagotchi/ui-test-mode
 
 # Experience staging is a runtime-only systemd drop-in. The installed service,
@@ -124,6 +134,35 @@ systemctl start beast-ui.service
 sleep 3
 systemctl is-active --quiet beast-ui.service || { journalctl -u beast-ui.service -n 80 --no-pager; exit 5; }
 
+# The physical test is not considered armed until UI runtime telemetry exists
+# and contains valid JSON. This turns telemetry loss into a start failure rather
+# than a silent blind spot discovered after the test.
+runtime_ok=0
+for _ in $(seq 1 20); do
+  if [[ -s "$RUNTIME" ]] && "$UI_PY" - "$RUNTIME" <<'PYJSON' >/dev/null 2>&1
+import json, sys
+with open(sys.argv[1]) as fh:
+    obj=json.load(fh)
+if not isinstance(obj,dict) or not obj.get("version"):
+    raise SystemExit(1)
+PYJSON
+  then
+    runtime_ok=1
+    break
+  fi
+  sleep 0.25
+done
+if (( runtime_ok != 1 )); then
+  echo 'Beast UI started but did not publish valid runtime telemetry.'
+  systemctl status beast-ui.service --no-pager -l || true
+  journalctl -u beast-ui.service -n 120 --no-pager || true
+  exit 7
+fi
+
+# A bounded test gets a second, independent safety net in addition to the
+# absolute rollback timer: sustained UI loss or a stale runtime heartbeat
+# immediately records evidence and restores Pwnagotchi display ownership.
+systemd-run --quiet --unit=beast-display-watchdog /opt/beast-ui/bin/display_watchdog.sh
 systemd-run --quiet --unit=beast-display-rollback --on-active="${MINUTES}m" /opt/beast-ui/bin/auto_rollback.sh
 trap - ERR
 
