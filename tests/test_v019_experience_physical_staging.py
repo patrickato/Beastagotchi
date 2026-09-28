@@ -18,6 +18,8 @@ def test_physical_experience_staging_is_runtime_only_and_validated():
     assert "experience_renderer_summary" in claim
     assert "Unknown Experience" in claim
     assert "Unknown page" in claim
+    assert 'EXPERIENCE="${EXPERIENCE,,}"' in claim
+    assert 'EXPERIENCE_PAGE="${EXPERIENCE_PAGE,,}"' in claim
     assert "ExecStart=" in claim
     assert "--experience $EXPERIENCE --experience-page $EXPERIENCE_PAGE" in claim
     assert "systemctl daemon-reload" in claim
@@ -27,7 +29,7 @@ def test_physical_experience_staging_is_runtime_only_and_validated():
     assert "--experience" not in service
     assert "/run/systemd/system" not in service
 
-    # install_ui already ships every handoff script; no parallel install path.
+    # install_ui ships every handoff script; no parallel display-owner path.
     assert '"$SRC"/display_handoff/*.sh' in installer
 
 
@@ -56,3 +58,36 @@ def test_confirm_clears_staging_before_disarming_rollback():
     assert confirm.index('rm -f "$EXPERIENCE_OVERRIDE"') < confirm.index(
         "systemctl stop beast-display-rollback.timer"
     )
+
+
+def test_public_acceptance_entrypoint_forwards_experience_without_rewriting_backend():
+    entry = _read("tools/v019_acceptance_entrypoint.sh")
+    backend = _read("tools/v019_physical_acceptance.sh")
+    installer = _read("install_ui.sh")
+
+    assert "BACKEND=/opt/beast-ui/bin/v019_physical_acceptance.sh" in entry
+    assert "start [rollback-minutes] [experience] [experience-page]" in entry
+    assert 'BEAST_ACCEPT_EXPERIENCE="$experience"' in entry
+    assert 'BEAST_ACCEPT_EXPERIENCE_PAGE="$page"' in entry
+    assert '"$BACKEND" start "$minutes"' in entry
+
+    # Legacy start remains available when no Experience is supplied.
+    assert 'exec "$BACKEND" start "$minutes"' in entry
+    assert '"$CLAIM" "$minutes"' in backend
+
+    # Installer keeps the mature harness as a private backend and exposes the
+    # small selector wrapper as the owner-facing command.
+    assert '"$SRC/tools/v019_physical_acceptance.sh" /opt/beast-ui/bin/v019_physical_acceptance.sh' in installer
+    assert '"$SRC/tools/v019_acceptance_entrypoint.sh" /usr/local/bin/beast-v019-accept' in installer
+    assert '"$SRC/tools/v019_physical_acceptance.sh" /usr/local/bin/beast-v019-accept' not in installer
+
+
+def test_experience_acceptance_session_records_exact_staged_target():
+    entry = _read("tools/v019_acceptance_entrypoint.sh")
+
+    assert 'experience-staging.json' in entry
+    assert '"mode": "staging_only"' in entry
+    assert '"experience": os.environ["EXPERIENCE"].strip().lower()' in entry
+    assert '"page": os.environ["PAGE"].strip().lower()' in entry
+    assert '"saved_ui_preferences_modified": False' in entry
+    assert '"permanent_service_modified": False' in entry
