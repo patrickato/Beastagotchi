@@ -9,6 +9,7 @@ IMPORTANT
 - The staging script verifies the commit-pinned source archive before installing.
 - Staging does NOT claim the TFT.
 - Beast UI remains stopped until you explicitly start the physical acceptance session.
+- Experience selection is staging-only: it does not change saved UI preferences or the permanent beast-ui.service.
 - Pwnagotchi's /opt/.pwn Python packages are not used for Beast-only QR packages.
 
 1) STAGE THE TESTED BUILD
@@ -30,57 +31,84 @@ If you do not want to test QR scanning yet:
 
   sudo ./STAGE_ON_PI.sh
 
-2) START ONE BOUNDED TFT SESSION
---------------------------------
+2) START ONE BOUNDED EXPERIENCE TFT SESSION
+--------------------------------------------
+For the first physical pass, start Atlas Home:
+
+  sudo beast-v019-accept start 15 atlas home
+
+The Experience/page is validated before display ownership changes. The existing
+automatic rollback timer remains authoritative, and the acceptance session records
+the exact staged Experience/page in experience-staging.json.
+
+Equivalent first-page sessions for the other Experience families are:
+
+  sudo beast-v019-accept start 15 forge home
+  sudo beast-v019-accept start 15 observatory home
+  sudo beast-v019-accept start 15 habitat home
+  sudo beast-v019-accept start 15 monolith home
+
+The legacy/default Beast UI acceptance path remains available as:
 
   sudo beast-v019-accept start 15
-
-The existing display-handoff rollback timer remains authoritative.
 
 3) USE THE TFT NORMALLY
 -----------------------
 During one substantial interaction window:
 
-- swipe through primary pages;
-- use footer/page navigation;
-- open/close Control Center;
-- open Apps and move through categories;
-- open Capsules;
-- inspect QR clarity/quiet border;
-- scan QR with a phone;
-- use PREV/NEXT and horizontal swipe;
-- open at least one dense operational surface;
-- open at least one visual/theme surface;
-- note readability, missed taps/swipes, clipping, stutter, glare, heat and polish.
+- inspect overall readability at normal viewing distance;
+- use the Experience footer/page navigation and visit its secondary page;
+- try repeated taps/swipes and note missed or accidental interactions;
+- look for clipped text, overlaps, awkward truncation, visual corruption or stale/false values;
+- verify unknown data looks unknown rather than silently becoming zero;
+- watch animation/motion for stutter or distracting redraws;
+- note brightness/glare, thermal feel and overall polish;
+- use any inherited Control Center/drawer surfaces that remain available in the staged runtime.
+
+For Experience visual acceptance, do not judge only the screenshot. Judge the
+actual 3.5-inch TFT at normal distance and while interacting with it.
 
 4) WHILE YOU ARE USING THE TFT
 ------------------------------
-
 From SSH:
 
   sudo beast-v019-accept sample 60
 
 This collects objective render/framebuffer/thermal evidence while you interact.
 
+Optional manual evidence capture:
+
+  sudo beast-v019-accept capture atlas-observation
+
 5) END THE SESSION
 ------------------
-
-Collect evidence without making a permanent ownership decision:
-
-  sudo beast-v019-accept finish observe
-
-Immediately return display ownership to Pwnagotchi:
+For an Experience staging pass, the safest normal ending is to collect the
+evidence and immediately return display ownership to Pwnagotchi:
 
   sudo beast-v019-accept finish rollback
 
-Only if you explicitly want to confirm Beast display ownership:
+This removes the temporary Experience systemd override and restores Pwnagotchi.
+
+If you only want to bundle evidence while leaving the current rollback timer and
+display owner unchanged:
+
+  sudo beast-v019-accept finish observe
+
+Only if you explicitly want to confirm Beast display ownership itself:
 
   sudo beast-v019-accept finish pass
 
-6) SEND BACK
-------------
+Confirmation also removes the temporary Experience override; Experience staging
+is never silently turned into a permanent boot preference.
 
-The command prints the private evidence archive path, normally:
+6) REPEAT FOR OTHER EXPERIENCES
+--------------------------------
+After rollback has restored Pwnagotchi, start another bounded session with one of
+the commands in step 2. Each session receives its own evidence directory/bundle.
+
+7) SEND BACK
+------------
+The finish command prints the private evidence archive path, normally:
 
   /home/pi/beast-v019-physical-acceptance-<timestamp>.tar.gz
 
@@ -91,8 +119,8 @@ Also tell ChatGPT what you physically noticed:
 - readability;
 - touch accuracy/feel;
 - navigation;
-- QR phone scanning;
-- QR frame switching;
+- clipping/overlap/truncation;
+- truth/unknown-state presentation;
 - smoothness;
 - brightness/glare;
 - thermal feel;
