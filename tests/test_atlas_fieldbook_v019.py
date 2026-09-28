@@ -6,6 +6,7 @@ from beastui.experience_registry import (
     get_experience_renderer,
     render_experience_page,
 )
+from beastui.scene_runtime import SceneRuntime
 
 
 def _state(*, live: bool) -> dict:
@@ -55,13 +56,13 @@ def _state(*, live: bool) -> dict:
     return state
 
 
-def test_atlas_registry_uses_fieldbook_v2_without_changing_page_order():
+def test_atlas_registry_uses_fieldbook_v21_without_changing_page_order():
     assert available_experience_pages("atlas") == ("home", "recon")
     home = get_experience_renderer("atlas", "home")
     recon = get_experience_renderer("atlas", "recon")
     assert home is not None and recon is not None
-    assert home.renderer.__module__ == "beastui.experience_atlas_fieldbook"
-    assert recon.renderer.__module__ == "beastui.experience_atlas_fieldbook"
+    assert home.renderer.__module__ == "beastui.experience_atlas_fieldbook_v21"
+    assert recon.renderer.__module__ == "beastui.experience_atlas_fieldbook_v21"
 
 
 def test_atlas_fieldbook_renders_empty_and_live_truth_states():
@@ -86,6 +87,16 @@ def test_atlas_fieldbook_keeps_route_truth_gate_from_validated_atlas_model():
     assert live["gps_fix"] is True
     assert live["route_points"] == 4
     assert live["draw_route"] is True
+
+
+def test_atlas_fieldbook_v21_keeps_stable_runtime_scene_ids():
+    state = _state(live=True)
+    for page in ("home", "recon"):
+        runtime = SceneRuntime()
+        render_experience_page("atlas", page, state, phase=0.5, scene_runtime=runtime)
+        snapshot = runtime.snapshot()
+        assert snapshot["page"] == page
+        assert snapshot["scene"] == f"experience:atlas:{page}"
 
 
 def test_atlas_recon_phase_has_visible_sweep_motion_without_changing_state():
