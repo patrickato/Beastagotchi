@@ -22,6 +22,8 @@ if [[ -n "$EXPERIENCE" ]]; then
     echo 'Experience page may contain only letters, numbers, underscore, and dash.'
     exit 2
   }
+  EXPERIENCE="${EXPERIENCE,,}"
+  EXPERIENCE_PAGE="${EXPERIENCE_PAGE,,}"
   PYTHONPATH=/opt/beast-ui:/opt/beast-python/site-packages "$UI_PY" - "$EXPERIENCE" "$EXPERIENCE_PAGE" <<'PY'
 import sys
 from beastui.experience_registry import experience_renderer_summary
