@@ -661,6 +661,19 @@ class BeastCore:
                 log.exception("time-series sampler failed")
                 ev = self.events.publish("history.error", "timeseries", {"error":repr(exc)}, "warning")
                 self.store.add_event(ev)
+            # Hourly operational retention: bound growth of the churny log tables
+            # (events / finished jobs / resolved incidents / audit actions) on
+            # generous windows. Durable field records (expeditions, captures,
+            # BeastDex, progression) are never touched here.
+            now_m = time.time()
+            if now_m - getattr(self, "_last_maintenance", 0.0) > 3600:
+                try:
+                    pruned = self.store.prune_operational(now_m)
+                    self._last_maintenance = now_m
+                    if any(pruned.values()):
+                        self.state.update_many("maintenance", {"maintenance.last_prune_at": now_m, "maintenance.last_prune_counts": pruned}, priority=50)
+                except Exception:
+                    log.exception("operational retention prune failed")
             scale = self.state.get("governor.history.interval_scale", 1.0)
             try:
                 scale = max(1.0, min(4.0, float(scale)))

@@ -18,6 +18,12 @@ class SemanticEngine:
         self.active_beast_id = active_beast_id
         self.prev: dict[str, Any] = {}
         self.seen_bssids: set[str] = set()
+        # Session-level "seen this AP already" cache. The DB (record_wifi_encounters)
+        # is the durable, idempotent source of truth for lifetime dedup, so this set
+        # only needs to bound its own memory: on a long wardrive it would otherwise
+        # grow one entry per unique BSSID for the whole process lifetime. Cap it and
+        # evict gently; an evicted BSSID that reappears just re-hits the DB harmlessly.
+        self._seen_bssids_cap = 50000
         self.beast_seen_session: dict[str,set[str]] = {}
         self._last_ap_event = 0.0
         self._last_ap_event_beast_id = ''
@@ -125,6 +131,8 @@ class SemanticEngine:
                     continue
                 if bssid not in self.seen_bssids:
                     self.seen_bssids.add(bssid)
+                    while len(self.seen_bssids) > self._seen_bssids_cap:
+                        self.seen_bssids.pop()
                     newly_seen.append({
                         "bssid": bssid,
                         "ssid": ap.get("hostname") or ap.get("ssid") or "<hidden>",

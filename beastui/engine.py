@@ -2274,6 +2274,25 @@ class BeastUI:
         write_started=time.perf_counter();self.fb.write(physical_im);write_ms=(time.perf_counter()-write_started)*1000.0
         self.last_render=time.monotonic();self._write_runtime((time.perf_counter()-total_started)*1000.0,compose_ms,write_ms);return physical_im
 
+    def _safe_render(self):
+        """Render one frame, never letting a transient draw error kill the loop.
+
+        A malformed or unexpected value from live state must not blank the
+        physical display until a manual restart. On error, log at most once per
+        ~30s and keep the loop alive; the next frame usually recovers once the
+        offending state changes. Only Exception is caught, so stop_event and
+        KeyboardInterrupt still shut the loop down cleanly.
+        """
+        try:
+            return self.render()
+        except Exception:
+            now=time.monotonic()
+            if now-getattr(self,'_last_render_error_log',0.0)>30.0:
+                log.exception('Beast UI render frame failed; keeping display loop alive')
+                self._last_render_error_log=now
+            self.last_render=time.monotonic()
+            return None
+
     def run(self,duration=0.0):
         log.info('Beast UI start root=%s output=%s theme=%s',self.root,self.output,self.theme.id)
         if self.output is None:
@@ -2285,7 +2304,7 @@ class BeastUI:
                 if self.state:break
                 time.sleep(.02)
         if self.touch:self.touch.start()
-        start=time.monotonic();self.render()
+        start=time.monotonic();self._safe_render()
         try:
             while not self.stop_event.is_set():
                 now=time.monotonic()
@@ -2295,7 +2314,7 @@ class BeastUI:
                 # A static page no longer burns CPU by redrawing just because its
                 # theme declares motion. Ambient layers request their own cadence.
                 if due and (self.dirty.is_set() or self._dynamic_frame_due(now)):
-                    self.dirty.clear();self.render()
+                    self.dirty.clear();self._safe_render()
                 time.sleep(.008)
         finally:
             self.stop_event.set()

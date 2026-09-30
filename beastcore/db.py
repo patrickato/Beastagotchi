@@ -387,6 +387,49 @@ class Store:
             cur = self.conn.execute("DELETE FROM samples WHERE ts < ?", (before_ts,))
         return int(cur.rowcount or 0)
 
+    def prune_events(self, before_ts: float) -> int:
+        with self.conn:
+            cur = self.conn.execute("DELETE FROM events WHERE ts < ?", (before_ts,))
+        return int(cur.rowcount or 0)
+
+    def prune_finished_jobs(self, before_ts: float) -> int:
+        with self.conn:
+            cur = self.conn.execute("DELETE FROM jobs WHERE finished_at IS NOT NULL AND finished_at < ?", (before_ts,))
+        return int(cur.rowcount or 0)
+
+    def prune_resolved_incidents(self, before_ts: float) -> int:
+        with self.conn:
+            cur = self.conn.execute("DELETE FROM incidents WHERE status='resolved' AND resolved_at IS NOT NULL AND resolved_at < ?", (before_ts,))
+        return int(cur.rowcount or 0)
+
+    def prune_actions(self, before_ts: float) -> int:
+        with self.conn:
+            cur = self.conn.execute("DELETE FROM actions WHERE ts < ?", (before_ts,))
+        return int(cur.rowcount or 0)
+
+    def prune_operational(self, now: float, *, events_days: float = 90.0, finished_jobs_days: float = 30.0,
+                          resolved_incidents_days: float = 180.0, actions_days: float = 365.0) -> dict[str, int]:
+        """Bound growth of the churny OPERATIONAL tables only.
+
+        Deliberately NEVER touches records the user is meant to keep:
+        expeditions / expedition_points / expedition_aps, captures,
+        wifi_encounters / beast_wifi_encounters, and the beast_* progression,
+        achievement, unlock, ancestry and synthesis tables. Those are durable
+        field records (BeastDex, coverage maps, progression) — deleting them would
+        be exactly the "silent scope loss" this project forbids.
+
+        Only recent-history operational logs are bounded here, on generous
+        windows: the event log, finished jobs, resolved incidents (open ones are
+        never pruned), and the action audit trail. Pass a falsey day-count to
+        skip any one table, or larger values to keep more history.
+        """
+        counts: dict[str, int] = {}
+        if events_days: counts["events"] = self.prune_events(now - events_days * 86400)
+        if finished_jobs_days: counts["jobs"] = self.prune_finished_jobs(now - finished_jobs_days * 86400)
+        if resolved_incidents_days: counts["incidents"] = self.prune_resolved_incidents(now - resolved_incidents_days * 86400)
+        if actions_days: counts["actions"] = self.prune_actions(now - actions_days * 86400)
+        return counts
+
     def query_samples(self, key: str, since: float = 0.0, limit: int = 1000) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 5000))
         rows = self.conn.execute(
