@@ -1,4 +1,4 @@
-__version__ = '0.19.0-dev.1'
+__version__ = '0.19.0-dev.2'
 
 
 def _install_runtime_ui_patches():

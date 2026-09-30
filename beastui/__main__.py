@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 
-from .engine import BeastUI
+from .runtime import RuntimeBeastUI
 from .experience_live_optimized import ExperienceBeastUI
 from .experience_registry import experience_renderer_summary
 
@@ -44,8 +44,10 @@ def main():
             **common,
         )
     else:
-        ui=BeastUI(a.root,a.framebuffer,a.output,a.theme,**common)
+        # Default/production path uses the canonical preference-store adapter
+        # (from the architecture-foundation tranche) so runtime UI preference
+        # writes go through the canonical store.
+        ui=RuntimeBeastUI(a.root,a.framebuffer,a.output,a.theme,**common)
     ui.run(a.duration)
-
 
 if __name__=="__main__":main()

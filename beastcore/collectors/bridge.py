@@ -12,8 +12,12 @@ class BridgeCollector(Collector):
     """Read the tiny Pwnagotchi Beast Bridge state file from tmpfs.
 
     The file can be checked four times per second, but Pwnagotchi often leaves it
-    unchanged between callbacks.  Avoid repeatedly decoding identical JSON while
+    unchanged between callbacks. Avoid repeatedly decoding identical JSON while
     retaining the same low-latency callback behavior.
+
+    Bridge sequence numbers are scoped to one plugin instance. A Pwnagotchi or
+    plugin restart may legitimately reset seq to zero, so an instance id is used
+    when available instead of assuming seq is globally monotonic forever.
     """
     name = "bridge"
     interval = 0.25
@@ -24,6 +28,8 @@ class BridgeCollector(Collector):
         self.path = Path(path)
         self._events: list[dict[str, Any]] = []
         self._last_seq = 0
+        self._instance_id: str | None = None
+        self._last_updated_at = 0.0
         self._last_sig: tuple[int, int] | None = None
         self._cached_values: dict[str, Any] = {}
 
@@ -42,6 +48,27 @@ class BridgeCollector(Collector):
         values["pwnagotchi.bridge.state"] = "available"
         if obj.get("updated_at") is not None:
             values["pwnagotchi.bridge.updated_at"] = obj["updated_at"]
+
+        instance_id = str(obj.get("instance_id") or "").strip() or None
+        try:
+            updated_at = float(obj.get("updated_at") or 0.0)
+        except Exception:
+            updated_at = 0.0
+        try:
+            top_seq = int(obj.get("seq", 0) or 0)
+        except Exception:
+            top_seq = 0
+
+        if instance_id:
+            values["pwnagotchi.bridge.instance_id"] = instance_id
+            if self._instance_id is not None and instance_id != self._instance_id:
+                self._last_seq = 0
+            self._instance_id = instance_id
+        elif top_seq < self._last_seq and updated_at > self._last_updated_at:
+            # Compatibility fallback for legacy bridge files that predate
+            # instance_id. Atomic bridge writes make a backwards seq jump with a
+            # newer timestamp a useful conservative restart signal.
+            self._last_seq = 0
 
         events = obj.get("events") or []
         if isinstance(events, list):
@@ -68,6 +95,8 @@ class BridgeCollector(Collector):
                 e2["seq"] = marker
                 self._events.append(e2)
                 self._last_seq = marker
+
+        self._last_updated_at = max(self._last_updated_at, updated_at)
         self._last_sig = sig
         self._cached_values = copy.deepcopy(values)
         return values

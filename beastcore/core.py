@@ -10,7 +10,7 @@ from .api import LocalAPI
 from .context import ContextEngine
 from .events import EventBus
 from .state import StateRegistry
-from .db import Store
+from .thread_store import ThreadBoundStore
 from .timeseries import TimeSeriesSampler
 from .semantic import SemanticEngine
 from .dock import DockEngine
@@ -62,7 +62,7 @@ class BeastCore:
     def __init__(self, db_path: str = "/var/lib/beastagotchi/beast.db", host: str = "127.0.0.1", port: int = 8090) -> None:
         self.state = StateRegistry()
         self.events = EventBus()
-        self.store = Store(db_path)
+        self.store = ThreadBoundStore(db_path)
         self.channel_history = ChannelActivityEngine(self.state)
         self.telemetry = TelemetryCatalog(self.state)
         self.provider_preferences = ProviderPreferenceManager()
@@ -130,6 +130,11 @@ class BeastCore:
             owner_mode=self.owner_mode,
             provider_preferences=self.provider_preferences,
         )
+        # ActionBroker remains independently constructible for tests/tools, but a
+        # running Core has exactly one stateful owner for these domain managers.
+        self.actions.roster = self.roster
+        self.actions.global_sync = self.global_sync
+        self.actions.memories = self.memories
         self.actions.doctor = self.doctor
         self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)

@@ -6,7 +6,7 @@ import json
 import logging
 import signal
 
-from .core import BeastCore
+from .runtime_core import RuntimeBeastCore
 from .collectors import SystemCollector, RadioCollector, GPSCollector, PwnagotchiCollector, BettercapCollector, ServicesCollector, StorageCollector, HardwareCollector, BridgeCollector
 
 
@@ -18,7 +18,7 @@ def once() -> dict:
     return result
 
 async def amain(args) -> None:
-    core = BeastCore(db_path=args.db, host=args.host, port=args.port)
+    core = RuntimeBeastCore(db_path=args.db, host=args.host, port=args.port)
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         try: loop.add_signal_handler(sig, core.stop)
