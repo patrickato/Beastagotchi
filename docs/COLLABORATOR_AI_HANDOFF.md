@@ -25,6 +25,11 @@ This repository snapshot is intended to let an external developer or AI resume o
 20. `docs/Beastagotchi_Adaptive_Platform_DeepLinks_Unified_Doctor_RecoveryVault_2026-09-24.md`
 21. `docs/Beastagotchi_Experience_DNA_Abundant_Taxonomy_2026-09-24.md`
 22. `docs/Beastagotchi_Experience_Prototype_Briefs_v0.19_2026-09-24.md`
+23. `docs/Beastagotchi_Visual_North_Star_Reference_Archive_2026-09-25.md`
+24. `docs/Beastagotchi_Foundation_Principles_Open_Architecture_2026-09-25.md`
+25. `docs/Beastagotchi_Progression_Content_Procedures_Doctor_Interaction_2026-09-25.md`
+26. `docs/Beastagotchi_Structure_Deep_Dive_2026-09-25.md`
+27. `docs/Beastagotchi_Touch_Progression_Breeding_Review_2026-09-25.md`
 
 The 2026-09-21 continuity audit is historical evidence and is superseded for current-state recovery by the 2026-09-23 preservation snapshot.
 
