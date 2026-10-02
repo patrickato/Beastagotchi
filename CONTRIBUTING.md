@@ -4,13 +4,10 @@ Thank you for helping Beastagotchi grow. The project values practical testing, c
 
 ## Branch model
 
-- `main` — validated public baseline and release-ready integration points.
-- `develop` — active integration branch once established.
-- `feature/<short-name>` — isolated work intended for review before integration.
-- `fix/<short-name>` — focused corrective work.
-- `docs/<short-name>` — documentation-only changes.
-
-Small documentation corrections may target `main`; runtime changes should normally go through a feature/fix branch and pull request.
+`integration/v0.19` is the only active line and the default branch. Work happens on short-lived
+branches that merge by pull request: `claude/…`, `openai/…` or `codex/…` for AI agents, and
+`<name>/<issue>-<slug>` for humans. Nothing new lands on `main` during v0.19. Everyone, human or
+AI, follows `AGENTS.md`.
 
 ## Before changing code
 

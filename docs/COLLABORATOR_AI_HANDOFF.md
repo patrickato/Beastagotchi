@@ -1,6 +1,6 @@
 # Beastagotchi Collaborator / AI Handoff
 
-This repository snapshot is intended to let an external developer or AI resume or review the project without reconstructing its history from private chat transcripts. The validated baseline is v0.18.1 on `main`; active development is v0.19 on `v0.19-unified-experience` in Draft PR #9.
+This repository snapshot is intended to let an external developer or AI resume or review the project without reconstructing its history from private chat transcripts. The validated baseline is v0.18.1 on `main`; active development is v0.19 on `integration/v0.19`.
 
 ## Read first
 1. `README.md`

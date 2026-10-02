@@ -9,7 +9,7 @@ releases. Those are different things.
 
 - `main` is the stable/baseline branch.
 - A named milestone branch carries active development, currently
-  `v0.19-unified-experience`.
+  `integration/v0.19`.
 - Work is committed to the milestone branch in bounded, meaningful blocks.
 - GitHub Actions/CI runs on those development commits.
 - Failed experiments are corrected on the milestone branch; they do not become

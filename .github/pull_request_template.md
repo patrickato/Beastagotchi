@@ -1,3 +1,12 @@
+<!-- Agents must fill in this header block (AGENTS.md §6). Humans may delete lines that don't apply. -->
+Agent: claude-code | openai-chatgpt | openai-codex | human
+Closes #
+Touches:
+- 
+Reviewer: openai | claude
+Review-round: 0/3
+Evidence: tier 1 source/CI (incl. stress-state renders) | tier 2 off-screen Pi | tier 3 physical Pi (Patrick's recorded judgment + acceptance report)
+
 ## Summary
 
 What changed and why?

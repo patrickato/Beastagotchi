@@ -1,0 +1,69 @@
+name: Task (agent-ready)
+description: One self-contained unit of work for Claude, OpenAI or Patrick. See AGENTS.md §6.
+title: "[task] "
+labels: ["status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write this so that a fresh session with no chat history can do the work from this issue plus `AGENTS.md`.
+        The lead adds the `owner:` and `status:ready` labels after triage.
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Proposed owner
+      options:
+        - claude
+        - openai
+        - patrick
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane (AGENTS.md §7)
+      options:
+        - Core runtime / creature truth / bridge / packs / updates
+        - CI and shared test harness
+        - Experiences / scenes / creature presentation / UI runtime
+        - Display ownership / physical acceptance
+        - Beast Studio
+        - Seam (joint)
+        - Governance
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: "What outcome you want, and why now. Link the epic (#1 to #8) or the ADR this serves."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable statements. Say which ones need the Pi.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence required
+      description: Which evidence tiers prove it (AGENTS.md §8). 1 = source/CI, including stress-state renders; 2 = off-screen Pi; 3 = physical Pi (Patrick's recorded on-device judgment plus the acceptance report).
+    validations:
+      required: true
+  - type: textarea
+    id: touches
+    attributes:
+      label: Expected paths (becomes the PR's Touches list)
+      render: text
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and links
+      description: Files, line numbers, prior PRs, renders or Pi reports. Link to them; don't paraphrase them.
