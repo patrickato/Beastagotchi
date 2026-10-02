@@ -20,7 +20,7 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   {
     echo "export VIRTUAL_ENV=\"$VENV\""
     echo "export PATH=\"$VENV/bin:\$PATH\""
-    # The import root is the repo root (there is no conftest.py).
-    echo "export PYTHONPATH=\"$CLAUDE_PROJECT_DIR\""
+    # The import root is the repo root (there is no conftest.py); keep any existing entries.
+    echo "export PYTHONPATH=\"$CLAUDE_PROJECT_DIR\${PYTHONPATH:+:\$PYTHONPATH}\""
   } >> "$CLAUDE_ENV_FILE"
 fi
