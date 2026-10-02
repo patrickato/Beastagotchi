@@ -38,6 +38,10 @@ DENY = [
     "cat <<EOF\n$(gh pr merge 31)\nEOF",
     # round 4: the merge-queue enqueue mutation
     "gh api graphql -f query='mutation { enqueuePullRequest(input: {}) { clientMutationId } }'",
+    # process substitution and here-strings also execute their command
+    "cat <(gh pr merge 31)",
+    "bash <<< 'gh pr merge 31'",
+    "gh pr merge 31 > /tmp/out",
 ]
 
 ALLOW = [
@@ -55,6 +59,8 @@ ALLOW = [
     "echo gh pr merge",
     "curl https://example.com; rg 'pulls/31/merge' .",
     "echo 'docs: $(gh pr merge)'",
+    # process substitution of a non-merge command stays allowed
+    "diff <(echo a) <(echo b)",
 ]
 
 

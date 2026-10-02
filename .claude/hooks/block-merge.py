@@ -20,6 +20,15 @@ their options). A merge is denied when that command is:
 
 Because it looks at the command position, text that merely mentions the words --
 `rg 'gh pr merge'`, `echo gh pr merge`, a documentation heredoc -- is allowed.
+
+Boundary: this is static analysis, so it cannot resolve values only known at run
+time -- an indirect command name (`GH=gh; $GH pr merge`), a verb held in a
+variable (`m=merge; gh pr $m`), a script piped or decoded into a shell
+(`printf ... | bash`, `eval "$(... base64 -d)"`). Catching those would require
+executing the command. That residual gap is exactly why the block is defence in
+depth (MCP deny rules, the `gh pr merge` deny rule, this guard, agent
+instructions) and why the real control is separate agent identities (AGENTS.md
+§5), not this hook.
 """
 import json
 import re
@@ -112,7 +121,9 @@ def extract_subs(text):
             buf.append(ch)
             buf.append(text[i + 1])
             i += 2
-        elif ch == "$" and i + 1 < n and text[i + 1] == "(":
+        elif (ch == "$" or ch in "<>") and i + 1 < n and text[i + 1] == "(":
+            # $(...) command substitution, and <(...) / >(...) process substitution: all
+            # execute the enclosed command. (A redirect like `> file` has a space, not `(`.)
             depth, j = 1, i + 2
             while j < n and depth:
                 depth += (text[j] == "(") - (text[j] == ")")
@@ -197,7 +208,8 @@ def blocked(text, depth=0):
         prog, args = base(cmd[0]), cmd[1:]
         if prog in SHELLS:
             for k, tok in enumerate(args):
-                if SHELL_C.fullmatch(tok) and k + 1 < len(args):
+                # `bash -c CMD` / `sh -ec CMD`, and `bash <<< CMD` (here-string fed to the shell).
+                if (SHELL_C.fullmatch(tok) or tok == "<<<") and k + 1 < len(args):
                     if blocked(args[k + 1], depth + 1):
                         return True
                     break
