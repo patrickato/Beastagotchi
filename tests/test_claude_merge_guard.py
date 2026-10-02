@@ -29,6 +29,15 @@ DENY = [
     "gh pr \\\nmerge 31",
     "curl -X PUT \\\n https://api.github.com/repos/o/r/pulls/31/merge",
     "gh api -X PUT \\\n repos/o/r/pulls/31/merge",
+    # round 4: shell option clusters carry the command flag
+    "bash -lc 'gh pr merge 31'",
+    "sh -ec 'gh pr merge 31'",
+    # round 4: command substitutions (quoted, unquoted, backtick) execute the merge
+    'result="$(gh pr merge 31)"',
+    "echo \"`gh pr merge 31`\"",
+    "cat <<EOF\n$(gh pr merge 31)\nEOF",
+    # round 4: the merge-queue enqueue mutation
+    "gh api graphql -f query='mutation { enqueuePullRequest(input: {}) { clientMutationId } }'",
 ]
 
 ALLOW = [
@@ -42,6 +51,10 @@ ALLOW = [
     "rg 'pulls/31/merge' .claude/hooks",
     "env FOO=bar git merge --no-ff origin/integration/v0.19",
     "grep -r enablePullRequestAutoMerge tests",
+    # round 4: `gh`/endpoints as plain data, not in command position
+    "echo gh pr merge",
+    "curl https://example.com; rg 'pulls/31/merge' .",
+    "echo 'docs: $(gh pr merge)'",
 ]
 
 
