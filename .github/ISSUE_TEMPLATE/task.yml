@@ -36,7 +36,7 @@ body:
     id: goal
     attributes:
       label: Goal
-      description: What outcome you want, and why now. Link the epic (#1 to #8) or the ADR this serves.
+      description: "What outcome you want, and why now. Link the epic (#1 to #8) or the ADR this serves."
     validations:
       required: true
   - type: textarea
@@ -50,7 +50,7 @@ body:
     id: evidence
     attributes:
       label: Evidence required
-      description: Which evidence tiers prove it (AGENTS.md §8). 1 = source/CI, including stress-state renders; 2 = off-screen Pi; 3 = physical Pi (acceptance JSON).
+      description: Which evidence tiers prove it (AGENTS.md §8). 1 = source/CI, including stress-state renders; 2 = off-screen Pi; 3 = physical Pi (Patrick's recorded on-device judgment plus the acceptance report).
     validations:
       required: true
   - type: textarea
