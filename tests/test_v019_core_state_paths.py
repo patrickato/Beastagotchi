@@ -18,6 +18,17 @@ def test_core_keeps_rare_moment_seed_next_to_its_database(tmp_path):
         core.store.close()
 
 
+def test_in_memory_core_keeps_its_rare_moment_seed_out_of_the_working_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    core = BeastCore(db_path=":memory:", port=0)
+    try:
+        assert core.rare.secret_path.is_file()
+        assert not (tmp_path / "secrets").exists()
+        assert not core.rare.root.is_relative_to(Path("/var/lib/beastagotchi"))
+    finally:
+        core.store.close()
+
+
 def test_production_rare_moment_seed_location_is_unchanged():
     # Moving the seed would regenerate it and change the device's rare schedule (ADR-0007).
     unit = (ROOT / "systemd" / "beast-core.service").read_text()
