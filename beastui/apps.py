@@ -53,6 +53,7 @@ APPS: tuple[AppDefinition, ...] = (
     AppDefinition("backups", "Backup Center", "System", "overlay", "backups", "Recovery archives and restore readiness", "accent"),
     AppDefinition("beast_studio", "Beast Studio", "Studio", "overlay", "studio", "Exact-frame web customizer", "primary"),
     AppDefinition("achievements", "Achievements", "Identity", "overlay", "achievements", "Badges / awards / rarity", "accent"),
+    AppDefinition("capsules", "Capsules", "Identity", "overlay", "capsule_share", "Offline Lineage / Beast data sharing", "info"),
     AppDefinition("help", "Controls", "System", "overlay", "help", "Interaction reference", "warn"),
 )
 

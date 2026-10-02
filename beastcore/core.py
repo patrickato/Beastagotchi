@@ -15,6 +15,8 @@ from .timeseries import TimeSeriesSampler
 from .semantic import SemanticEngine
 from .dock import DockEngine
 from .progression import ProgressionEngine
+from .roster_progression import ActiveBeastProgressionStore
+from .global_achievements import GlobalAchievementEngine
 from .rare import RareMomentEngine
 from .ambient import AmbientContextEngine
 from .governor import ResourceGovernor
@@ -22,6 +24,12 @@ from .expeditions import ExpeditionEngine
 from .channel_history import ChannelActivityEngine
 from .telemetry import TelemetryCatalog
 from .plugin_integration import PluginIntegrationEngine
+from .dependency_resolver import DependencyCapabilityResolver
+from .template_tokens import TemplateTokenRegistry
+from .signals import SignalCatalog
+from .platform_profile import PlatformProfile
+from .experience_runtime import ExperiencePlanPublisher
+from .integration_catalog import IntegrationCatalog
 from .records import RecordsEngine
 from .overview import OverviewEngine
 from .topology import ServiceTopologyEngine
@@ -29,10 +37,22 @@ from .field_library import FieldLibraryEngine
 from .operator_policy import OperatorPolicy
 from .operator_tools import OperatorToolRegistry
 from .personality import PersonalityEngine
+from .presentation import PresentationBroker
 from .missions import MissionPackEngine
+from .packs import PackRegistryEngine
+from .updates import UpdatePolicyEngine
+from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
+from .peerdex import PeerDex
+from .roster import BeastRoster
+from .global_sync import GlobalProfileSync
+from .memories import BeastMemoryEngine
 from .actions import ActionBroker
+from .owner_mode import OwnerModeManager
+from .provider_preferences import ProviderPreferenceManager
+from .doctor import BeastDoctor
+from .capsules import BeastCapsuleEngine
 from .action_server import LocalActionServer
 from .collectors import *
 
@@ -45,9 +65,23 @@ class BeastCore:
         self.store = Store(db_path)
         self.channel_history = ChannelActivityEngine(self.state)
         self.telemetry = TelemetryCatalog(self.state)
-        self.plugin_integration = PluginIntegrationEngine(self.state)
+        self.provider_preferences = ProviderPreferenceManager()
+        self.state.update_many("provider_preferences", self.provider_preferences.state_patch(), priority=98)
+        self.dependencies = DependencyCapabilityResolver(self.state)
+        self.plugin_integration = PluginIntegrationEngine(self.state, resolver=self.dependencies)
+        self.template_tokens = TemplateTokenRegistry(self.state)
+        self.signals = SignalCatalog(self.state, telemetry=self.telemetry)
+        self.integration_catalog = IntegrationCatalog(self.state, resolver=self.dependencies)
+        self.platform_profile = PlatformProfile(self.state)
+        self.experience_plans = ExperiencePlanPublisher(
+            self.state, resolver=self.dependencies, platform_profile=self.platform_profile
+        )
         self.api = LocalAPI(self.state, self.events, self.store, host, port,
                             channel_history=self.channel_history, telemetry=self.telemetry)
+        self.api.template_tokens = self.template_tokens
+        self.api.signals = self.signals
+        self.api.integration_catalog = self.integration_catalog
+        self.api.experience_plans = self.experience_plans
         self.collectors = [
             SystemCollector(), RadioCollector(), GPSCollector(), BettercapCollector(),
             PwnagotchiCollector(), BridgeCollector(), ServicesCollector(), StorageCollector(), HardwareCollector(),
@@ -58,9 +92,13 @@ class BeastCore:
         self.health: dict[str, dict[str, Any]] = {}
         self.context = ContextEngine(self.state)
         self.sampler = TimeSeriesSampler(self.state, self.store)
-        self.semantic = SemanticEngine(self.state, self.store)
         self.dock = DockEngine(self.state)
-        self.progression = ProgressionEngine(self.state)
+        self.progression_store = ActiveBeastProgressionStore(self.store)
+        self.roster = self.progression_store.roster
+        self.capsules = BeastCapsuleEngine(self.store, self.roster, beast_version=__version__)
+        self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
+        self.semantic = SemanticEngine(self.state, self.store, active_beast_id=self.progression_store.current_id)
+        self.global_achievements = GlobalAchievementEngine(self.state,self.store,self.roster)
         self.rare = RareMomentEngine(self.state)
         self.ambient = AmbientContextEngine(self.state)
         self.governor = ResourceGovernor(self.state)
@@ -71,17 +109,37 @@ class BeastCore:
         self.field_library = FieldLibraryEngine(self.state, self.store)
         self.operator_policy = OperatorPolicy()
         self.personality = PersonalityEngine(self.state)
+        self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
+        self.packs = PackRegistryEngine(self.state, resolver=self.dependencies)
+        self.updates = UpdatePolicyEngine(self.state)
         self.search = UniversalSearch(self.state, self.store)
         self.incidents = IncidentEngine(self.state, self.store, self.events)
+        self.doctor = BeastDoctor(self.state, self.store)
+        self.peerdex = PeerDex(self.store)
+        self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
+        self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
+        self.owner_mode = OwnerModeManager()
+        self.state.update_many("owner_mode", self.owner_mode.state_patch(), priority=99)
         self.api.search_engine = self.search
         self.api.operator_policy = self.operator_policy
-        self.actions = ActionBroker(self.state, self.store, self.events)
+        self.actions = ActionBroker(
+            self.state,
+            self.store,
+            self.events,
+            owner_mode=self.owner_mode,
+            provider_preferences=self.provider_preferences,
+        )
+        self.actions.doctor = self.doctor
+        self.update_automation = UpdateAutomationEngine(self.state, self.actions)
         self.operator_tools = OperatorToolRegistry(self.state,self.store,self.search,self.actions)
         self.api.backup_manager = self.actions.backup_manager
         self.api.operator_tools = self.operator_tools
+        self.api.doctor = self.doctor
+        self.api.capsules = self.capsules
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
+        self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
 
     def _health_patch(self, c, state: str, duration_ms: float, error: str | None = None) -> dict[str, Any]:
         now = time.time()
@@ -117,12 +175,15 @@ class BeastCore:
             log.exception("progression event handler failed")
             return
         for etype, source, data, severity in rows:
-            pev = self.events.publish(etype, source, data, severity)
+            pdata=dict(data or {});pdata.setdefault('beast_id',str(self.state.get('progression.beast.id') or self.roster.active()['id']))
+            pev = self.events.publish(etype, source, pdata, severity)
             self.store.add_event(pev)
+            self.memories.record_event(pev)
 
     def _publish_durable(self, event_type: str, source: str, data=None, severity: str = "info"):
         ev = self.events.publish(event_type, source, data or {}, severity)
         self.store.add_event(ev)
+        self.memories.record_event(ev)
         self._publish_progression_followups(ev)
         return ev
 
@@ -133,6 +194,16 @@ class BeastCore:
             et = str(raw.get("type") or "event")
             data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
             if raw.get("seq") is not None: data = dict(data, bridge_seq=raw.get("seq"))
+            if et == "peer_detected":
+                peer = self.peerdex.observe(data, ts=raw.get("ts"))
+                if peer.get("accepted"):
+                    data = dict(data, peerdex=peer)
+                    self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
+            elif et == "peer_lost":
+                peer = self.peerdex.mark_lost(data, ts=raw.get("ts"))
+                if peer.get("accepted"):
+                    data = dict(data, peerdex=peer)
+                    self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
             ev = self.events.publish(f"pwnagotchi.{et}", "bridge", data)
             # Preserve plugin callback timestamp when supplied.
             try:
@@ -292,6 +363,19 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
             except asyncio.TimeoutError: pass
 
+    async def _global_achievement_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                for etype,source,data,severity in self.global_achievements.tick():
+                    ev=self.events.publish(etype,source,data,severity)
+                    self.store.add_event(ev)
+            except Exception as exc:
+                log.exception("global achievement engine failed")
+                ev=self.events.publish("global.achievement_error","global_achievements",{"error":repr(exc)},"warning")
+                self.store.add_event(ev)
+            try:await asyncio.wait_for(self.stop_event.wait(),timeout=5.0)
+            except asyncio.TimeoutError:pass
+
     async def _progression_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -311,7 +395,9 @@ class BeastCore:
     async def _personality_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
-                self.state.update_many("personality", self.personality.tick(), priority=87)
+                personality_patch=self.personality.tick()
+                self.state.update_many("personality", personality_patch, priority=87)
+                self.memories.observe_personality(personality_patch)
                 self.state.update_many("operator_session", {"operator.session":self.actions.operator_sessions.current(),"operator.policy.level":self.actions.operator_sessions.current().get("level","observer")}, priority=96)
             except Exception as exc:
                 log.exception("personality engine failed")
@@ -382,6 +468,7 @@ class BeastCore:
             try:
                 patch, rows = self.expedition.tick()
                 changed = self.state.update_many("expedition", patch, priority=87)
+                self.memories.observe_expedition(patch)
                 for etype, source, data, severity in rows:
                     self._publish_durable(etype, source, data, severity)
                 if changed:
@@ -408,6 +495,75 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
             except asyncio.TimeoutError: pass
 
+    async def _presentation_loop(self) -> None:
+        # v0.19 continuously exposes presentation ownership truth but does not
+        # yet execute physical handoffs. v0.18 display scripts remain the
+        # validated path until owner adapters pass off-screen + physical gates.
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("presentation", self.presentation.tick(), priority=93)
+                if changed:
+                    self.events.publish("presentation.changed", "presentation", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("presentation broker failed")
+                ev = self.events.publish("presentation.error", "presentation", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=2.0)
+            except asyncio.TimeoutError: pass
+
+    async def _packs_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("packs", self.packs.tick(), priority=73)
+                if changed:
+                    self.events.publish("packs.changed", "packs", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("pack registry failed")
+                ev = self.events.publish("packs.error", "packs", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError: pass
+
+    async def _updates_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                patch = await asyncio.to_thread(self.updates.tick)
+                changed = self.state.update_many("updates", patch, priority=74)
+                if changed:
+                    self.events.publish("updates.changed", "updates", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("update policy engine failed")
+                ev = self.events.publish("updates.error", "updates", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError: pass
+
+    async def _update_automation_loop(self) -> None:
+        # Policy-selected staging is intentionally much slower than telemetry.
+        while not self.stop_event.is_set():
+            try:
+                patch = await asyncio.to_thread(self.update_automation.tick)
+                changed = self.state.update_many("update_automation", patch, priority=75)
+                if changed:
+                    self.events.publish(
+                        "update_automation.changed",
+                        "update_automation",
+                        {"keys": [x[0] for x in changed]},
+                    )
+            except Exception as exc:
+                log.exception("update automation failed")
+                ev = self.events.publish(
+                    "update_automation.error",
+                    "update_automation",
+                    {"error": repr(exc)},
+                    "warning",
+                )
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=60.0)
+            except asyncio.TimeoutError:
+                pass
+
     async def _plugin_integration_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
@@ -420,6 +576,76 @@ class BeastCore:
                 self.store.add_event(ev)
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
             except asyncio.TimeoutError: pass
+
+    async def _platform_profile_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("platform_profile", self.platform_profile.state_patch(), priority=74)
+                if changed:
+                    self.events.publish("platform.profile.changed", "platform_profile", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("platform profile failed")
+                ev = self.events.publish("platform.profile.error", "platform_profile", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                pass
+
+
+    async def _experience_plan_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many(
+                    "experience_compiler", self.experience_plans.state_patch(), priority=75
+                )
+                if changed:
+                    self.events.publish(
+                        "experience.compiler.changed",
+                        "experience_compiler",
+                        {"keys": [x[0] for x in changed]},
+                    )
+            except Exception as exc:
+                log.exception("Experience compiler publication failed")
+                ev = self.events.publish(
+                    "experience.compiler.error",
+                    "experience_compiler",
+                    {"error": repr(exc)},
+                    "warning",
+                )
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                pass
+
+    async def _doctor_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                changed = self.state.update_many("doctor", self.doctor.state_patch(), priority=76)
+                if changed:
+                    self.events.publish("doctor.changed", "doctor", {"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("Beast Doctor failed")
+                ev = self.events.publish("doctor.error", "doctor", {"error":repr(exc)}, "warning")
+                self.store.add_event(ev)
+            try:
+                await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                pass
+
+    async def _global_sync_loop(self) -> None:
+        # Privacy-first local publisher. This only creates sanitized revisions in
+        # the local queue; a separate future connector performs network I/O.
+        while not self.stop_event.is_set():
+            try:
+                changed=self.state.update_many("global_sync",self.global_sync.tick(),priority=62)
+                if changed:self.events.publish("global.changed","global_sync",{"keys":[x[0] for x in changed]})
+            except Exception as exc:
+                log.exception("global profile sync failed")
+                ev=self.events.publish("global.error","global_sync",{"error":repr(exc)},"warning");self.store.add_event(ev)
+            try:await asyncio.wait_for(self.stop_event.wait(),timeout=15.0)
+            except asyncio.TimeoutError:pass
 
     async def _sample_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -503,6 +729,7 @@ class BeastCore:
             asyncio.create_task(self._semantic_loop(), name="semantic"),
             asyncio.create_task(self._dock_loop(), name="dock"),
             asyncio.create_task(self._progression_loop(), name="progression"),
+            asyncio.create_task(self._global_achievement_loop(), name="global-achievements"),
             asyncio.create_task(self._personality_loop(), name="personality"),
             asyncio.create_task(self._mission_loop(), name="missions"),
             asyncio.create_task(self._rare_loop(), name="rare"),
@@ -511,9 +738,17 @@ class BeastCore:
             asyncio.create_task(self._expedition_loop(), name="expedition"),
             asyncio.create_task(self._channel_history_loop(), name="channel-history"),
             asyncio.create_task(self._plugin_integration_loop(), name="plugin-integration"),
+            asyncio.create_task(self._packs_loop(), name="packs"),
+            asyncio.create_task(self._platform_profile_loop(), name="platform-profile"),
+            asyncio.create_task(self._experience_plan_loop(), name="experience-plans"),
+            asyncio.create_task(self._doctor_loop(), name="doctor"),
+            asyncio.create_task(self._updates_loop(), name="updates"),
+            asyncio.create_task(self._update_automation_loop(), name="update-automation"),
+            asyncio.create_task(self._presentation_loop(), name="presentation"),
             asyncio.create_task(self._records_loop(), name="records"),
             asyncio.create_task(self._overview_loop(), name="overview"),
             asyncio.create_task(self._field_library_loop(), name="field-library"),
+            asyncio.create_task(self._global_sync_loop(), name="global-sync"),
             asyncio.create_task(self._incident_loop(), name="incidents"),
         ]
         await self.stop_event.wait()

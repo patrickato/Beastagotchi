@@ -42,3 +42,33 @@ Beast and Theme Manager release display ownership and normal Pwnagotchi presenta
 
 ## Longer-term merge path
 Do not copy two rendering engines into each other immediately. First share contracts: theme metadata, palette/effect descriptors, face packs, preview images and ownership state. Once stable, build translators so Beast can import selected Theme Manager theme assets/ideas while Theme Manager can consume Beast telemetry through a narrow adapter.
+
+
+## 2026-09-23 upstream growth review
+
+Theme Manager has expanded significantly since this v0.1 spec was first written.
+The current public project now includes a substantially richer declarative theme
+engine, scenes/effects, face packs, live placeholders, direct-manipulation web
+editing, touch plugin/system/layout views, achievements, cracking/radar views,
+timed preview/revert, night/dim/thermal behavior, caching/partial framebuffer
+writes and broader tests.
+
+The integration target therefore should no longer be treated as merely “toggle a
+theme plugin.” Theme Manager is a legitimate alternate **Presentation Engine**.
+
+Current Beast direction after the review:
+- keep one physical framebuffer/touch owner at a time;
+- make Native, Theme Manager and Beast conform to a neutral adapter contract;
+- retain whole-plugin enable/disable only as a compatibility fallback;
+- seek an upstream-friendly managed/web-only standby capability;
+- discover Theme Manager themes as external read-only assets in Beast Studio;
+- translate only a well-defined compatible visual subset instead of silently
+  degrading unsupported Theme Manager features;
+- use Beast Core canonical telemetry for Beast-native renderers instead of
+  duplicating Theme Manager's direct collectors;
+- adopt the strong engineering ideas (dirty-row writes, caching, lazy values,
+  timed visual trials, direct manipulation, fuzz/privacy tests) as modular Beast
+  services rather than copying the monolithic plugin architecture.
+
+See `KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md` for the full
+current audit and proposed implementation sequence.

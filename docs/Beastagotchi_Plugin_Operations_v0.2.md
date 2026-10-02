@@ -31,3 +31,53 @@ AVAILABLE -> STAGED -> INSTALLED -> ENABLED
 ## Config source of truth
 
 Beast should learn plugin config from a curated schema, plugin-supplied metadata when available, and reviewed documentation/code. Arbitrary plugins do not have a universal machine-readable configuration format, so a repo URL alone cannot reliably produce correct config for every plugin.
+
+## v0.19 dependency/capability evolution
+
+Plugin operations are now subordinate to the shared Dependency & Capability
+Resolver architecture documented in
+`Beastagotchi_Dependency_Capability_Resolver_v0.1.md`.
+
+Before a future install/enable action, Beast should be able to show:
+
+- what the plugin provides;
+- mandatory/optional requirements;
+- missing software/services/hardware/config/credentials;
+- provider overlap;
+- conflicts;
+- data-egress class;
+- reverse `used_by` impact;
+- whether Beast can fix a blocker automatically, transactionally, only with
+  guidance, or not at all.
+
+The current v0.19 implementation has begun cataloging this metadata but does not
+yet install missing dependencies or arbitrate providers.
+
+For the user's reference Pi 4, maintain a complete versioned superset BOM while
+keeping the actual installed/runtime set feature-driven. See
+`Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md`.
+
+## Extension placement rule
+
+Plugin Operations governs only the **Pwnagotchi Plugin** portion of the broader
+extension ecosystem.
+
+New features should be placed according to:
+- Pwnagotchi Plugin — needs Pwnagotchi lifecycle/callback hooks;
+- Beast Pack — content/data/presentation/rules/assets;
+- Beast App — deeper interactive Beast-native tool;
+- Companion Expansion — one user-facing feature spanning multiple layers.
+
+A Companion Expansion may reference a Pwnagotchi plugin, but installing the Pack
+metadata alone must not silently copy/enable that plugin.
+
+Plugins should expose facts/signals/capabilities and actions. Canonical Beast
+systems remain authoritative for progression, achievements, lineage and UI.
+
+Offline sharing/import/export belongs to the Beast Capsule layer rather than
+being reimplemented independently inside each plugin.
+
+See:
+- `Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
+- `Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md`
+

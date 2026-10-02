@@ -1,5 +1,14 @@
 # Beastagotchi Project Continuity Audit v1.0
 
+## Supersession note — 2026-09-23
+
+This 2026-09-21 audit is intentionally retained as historical evidence of the
+v0.10–v0.11 recovery point. It is **not** the current project-state authority.
+For the recovered v0.18.1/v0.19 state, read
+`Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`,
+`Beastagotchi_Master_Completion_Matrix_v5.0.md` and
+`Beastagotchi_v019_Active_Checkpoint_Delta.md`.
+
 **Date:** 2026-09-21  
 **Purpose:** prevent scope loss when development moved from the maxed-out pinned conversation into a new chat.
 

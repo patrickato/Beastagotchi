@@ -13,8 +13,8 @@ class DisplayCollector(Collector):
     interval=15.0
     priority=55
 
-    def __init__(self, graphics_root: str='/sys/class/graphics', drm_root: str='/sys/class/drm') -> None:
-        self.graphics_root=Path(graphics_root);self.drm_root=Path(drm_root)
+    def __init__(self, graphics_root: str='/sys/class/graphics', drm_root: str='/sys/class/drm', handoff_root: str='/var/lib/beastagotchi/display-handoff', runtime_root: str='/run/beastagotchi') -> None:
+        self.graphics_root=Path(graphics_root);self.drm_root=Path(drm_root);self.handoff_root=Path(handoff_root);self.runtime_root=Path(runtime_root)
 
     @staticmethod
     def _read(path: Path) -> str:
@@ -48,4 +48,7 @@ class DisplayCollector(Collector):
             'display.reference.logical_height':320,
             'display.backend.current':'fbdev_rgb565',
             'display.backend.future':['fbdev','drm_kms','hdmi','dsi','window','web'],
+            'display.handoff.backup_exists':(self.handoff_root/'config.toml.pre-beast').is_file(),
+            'display.handoff.confirmed':(self.handoff_root/'confirmed').exists(),
+            'display.handoff.test_mode':(self.runtime_root/'ui-test-mode').exists(),
         }

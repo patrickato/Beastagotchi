@@ -92,3 +92,17 @@ Future Theme Studio work will add theme-specific graph skins so the same data re
 - widget/layout presets;
 - save-as-variant / favorites / tags;
 - import/export/shareable community theme packages.
+
+---
+
+## v0.19 architecture note — Theme is no longer the top-level identity
+
+Theme Studio remains a valid low-level visual editor, but Beastagotchi now treats Theme as one component inside a broader Experience.
+
+The product must not keep expanding by adding only more hard-coded named themes.
+
+Experience DNA may select or generate very different combinations of Scene/Layout, Theme, creature presence, density, motion, Doctor visibility, mission bias and target-display behavior.
+
+The former flagship themes remain useful presets and compatibility references, but new visual development should preferentially prove new Experience families such as Expedition, Scientific, Industrial, Companion, Premium, Archive, Ecological, Nautical, Aviation, Analog, Educational and Calm.
+
+A new Experience is not considered meaningfully distinct when it merely recolors the same geometry.

@@ -12,12 +12,15 @@ class SemanticEngine:
     between 2D/no-fix while satellites are being reacquired.
     """
 
-    def __init__(self, state, store=None) -> None:
+    def __init__(self, state, store=None, active_beast_id=None) -> None:
         self.state = state
         self.store = store
+        self.active_beast_id = active_beast_id
         self.prev: dict[str, Any] = {}
         self.seen_bssids: set[str] = set()
+        self.beast_seen_session: dict[str,set[str]] = {}
         self._last_ap_event = 0.0
+        self._last_ap_event_beast_id = ''
         self._gps_reported: bool | None = None
         self._gps_candidate: bool | None = None
         self._gps_candidate_since = 0.0
@@ -130,7 +133,9 @@ class SemanticEngine:
                         "rssi": ap.get("rssi"),
                         "encryption": ap.get("encryption") or "",
                     })
-        # Batch discoveries so event feed does not explode on startup.
+        # Device-first and creature-first discovery are deliberately distinct.
+        # A newly activated Beast gets one lifetime chance to recognize an AP as
+        # "new to me", even when this Core session/device has seen it before.
         now = time.time()
         lifetime = {"new_count": 0, "total": None, "new_bssids": []}
         if newly_seen and self.store is not None:
@@ -138,14 +143,56 @@ class SemanticEngine:
                 lifetime = self.store.record_wifi_encounters(newly_seen, now)
             except Exception:
                 lifetime = {"new_count": 0, "total": None, "new_bssids": []}
-        if newly_seen and now - self._last_ap_event >= 1.0:
+
+        beast_id=""
+        try:
+            beast_id=str(self.active_beast_id() if callable(self.active_beast_id) else (self.active_beast_id or "")).strip()
+        except Exception:
+            beast_id=""
+        beast_candidates=[]
+        if beast_id and isinstance(aps,list):
+            seen_for_beast=self.beast_seen_session.setdefault(beast_id,set())
+            for ap in aps:
+                if not isinstance(ap,dict):continue
+                bssid=str(ap.get("mac") or ap.get("bssid") or "").lower().strip()
+                if not bssid or bssid in seen_for_beast:continue
+                seen_for_beast.add(bssid)
+                beast_candidates.append({
+                    "bssid":bssid,
+                    "ssid":ap.get("hostname") or ap.get("ssid") or "<hidden>",
+                    "vendor":ap.get("vendor") or "",
+                    "channel":ap.get("channel"),
+                    "rssi":ap.get("rssi"),
+                    "encryption":ap.get("encryption") or "",
+                })
+        beast_seen={"new_count":0,"device_new_count":0,"familiar_new_count":0,"total":None,"new_bssids":[]}
+        if beast_id and beast_candidates and self.store is not None:
+            try:
+                beast_seen=self.store.record_beast_wifi_encounters(
+                    beast_id,beast_candidates,
+                    device_new_bssids=lifetime.get("new_bssids") or [],
+                    ts=now,
+                )
+            except Exception:
+                beast_seen={"new_count":0,"device_new_count":0,"familiar_new_count":0,"total":None,"new_bssids":[]}
+
+        should_emit=bool(newly_seen or int(beast_seen.get("new_count") or 0))
+        active_changed=bool(beast_id and beast_id!=self._last_ap_event_beast_id)
+        if should_emit and (active_changed or now - self._last_ap_event >= 1.0):
             self._last_ap_event = now
+            self._last_ap_event_beast_id = beast_id
+            display_aps=beast_candidates if beast_candidates else newly_seen
             out.append(("wifi.ap_discovered", "bettercap", {
-                "count": len(newly_seen),
-                "aps": newly_seen[:12],
+                "count": len(display_aps),
+                "aps": display_aps[:12],
                 "session_unique": len(self.seen_bssids),
                 "lifetime_new_count": int(lifetime.get("new_count") or 0),
+                "device_new_count": int(lifetime.get("new_count") or 0),
                 "lifetime_total": lifetime.get("total"),
+                "beast_id": beast_id or None,
+                "beast_new_count": int(beast_seen.get("new_count") or 0),
+                "beast_familiar_new_count": int(beast_seen.get("familiar_new_count") or 0),
+                "beast_total": beast_seen.get("total"),
             }, "info"))
 
         values = {

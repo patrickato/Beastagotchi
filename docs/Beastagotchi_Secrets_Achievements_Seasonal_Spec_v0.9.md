@@ -107,3 +107,30 @@ Recommended final layout:
 - `CHANGELOG.md` — release history.
 
 Exact future Rare Moment timestamps are never documented because they are different for each Beast and derived locally.
+
+## Achievement extension contract
+
+Third-party Pwnagotchi plugins and Beast extensions should contribute **facts**,
+not directly grant canonical trophies.
+
+Preferred flow:
+
+`plugin / hardware / Pack -> canonical signal/event -> Achievement Engine -> unlock`
+
+Examples of useful extension signals:
+- `gps.fix.changed`;
+- `peer.encountered`;
+- `expedition.completed`;
+- `power.low_battery`;
+- `hardware.connected`.
+
+Achievement/Trophy Packs may define additional rules, art, rarity, progression
+conditions and rewards over those signals.
+
+This allows one plugin signal to feed many achievement catalogs and prevents a
+plugin from bypassing progression rules by simply declaring an unlock.
+
+Portable trophy/achievement proof may later use signed Beast Capsules. Unsigned
+self-declared Capsule content must not be treated as authoritative proof merely
+because its checksum is valid.
+

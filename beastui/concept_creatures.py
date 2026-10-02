@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import base64
+import zlib
+from functools import lru_cache
+from PIL import Image, ImageChops
+
+# Compact concept-derived creature rasters; no telemetry is baked into them.
+
+_CLASSIC = "c-pmEJF@Jy5e3lbAvgfZdZD!dc>}8Q9;AA?b0;b((K?hl@){g^F^;qXrw&vuC31J8@gq5$x$j=F-e-mb;-LRO{`9?ZfM0!W<0t>=Px#Gux6eQP<G;W8fBu3${{7Rx|M$25{CfNRz5nK0`{%#nUq0V{{@3rj%jOGg`2ghxyl|CgPJV!H%l>kD>F;{Oy!)aZ^M>PI1+X6HgYXL69`KLHv*&o$ekfqK;fSZyb$A~DNYC50;g0U6Y2G)$4}i<tjd-1Adqn&gj*58vHcjEc&<+nrJog?v+HK+s_XLjQ2?IR5lcP)?27sV=_7R?EOmOeS6X^kv^ummLh5|b-{=--v=}w4F{mwhcgA^CzQR%Y-eO7go5&2d?_o_{t2s)dWPxLW)Q5X<BT}HBW1<&Ft_u@-{u3kqx-N*-I?Sqb|3|%b~%|c)4FTxW**I)blk>GeElTeHqJd=}`F?{hYeyz`8au2Mc!-2FrR{qRVS@L&e+cM4z_vEJSF6_2N55wu*;UcUM0-3BXEB7(BvtbgwV>GqGF5G%%=Tg>2?1JMN7yt&=G2g8MxAupYO$ZN~)n}I?H@br<i4HE%0JeE%i-zuA#E$WXIVp#33e&Tb#J76)5D*&M^6hD+YZ5$l8clSDl!UjCY{E4g9L49z#pL@-V@EzcL#-)Bw$nr^h`7yyr)aVRw$pmi$O!W686G>AguDuN{LggpZz-*1$JIpgkAzoaE091EVk&T+_DQJ**F8U3eC$HK;f#ZV$+Q9SH)~B~qIQ-cyKK>fAUeQ`Nea8gEI6?M!mY%^4lk@`CG}=5&=DsF<TYf75j)E~_<ACh6ji8;K`y!_?vX^Z_!iA~VLvPeLl$_9Gx5P}#6{u=PII`(Q{>-heH12|l|m8GBoxvqJ3Nuhpe}^xSyNot#BtM8L?GZiMf1#gCw9aPPF_F`!Ft6CYP-a^!(+W<e~~Rgc3+pAz{PpOs-+GdAY1iC<W%GX2t#AehiazX<E;djttZCf0kgYT8}d;+<^u{<Bb?8`PQshdcp&k-cb?4uLLM#4c=^O&^La`Aw+lR4CtOKo4>rdnR5?RZ4VX_2)meuS)!4H_mKd3B6#`isTmd>>2+N3<lLb~q5{jv%5eYYuq{~rLgDZGe@vg!!blw7#zRXe1#>D;<FGL@<P#4<<XFyFA#amwDm9<%M2+tSIta!!zVx;`kEq!3^JiU-PF@4X{j2;hIKh@cxWJd$uR{3fAUG<}bX(ID=aBYgvMO(iTUXFO=gZM$U^@-i*wuKY6v@^RD;EDW-(x@yc!^Du2LPXo)&D(~gE@3@`GbKb(@OIA=(+bGaBemQZkE~w~TJR=v^7Lo-#F1C8<fSPU-wN!{Ht}gT^QF?~ITV$k;jYupXKAonFY}L*+BpcGYeCHVdGfe&p4d62$AC}MZm;rVye;FYmZ=9NJTHm1tLFXXfQzw7waisKH{eZ-XBcj|<YsRlmmF<5z&1-#?@W)k&78PM+&Yj4W*_{X;gKe5fXQ2TPD$~Q4&n1g_9TSAQksoxu%=_%B<wT;o~6>(J99?ft9ZNTBA<XYaIzgcO&4<g1LY)Z`~tj?Lp-~#-p4}^$cdb--m>a2rq?@4uETTO5y5c4tMypQ{iaNmWOP!eMtp(3+E8*8kc#xyvKn&8Rsh=UKb)@@bn1N(6%PHRU|ip^I-!qSA&Td{9RS||S11gowMU!9j`Tsni@6t*0j+xrp2u~(IdoS>`kLx4hO2^%=iY#awTg^l4c5YA`YiOON$HxB_d;VtN$V5;;7W(O^SD|WW9wQM`XsFnTIM{rK2Ax(P$7q<3iN>IvpP3Cvr>H&sb)d@ioS667RXMgsomLx%gnr?g&}xRt<~0=+05MEqo=}iyhUn()ksUwL9=*)N_MX=K(#FxDST^3V9M9V4YlWRoa^NW$nm@8(KvSb&V4FB0X00T@)BQXeSC7Jrcsa33@c@rrM#ZEA^>)S%&Z|rE_f~jg4SF%-RFD-`W{2;JDji*+2T0+p0#1oa(i)A;Es5j04O^tk72w!T{&%(zREJhcKNjEPecXsYI<rP(ULvE^EmX!GT!}uyWLO+78qCFe!wfNTsZU~uf7r9E}Qglf(O`V^4zh!-388U6Xy2E$}LpWCG*nHp~^II7c5NME#u82ea;UVd1*wU9Rpdacr(}X+-r$xG=4}JlbNLoaN9H~-j1IzR#cTf?*=?z0vRuxa8}luIqO2QIBua$V90!gog{@g^v8`K@k+nEJGtT+!Moi^&uQDN>U-_nSjaeSX`3^7f(Hk79`S5rC^ujkUGd1UxNF7wYWA&T!zxU&;|0pjI}CVf6km@AgRghWPzEFk-9*(7c`us)FW5{WZxml?NFL@Z&=@M64=)TAKy%~G2yZ%?`(4-Qb)WC9C(nW3%`(~qv?GwaC7iO%-CoSNlk3*w5uDjgH$0rvM+I+TgczU@*fwK2PO?xpt|2(rkBhi7zZ=$cgJ0CDHXA(G6SPO&>t^hsaA)H+WlcWP(6_Wje5ZK6bprALgp94*>a1{=ZdzNiI>e5h7Lu(^_qKB*a5un1qBx35kUxVV@rGLAOTMGR^#dF&Y3wYSY002UhqnddJTc4NHrBHtLU(OK{)z9byu4>QNV7-j>!<rQL8CaPq}PckN?q?^-;No+%N!4J-*H~OCc94hy+=H0(QExsN7l#L+(}R5*hP?DK}oJ%Nu1sA5`#2dRl1c2Ie&Uvfh$F^Z^^vE9q^by@9J1hk>5OVTu7)UR`QtPK43?m>$=#f5?Pr2_7UfTuD}g=g)ldWFe*>a-Vb;U&QmPzY6mVPr2Z*{bwfawAztGxPe@)7uq##Am`b%!_w0+nRVM+tW<A#P<b(YM(a|ehm7WfC2xPWL0;vp?oO*dM%7@lNKNX!%*j}^|xO{F_z`2!7eaT3hg*qiWH-!g9TJk9laFQ_9mwe{z);QsGW7(<s|JyD?OX$1Th`8hFGMqTQxeSt6?FT?Yj2M?UqB(shq!7gXaNTQ5b3O&^-;v3Bx<sGWSKlh2oK-96#?A4a9?mOuEYz2&xiZ#Fb4?yzD5s$W<F)5z=Wbo|%Y(0VTJ<k&s_HIhDw00-Kc{SZw)RorY_2XUqlg|4)}RyIvnJNz{_6GJ9%qgewU-juqVj$G0*~1{Yl2FmfX0r@9N!zr1b)EFSz^uEKbalefOjzEFGFrDh7<j0<9xfH)Vv1g9(K3k<PDjI#yaKp!?hQ%;c}LI`oc;HyY|s&?P3J-a2B)VPBg3j0Z&83P-?h=EVv$spDv*6`W&ykZ_u|Y$NzG78XixHk8S-JF`zSN^3%pMH^!@#9_E%~vtURA;UvWKeApjfodca#mpz?(knq_vS!tL*p2Mc>1Zy|0lyA~LP{q7VON4KBH$}4Nc-1v$Me7MvMUi`#fk2ekj)wb?zV1kH#51{p_r$urOecrUlD|~mqT!?bZ0E@?@oae`qYe|x8w^hd*1LN8MJKs@z)Q=<{2xQ;X>I"
+
+_CYBERPUNK = "c-ozsORg+O5r#7(A|F+Ks#}(PEn$fPBjf=ScEZ3GF!Ba$u?pshC3p!eg$2L@7%*c9@yJJHRh@(Fl6>9Wr|RpdKjWFzzyDL-z6!B^`r;3eegX99`OOdC{_2OXe*KrvfBE(P*&qM<n}6VU|NPg#|MSI{zx)2nzyJBSfBWz02tW0}j}98g2Lynh0mlE&&3lHQ3jQ%%c;<c2KY}YCg_9H?Ntpre$>D@uKD^_?<=s8`hB`jKa3R!`uHOUCeTRE)IAQe<7j8;1uHg0#_Uj6+#=iPD4}(3W#u&rHo7>)q7*{F6!0v$iyIe>V1?(+OV2%uMQQ0YwGsT?W<FX8au?rZ+Yc~0Hv$UoHQas-0hPa8r1j%cIBl<)O#A_7hfP7h70pm{PA+QX}UBE2P;0jnSI0*vGC5rlSi#fNVY=+7!3Znz3!-4az-tjt_EB9?eT;1An2Uu<yF!qx=nE&xwWVuBKzraU~lal|8jcj0eq*OpY?py`K;u<-~a<fg&uZhqt8^sD8%))~FS5jf=C`|Ax;9gGVioqsu=aP2^;_KMt(80py^=Df=I3xRN&eL3hA`pGZ4WV|6nOhjj%iC{K(d<whwXg0Bq~anVO@U9`SRRG%-h;(hCOf?Z%v`XHkSmF{5qTY!oVM7TWStO(#(cTGBwQSJ=dV|bA)|3)DNW!T?qS>tCb59y@I4Ra#A!-oy=UVd?{dTA@c@>qE5WK&55~THMYx~|M;P*F$h8Neg0I|77I%Obi_Hv1mM4R=L|Vf}D1~N<K<~d1l*<~xJ7D#9aW>|P9H?vBxS95MxJkIk$%o3IIgQ!ah~0}NG<L~=!`_S^aT7{f6N9&l#>5G+rC{}R$m1`>w}9Ds+L`;%WXj;q6_@XqV~FINp&S~PPb$yqi{FJ?6-b;G7%q_((J4W3W=&*+;jq83<hka%R%7TOr)`{qSTZo<9hgK6XK+^^Ldi$?h|BhFVcTM%P>Lqy&BA23NVk{&EdX|Z;?zgjeN}~4hUzBV(r!$0Ci|pmt9iM5R1DoIf<?M~D~FSCVF(O%Mv`(Y{#yiDIGc#U0yZ1%Uvw7BRVZJ6Xi4PrnVZjCNJpw1Z&3KIj*_M2s{)>3;mBQJjGV8nIbd!bl@FzCH!kOogT2A-H9Vh1ypyHqvXTRbmfy4n1X%;Ff*dLPjAUqs!~>>Bu<J2Dv!rZw<POFGrltjoKy+x-LqT+1TEj|n#;;4Vwa+;}%TpVbS*9iMw((xu>9)i{9g~7<(z?BzaH{B`?ogl4%z3Zp;cl>*9%ia<YO@rQNMg-bt~9A)w_TH;PqublvmPH5MjC4NhM4(oDf&2`+#p;{GW<#mjy*_SwDo8<cQeIB1YL{QbYCpFJ4D)~9vh3-t<rXAlJ6BE#$L;)3n1?{eJvR%yu7^)><pF!oU`z&R(Y)}Ch%%8&6ug|l)>jo=->otQ!t4Rylj2hCz!cN@qD0KUc!{2>06Xr5}QgA^m6jS?FlWD6H1#!v~sEa$CebA&G-@+2OE4ac&su78+W8=b4)XlyPqlca1H92(q&1{WwT|%V82ugsLv3H;&r(k1lHm@37mfe`0VSrz=^{m!9?uMQ_cHxe+pW=U-S}(>4LO?(Q!F6$}DRXbWAWOgv`U?ZZnbRHrsi@kt)oE3$|`qW}uX4O*29O*ObXI<@a1s7Z0Z}`$Oj3of8)fUh#u-+Q>7qM$yeRMsEIciEyoCFYs}};Dplas`FA00(GreM?)>WsesudfFi9KNk^yN75BI(r6egS<g3Eyy!chirDk%KE(CFr11!;4CxtGbJ(6aXF#Vm-1p)O<86NJr<>fV!q_g#tWoVLhG9io`v}$r+7Ed8cqqmLWh(qbjqZexH*t2?#y5J&|(;@Zo8s}<_)X>0k@*uMpvs2}9MJvdh1;QM@NyeTLe8M7cux<o#vS{;%cBwkPb7G|C8Je;c+a?zY9p$>|k(Q!vO2siZ>cj-vy5`WMSX!6LZW`ij*qO_QKu6>1l$Lk69=^#jW)77$hhC6$(RAzyZlvdi<zZfgXJ_xz1RV-a=`dfFt5sF95Z*Q*UZrIo;%}1}CiSw-3p?r{Ctc&}>`@P0zok-hi!UGTeg{IFMoN%VRRuB$G}3rQREH!z(W40TB$+Ji5noPT<;Lp3VI%;JGod$bd8Cqr8(bENTi`x1X$O(rUYC?Yj-QlpW>Pl-s1UU+T#<e=ygg2-r}EeFs&f7ZXD_wgw^Zs)p0cFVJ%Z=aApf&b0cT4d-U6@gEXd+#V6CjUg(uqviY4|Awj&(gUF6^od2YbIccghzcaJncxG{t}vl!Ue0%veIdhu-APHe#&x7dy=jvoz+4`^RNy~N6mP%nT-l$(9ya)%@6`!ud8RP1;4Le>^-BaK&SZ4X3*8hZJYTd6pAvC)C$YlwVf0<C+K0V?%9DK{M#?TbgvSa#)Tg2jiH24bS<k(#~a>(*sk;{<MF*T%sC>ke<jq{k&gY;K69J2<w&&G)@6Q=zU~3$)byT|8uf`Sy`cnP>sG7&<EX_Q3@tM`Y41U~)cT0=gP<23vsId2{m_X}UmAo24X4$sCD=3vVkNcn6-omV$F%=FW;Ox3pDZTNzhf$n=vex7~<=BejC(O63pdUYWBHR9EK+#~M+%h}<tK@LK!ob(m7Ck5H_Jkdu|p`&}N4zMWJqQXHis5G>8nbg~h=H|}O-ulle+2ulZE>(IKEUiN72d<MGl38`48?QzWsIyz_oRPbGXt*Fg485%p~tT1WUblNP@JZVyH@un)*I(upCCZBW&SF8;uV5y7%;@vSuR$865?YL<2&$k&QNn2Y}-)*2JNoecCnRm*J7L^v3+LONSp90Es;p-5d>8(5uZ$Jg3MRE}A8Qgp3wDf!w{no=+$s4P9y34O~Y976rm<xc*D0yDQpdNE3o2@6VwH~R}dH|rc@w+7C8*;u-jho!Vq@~u=?d%heT)@?ZSGnN^>r;c(PB!)sSKCJJ#brlh2*M*2bPb0LtG@Cq?BV;k>b6NnkqRfBk6Lohh3oSU{_y*V;$z9R>f1D#`p1N4nVBuy9~o}Bt*ek!?k*COw`OpgnDI{PEu65hKG{v_<f`+Lz<3qHb*m)AckKlmK<OM_!{e}Tk}S;-UcqGnLu-TR?5yo!!zR+Mdz5YIZ2yJcu^99rF<yo&TPh^K@f&BLhn_+(4Di+9yXnnEoU6LD*h@M$-*cBI+(<Zf2}Odw3)}MY=m}(W6Maaw?jbwu(BT0$&0O1hvsp`et=1lPgXK9Ffo;_6ox6b3qxPH%tuD>IrdHH&Rt($e<FC=(0g~rS`3ZMi?%)@p$F4(|{h2hDtx>Rtff_|7j_f9T9XdC;hsD}04K7+k*;<`eJSDO*fGdWWZ*>TvxK(pCqbW_J<?j#P$)2TF<A&jACvI|F#%x`LwR2LgJ$lDp>%pG(<^7JU`!f0v@O-58(DzL{e%FtXIA3bgEc!otQBvD5Df%qLLYI%IK7?WXzQy`VqT{e`nDne@H-PiOG5=lv6l}wUzZaKH*zr>X>>Jk9HdATt2ipej=?5{?I-I1t;C)`62hJbm_>a4ZME((f|JlPhTOXE(0_(42?0USzwoV%d+y4q?T+{3=b@^G2-;r}C&yH5ps@*X9xn`bfuE7Oxe83f=l1%;G!{*5f7AM<mOG(e*Znjc?L+xix7jDpvYO29;1z6QN+NMt&<9F+%)?dlU!u$`GA8pn"
+
+_BLACKICE = "eNqtWD2S5jQQVf/J8XIHqgi4AykhhKScgYtwAQJCLkNCsAfgAFSRUbUL/bplW5Jlz8yyrvlq5rPbT/3fr+e7b8oXX+rX37/78Zd33/70w2/vv/r591/f//XH3//8+eHjh3/9KqVQ+cSL3nS7fOZj/IF8Zrz/Y+8nWC13eCxvQSPyV8ivm7ekbn4U3R84wXGiOazc6LdViJRSa3mFplAMFyuPXqIpjGy16n72ZOEE6Bdr3aosYnHGg60UVdeRHuNDwgy0rbAuorq/CSku8Tmt3mTlwUDb/E2lh+RxORYFqvEjntbqeFUIBt3hMbsd4WVW5aewcC1QD8JnRK54EQX/qFXHXJcCJNjU8SrkYdAyZOG9uOfBU7WQ60B2h7qIaw+4yJnw+HnShAebOSxVN12IZlEHED8N7vM/8BzyKSeXWOCxym58AO7hz1dCIcUF7UJtPgBp9E06Qut+05qmvUxa6NYeaRyJKAs8mRxKroRpFIpXl3ja8u4wT72uwxjSlVLb/ux2CHU5pggzDDc30NHjKla3U3HH8wfhmNPbce7oVFRoqYiyyyJpLeGsVK4iZ4AOvK7o06/pxSFG6kYKXGQR0opfhWWIovmVOvX2akZpGBgwIRUkBBXGo1UMleO+QAtJ5Tr9SuC5bNfRhHZnANA0HT9E3evc8dgye2jQTxJv2XLR67yk89DuNoLrPsU5pekH14oh7DCFbvqAO8K9PuMBRzwgxUZ7NfDYK2JuA0P7SRsGPETfTVY+Iozgwtklut5Tm6LAGyTCIqR4m3qJiKwq8Czf46VvZjxUgXDh0+sArRgsSFjX8BEvLJxuA5A7NHRbb96op0s+P83C/WvgnYAKJwAw8OzNBCgDcr4WPTTwkEf2MjWiK57ZKCdpsGPzK6jLnJjUDcODvzggcv1Fc68CXjU6t3rg1ajDtxM+7wgz6RB3Xo3se6R1a1UxPWefbhi4emTl9hoyuHUhneUrxsNBvhasaQG3nXV9iVVFZ7c97MF0Hp3nhPEUUb16Ap0ACh54m9ITfdlOPLrgUbSiLss3pE+9j3E833mXcJ3JZOV27eEJeUekNRqebTq7rznQq62MeK5gGLT2Yj4B4W7mspZ+dHPODvyc1VsnuL7MEu4gHKajHRjSjckZj4xmjSdjxvv7Q3bVvfnzXTe90v1h5tuUTNaGFmYp36wvmNhrxq+zEgeBQw7akqIDT6kUuiASCFMjG7Tbb404rwyWGmEHqZbrfuXNH0UfQ6Q0pwRVTiIeZGPahHzypX+7tD0XlpJJ1tMrTDXK4Rmcly/9OI4btaMGR1lUOeUS0McQN7ZAB33uuWHS/qvvgqnooV6SouTJjV9iWOd53APe9ZkYtTnBCdGkVm8cqmI5BoFxQHBTemEk5bG++TRNZLcXhFESz5XLRsMXdn397wADTnO/JDojAkYT2K5a5gwy/H5dpT5xjU0PPOEWPbDIIHJ7n7klgac3g1b5G2a0wHNJJTDXo3HRXSHnIheZhcnmY7EEljRmbckTS6VdPReR2BgW/9bIcmjWIkU4lp74JiceKIy2vyxoJVKAp2TDakw9nO86EttH0wS6W4OLXYiDe0FD+NOGKEc4s/qxYqZ6niYuCy4AFgj/bgDCsnL4DhtKy5xotNSaVqwMDDrlpmgeH/tgMtu2x/0HNI4nZw=="
+
+_DATA = {"classic": _CLASSIC, "cyberpunk": _CYBERPUNK, "blackice": _BLACKICE}
+
+@lru_cache(maxsize=8)
+def concept_creature(name: str) -> Image.Image | None:
+    key = str(name).lower()
+    data = _DATA.get(key)
+    if data is None:
+        return None
+    if key == "blackice":
+        blob = zlib.decompress(base64.b64decode(data.encode("ascii"), validate=True))
+        width, height = blob[0], blob[1]
+        palette, alpha, indices = blob[2:26], blob[26:34], blob[34:]
+    else:
+        blob = zlib.decompress(base64.b85decode(data.encode("ascii")))
+        width, height = blob[0], blob[1]
+        palette, alpha, indices = blob[2:50], blob[50:66], blob[66:]
+    if len(indices) != width * height:
+        raise ValueError("concept creature payload size mismatch")
+    indexed = Image.frombytes("P", (width, height), indices)
+    indexed.putpalette(list(palette) + [0] * (768 - len(palette)))
+    indexed.info["transparency"] = bytes(alpha) + bytes([255] * (256 - len(alpha)))
+    return indexed.convert("RGBA")
+
+
+@lru_cache(maxsize=24)
+def concept_creature_scene(name: str, width: int, height: int, edge_feather: int = 10) -> Image.Image | None:
+    """Return a prepared scene-scale RGBA creature layer.
+
+    Decoding, aspect-preserving resampling and spatial edge feathering are
+    cached because they are invariant across animation frames. Callers should
+    copy the returned image before applying per-frame luminance/opacity.
+    """
+    art = concept_creature(name)
+    if art is None:
+        return None
+    max_w = max(1, int(width))
+    max_h = max(1, int(height))
+    scale = min(max_w / max(1, art.width), max_h / max(1, art.height))
+    target = (
+        max(1, int(round(art.width * scale))),
+        max(1, int(round(art.height * scale))),
+    )
+    img = art if target == art.size else art.resize(target, Image.Resampling.LANCZOS)
+    img = img.copy()
+
+    feather = max(0, min(int(edge_feather), img.width // 3, img.height // 3))
+    if feather:
+        alpha = img.getchannel("A")
+        mask = Image.new("L", img.size, 255)
+        px = mask.load()
+        w, h = img.size
+        for yy in range(h):
+            dy = min(yy, h - 1 - yy)
+            for xx in range(w):
+                dist = min(xx, w - 1 - xx, dy)
+                if dist < feather:
+                    px[xx, yy] = int(255 * dist / max(1, feather))
+        img.putalpha(ImageChops.multiply(alpha, mask))
+    return img

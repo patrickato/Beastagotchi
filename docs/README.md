@@ -6,11 +6,19 @@ The project intentionally preserves historical specifications and roadmaps becau
 
 - `Beastagotchi_Design_Architecture_Bible_v1.0.md` — product/architecture principles.
 - `Beastagotchi_Master_Continuity_Ledger_v1.0.md` — explicit anti-forgetting ledger.
-- `Beastagotchi_Master_Completion_Matrix_v4.7.md` — current implementation/deferred status.
-- `Beastagotchi_Foundation_Roadmap_v2.9.md` — current detailed roadmap.
-- `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX milestone.
+- `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
+- `Beastagotchi_v019_Active_Checkpoint_Delta.md` — active v0.19 implementation checkpoint.
+- `Beastagotchi_Current_Gate_Status_2026-09-24.md` — concise finished-vs-remaining gate ledger and immediate physical closure path.
+- `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — recovered chats/Library/repository continuity and supersession record.
+- `Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md` — sanitized recovered v0.19 design/provenance decisions from the pinned-chat reconstruction.
+- `Beastagotchi_Preservation_Recovery_Workflow.md` — required multi-layer long-term preservation process.
+- `../ROADMAP.md` — current execution order.
+- `UX_POLISH_MILESTONE_v0.19.md` — immediate visual/UX acceptance milestone.
+- `Beastagotchi_v019_Physical_Acceptance_Package.md` — bounded reversible reference-Pi/TFT acceptance session and evidence bundle.
+- `Beastagotchi_v019_Physical_Acceptance_Quickstart.txt` — one-page staging + TFT-session commands for the commit-pinned Pi artifact.
 - `GLOSSARY.md` — common terms used across the project.
 - `REPOSITORY_MAP.md` — where code and docs live.
+- `REPOSITORY_HYGIENE.md` — living cleanup/archive policy and unresolved consolidation candidates.
 
 ## v0.19 / platform evolution
 
@@ -52,19 +60,34 @@ The project intentionally preserves historical specifications and roadmaps becau
 ## Plugins/hardware/power
 
 - `Beastagotchi_Plugin_Extension_Architecture_v0.1.md`
+- `Beastagotchi_Beast_Capsules_Offline_Ecosystem_v0.1.md` — transport-neutral Capsule format, privacy-safe Lineage export and offline QR/file/NFC/USB ecosystem direction.
 - `Beastagotchi_Plugin_Operations_v0.2.md`
+- `Beastagotchi_Dependency_Capability_Resolver_v0.1.md` — shared requirements/provider/remediation architecture for Plugins/Packs/Hardware/Experiences/Apps.
+- `Beastagotchi_Provider_Arbitration_v0.1.md` — read-only active/alternate/provider-choice policy, fallback ordering, failover direction and owner-preference model.
+- `Beastagotchi_Doctor_Explain_v0.1.md` — provider/dependency explanation, downstream-impact and future known-good/blast-radius diagnostic architecture.
+- `Beastagotchi_Reference_Build_BOM_Strategy_v0.1.md` — versioned superset-vs-installed software/service BOM policy for the Pi 4 reference build.
+- `Beastagotchi_Owner_Sovereignty_Unrestricted_Mode_v0.1.md` — owner override / Expert Mode architecture; managed safety without appliance-style lock-in.
 - `Beastagotchi_Hardware_Power_Dock_Spec_v0.1.md`
 
-## Historical roadmaps and matrices
+## Historical material
 
-Older `Beastagotchi_Foundation_Roadmap_v*` and `Beastagotchi_Master_Completion_Matrix_v*` files are retained deliberately. The highest-numbered file is the current one unless a newer README/ledger says otherwise.
+Superseded material is retained under `archive/` instead of crowding the active
+documentation root:
 
-## Validation history
+- `archive/roadmaps/` — Foundation Roadmap v1.1–v2.9 history.
+- `archive/matrices/` — superseded completion matrices before v5.0.
+- `archive/validation/` — historical source/target/physical validation and checkpoint evidence.
+- `archive/checkpoints/` — superseded within-milestone checkpoints.
+- `archive/superseded-specs/` — older spec revisions with a newer active replacement.
+- `archive/drafts/` — old draft documents retained for provenance.
+- `archive/continuity/` — superseded continuity audits.
 
-`Beastagotchi_v*_Validation_*`, checkpoint and physical-review documents record what was actually tested at each stage. They are evidence, not a claim that every historical build is supported today.
+Historical files are evidence, not current instructions. Follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`.
 
 ## Collaboration / review
 
 - `COLLABORATOR_AI_HANDOFF.md` — review order/context for another developer or AI.
-- `Beastagotchi_Project_Continuity_Audit_v1.0.md` — continuity audit.
+- `archive/continuity/Beastagotchi_Project_Continuity_Audit_v1.0.md` — historical 2026-09-21 continuity audit.
 - `adr/` — architectural decision records for decisions that should remain explicit.
+
+- [`KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md`](KORRIE71_THEME_MANAGER_REINTEGRATION_AUDIT_2026-09-23.md) — current Theme Manager reintegration audit.

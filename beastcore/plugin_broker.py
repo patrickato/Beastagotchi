@@ -118,7 +118,15 @@ class PluginBroker:
             return True
         return (self.custom_plugins / f"{name}.py").is_file()
 
-    def plan_toggle(self, name: str, enabled: bool, *, beast_ui_active: bool | None = None) -> dict[str, Any]:
+    def plan_toggle(
+        self,
+        name: str,
+        enabled: bool,
+        *,
+        beast_ui_active: bool | None = None,
+        owner_override: bool = False,
+        expert_mode: bool = False,
+    ) -> dict[str, Any]:
         name = self._safe_name(name)
         current = self.current_enabled(name)
         exists = self.installed_or_configured(name)
@@ -126,16 +134,27 @@ class PluginBroker:
         protected = name.lower().replace("-", "_") in {x.replace("-", "_") for x in PROTECTED_PLUGINS}
         if beast_ui_active is None:
             beast_ui_active = self.service_active("beast-ui.service")
-        blockers: list[str] = []
+        technical_blockers: list[str] = []
+        policy_blockers: list[str] = []
         warnings: list[str] = []
         if not exists:
-            blockers.append("plugin is not installed/configured")
+            technical_blockers.append("plugin is not installed/configured")
         if protected and not enabled:
-            blockers.append("protected Beast bridge cannot be disabled from Plugin Manager")
+            policy_blockers.append("protected Beast bridge cannot be disabled from Plugin Manager")
         if enabled and display_conflict and beast_ui_active:
-            blockers.append("legacy display plugin conflicts with active Beast UI display ownership")
+            policy_blockers.append("legacy display plugin conflicts with active Beast UI display ownership")
         if display_conflict:
             warnings.append("legacy display-owner plugin; Beast isolates its UI output")
+        owner_override_available = bool(policy_blockers) and not technical_blockers
+        owner_override_executed = bool(
+            owner_override_available and bool(owner_override) and bool(expert_mode)
+        )
+        effective_policy_blockers = [] if owner_override_executed else list(policy_blockers)
+        blockers = [*technical_blockers, *effective_policy_blockers]
+        if bool(owner_override) and policy_blockers and not expert_mode:
+            warnings.append("owner override requested but Expert Mode is not enabled")
+        if owner_override_executed:
+            warnings.append("owner override accepted; managed support/compatibility policy is being bypassed")
         return {
             "plugin": name,
             "current_enabled": current,
@@ -145,6 +164,14 @@ class PluginBroker:
             "display_conflict": display_conflict,
             "beast_ui_active": bool(beast_ui_active),
             "restart_required": current is not None and current != bool(enabled),
+            "technical_blockers": technical_blockers,
+            "policy_blockers": policy_blockers,
+            "overridden_policy_blockers": list(policy_blockers) if owner_override_executed else [],
+            "owner_override_requested": bool(owner_override),
+            "owner_override_available": owner_override_available,
+            "owner_override_executed": owner_override_executed,
+            "expert_mode": bool(expert_mode),
+            "managed_allowed": not technical_blockers and not policy_blockers,
             "blockers": blockers,
             "warnings": warnings,
             "allowed": not blockers,
@@ -214,8 +241,22 @@ class PluginBroker:
         actual = self.current_enabled(name)
         return actual is not None and actual is bool(expected)
 
-    def toggle(self, name: str, enabled: bool, *, restart: bool = True, observe_seconds: float = 2.0) -> dict[str, Any]:
-        plan = self.plan_toggle(name, enabled)
+    def toggle(
+        self,
+        name: str,
+        enabled: bool,
+        *,
+        restart: bool = True,
+        observe_seconds: float = 2.0,
+        owner_override: bool = False,
+        expert_mode: bool = False,
+    ) -> dict[str, Any]:
+        plan = self.plan_toggle(
+            name,
+            enabled,
+            owner_override=owner_override,
+            expert_mode=expert_mode,
+        )
         if not plan["allowed"]:
             raise PluginBrokerError("; ".join(plan["blockers"]))
         if plan["no_change"]:

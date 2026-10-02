@@ -1,0 +1,11 @@
+{
+  "id": "example-field-board",
+  "label": "Example Field Board",
+  "version": "1.0.0",
+  "pack_type": "board",
+  "description": "Read-only live field telemetry board example.",
+  "author": "Beastagotchi SDK",
+  "license": "MIT",
+  "resource_class": "none",
+  "thermal_class": "static"
+}

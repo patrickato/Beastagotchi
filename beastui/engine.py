@@ -17,16 +17,24 @@ from .hitbox import hit, expanded_hitbox, MIN_TARGET, NORMAL_TARGET, PRIMARY_TAR
 from .datafeed import DataFeed
 from .face import FaceEngine
 from .framebuffer import FrameBuffer
+from .scene_runtime import SceneRuntime
+from .scene_compositor import compositor_cache_telemetry
 from .display import DisplayTransform
 from .input import TouchInput
 from .pages import Pages
 from .reactions import ReactionGovernor
-from .theme import load_theme
+from .theme import load_theme, discover_enabled_pack_themes
+from .pack_content import discover_enabled_pack_boards
 from .rare_overlay import render_rare_overlay, acknowledge_rare_event
+from .monster_reveal import render_monster_reveal, reveal_active
 from .pwn_native import NativePwnFrameSource
 from .native_effects import apply_native_effects, palette_color
 from .widgets import panel
+from .components import transient_notice
+from .design import TOKENS, page_group, page_group_boundaries
+from . import __version__ as UI_VERSION
 from .apps import AppRegistry, AppDefinition, APPS, OPTIONAL_APPS
+from .qr_render import draw_qr, qr_backend_status
 from .customization import (
     validate_dashboard_widgets, dashboard_history_keys, validate_context_decks,
     validate_palette_overrides, validate_correlation_keys, validate_custom_boards, PALETTE_SLOTS, dashboard_widget_box,
@@ -36,7 +44,7 @@ log = logging.getLogger('beastui')
 
 
 class BeastUI:
-    W,H=480,320; HEADER_H=34; FOOTER_Y=278
+    W,H=TOKENS.canvas_w,TOKENS.canvas_h; HEADER_H=TOKENS.header_h; FOOTER_Y=TOKENS.footer_y
     THEMES=['pwn_native_raw','pwn_native_dark','pwn_native_light','pwn_native_chroma','pwn_dark','pwn_light','pwn_chroma','classic','matrix','starcore','blackice','hunter','minimal','synthwave','amber_tactical','ghost_minimal','cyberpunk','wopr_norad','lcars','retro_crt']
     RENDERER_CHOICES={
         'recon':['radar','polar','bars','signal'],
@@ -44,6 +52,35 @@ class BeastUI:
         'captures':['bars','donut','radial','timeline'],
         'system':['line','area','waveform','histogram','waterfall'],
     }
+    # 2x2 launcher geometry keeps every visible card and navigation action at
+    # or above the validated 48px resistive-touch target.
+    APP_PAGE_SIZE=4
+    APP_CARD_BOXES=(
+        (16,94,236,152),(244,94,464,152),
+        (16,158,236,216),(244,158,464,216),
+    )
+    APP_CAT_PREV=(12,40,72,88)
+    APP_CAT_NEXT=(408,40,468,88)
+    APP_NAV_PREV=(12,224,154,274)
+    APP_NAV_CLOSE=(162,224,318,274)
+    APP_NAV_NEXT=(326,224,468,274)
+    # Platform browsers use the same proven 50px bottom action geometry as
+    # the app launcher. The prior 36px buttons looked acceptable off-screen
+    # but were below the reference resistive-touch minimum.
+    PLATFORM_PAGE_SIZE=3
+    PLATFORM_NAV_PREV=(12,224,154,274)
+    PLATFORM_NAV_CLOSE=(162,224,318,274)
+    PLATFORM_NAV_NEXT=(326,224,468,274)
+    PLATFORM_SPECIAL_CLOSE=(326,224,468,274)
+    CONTROL_APP_BOX=(352,40,468,88)
+    CONTROL_QUICK_BOXES=(
+        (16,96,236,174),(244,96,464,174),
+        (16,180,236,258),(244,180,464,258),
+    )
+    CAPSULE_QR_BOX=(16,54,222,260)
+    CAPSULE_PREV=(232,224,304,274)
+    CAPSULE_CLOSE=(308,224,382,274)
+    CAPSULE_NEXT=(386,224,464,274)
 
     def __init__(self,root='/opt/beast-ui',framebuffer='/dev/fb1',output=None,theme_id='classic', *, physical_size=None, display_mode='fit', display_resample='bilinear'):
         self.root=Path(root); self.output=output
@@ -53,14 +90,23 @@ class BeastUI:
         # preferences between tests/renders.
         pref=self._load_prefs() if self.pref_path is not None else {}
         theme_id=str(pref.get('theme') or theme_id)
-        self.theme=load_theme(self.root/'themes'/f'{theme_id}.json')
+        self._builtin_theme_ids=list(type(self).THEMES)
+        self.theme_paths={tid:self.root/'themes'/f'{tid}.json' for tid in self._builtin_theme_ids if (self.root/'themes'/f'{tid}.json').is_file()}
+        for tid,path in discover_enabled_pack_themes().items():
+            if tid not in self.theme_paths:self.theme_paths[tid]=path
+        self.THEMES=list(self.theme_paths)
+        if theme_id not in self.theme_paths:theme_id='classic'
+        self.theme=load_theme(self.theme_paths[theme_id])
         self.renderers=dict(pref.get('renderers') or {})
         for _pid,_choices in self.RENDERER_CHOICES.items():
             self.renderers.setdefault(_pid,_choices[0])
         self.theme_options=dict(pref.get('theme_options') or {})
         self.dashboard_widgets=validate_dashboard_widgets(pref.get('dashboard_widgets'))
         self.custom_boards=validate_custom_boards(pref.get('custom_boards'))
-        self.face=FaceEngine(); self.pages=Pages(self.face); self.page=0; self.phase=0.0
+        self.pack_boards=discover_enabled_pack_boards()
+        self.face_profile_pref=str(pref.get('face_profile') or 'builtin');self.animation_profile_pref=str(pref.get('animation_profile') or 'none')
+        self.face=FaceEngine(profile_id=self.face_profile_pref,animation_profile_id=self.animation_profile_pref); self.pages=Pages(self.face); self.page=0; self.phase=0.0; self.phase_override=None
+        self.scene_runtime=SceneRuntime()
         self.apps=self._build_app_registry()
         _app_ids=[a.id for a in self.apps.all()]
         self.context_decks=validate_context_decks(pref.get('context_decks'),app_ids=_app_ids)
@@ -84,6 +130,7 @@ class BeastUI:
         self.beastdex_overlay=False; self.beastdex_offset=0; self.beastdex_detail=None
         self.capture_vault_overlay=False; self.capture_vault_offset=0; self.capture_vault_detail=None
         self.performance_overlay=False; self.performance_offset=0
+        self.capsule_share_overlay=False; self.capsule_share={}; self.capsule_frame_idx=0; self.capsule_loading=False
         self.studio_overlay=False
         self.platform_overlay=None; self.platform_offset=0
         self.achievement_tab='achievements'; self.achievement_filter='all'; self.achievement_sort='progress'; self.achievement_offset=0; self.achievement_detail=None
@@ -97,11 +144,29 @@ class BeastUI:
             try:self.touch=TouchInput(str(cfg),self._on_physical_input)
             except Exception:self.touch=None
         self.last_render=0.0; self.last_input=None; self.last_input_at=0.0
-        self.touching=False; self.button_flash=None; self.button_flash_at=0.0; self.transition=None
+        self.touching=False; self.button_flash=None; self.button_flash_at=0.0; self.transition=None; self.monster_reveal_dismissed_id=None; self._monster_reveal_was_active=False
+        self.notice=None; self.notice_started=0.0; self.notice_duration=TOKENS.notice_default_s; self._last_data_error=None
         self.test_mode_path=Path('/run/beastagotchi/ui-test-mode'); self.runtime_path=Path('/run/beastagotchi/ui-runtime.json'); self.rare_preview_path=Path('/var/lib/beastagotchi/ui/rare_preview.json')
         self._render_samples=[]; self._compose_samples=[]; self._write_samples=[]; self._frame_count=0; self._runtime_started=time.monotonic()
         self.reactions=ReactionGovernor(); self._last_reaction_id=None
         self._bg_cache=None;self._bg_cache_key=None;self._bg_cache_at=0.0
+
+    def _theme_path(self,theme_id):
+        return self.theme_paths.get(str(theme_id))
+
+    def _refresh_theme_catalog(self):
+        paths={tid:self.root/'themes'/f'{tid}.json' for tid in self._builtin_theme_ids if (self.root/'themes'/f'{tid}.json').is_file()}
+        for tid,path in discover_enabled_pack_themes().items():
+            if tid not in paths:paths[tid]=path
+        changed=tuple(paths)!=tuple(getattr(self,'theme_paths',{}))
+        current=getattr(getattr(self,'theme',None),'id',None)
+        self.theme_paths=paths;self.THEMES=list(paths)
+        if changed and hasattr(self,'palette_overrides'):
+            self.palette_overrides=validate_palette_overrides(self.palette_overrides,theme_ids=self.THEMES)
+        if current and current not in paths and paths.get('classic'):
+            self.theme=load_theme(paths['classic']);self._bg_cache=None;self._bg_cache_key=None
+            if getattr(self,'pref_path',None) is not None:self._save_prefs()
+        return changed
 
     def _on_physical_input(self, kind, payload):
         """Translate physical touch coordinates into the logical Beast canvas."""
@@ -114,6 +179,9 @@ class BeastUI:
             payload=dict(payload);payload['physical_x']=payload.get('x');payload['physical_y']=payload.get('y');payload['x'],payload['y']=mapped
         self.on_input(kind,payload)
 
+    def _all_boards(self):
+        return list(getattr(self,'custom_boards',[]) or []) + list(getattr(self,'pack_boards',[]) or [])
+
     def _build_app_registry(self):
         extras=[]
         st=getattr(self,'state',{}) or {}
@@ -123,15 +191,16 @@ class BeastUI:
             extras.append(OPTIONAL_APPS['ai_operator'])
         if st.get('display.external_connected'):
             extras.append(OPTIONAL_APPS['command_center'])
-        for board in getattr(self,'custom_boards',[]) or []:
+        for board in self._all_boards():
             bid=str(board.get('id') or '')
             if not bid:continue
-            extras.append(AppDefinition(f'board:{bid}',str(board.get('label') or bid),'Boards','board',bid,'User-composed live telemetry board','info'))
+            desc='Read-only Beast Pack live telemetry board' if board.get('source_pack') else 'User-composed live telemetry board'
+            extras.append(AppDefinition(f'board:{bid}',str(board.get('label') or bid),'Boards','board',bid,desc,'info'))
         return AppRegistry((*APPS,*extras))
 
     def _active_dashboard_widgets(self):
         if self.active_board_id:
-            for board in self.custom_boards:
+            for board in self._all_boards():
                 if str(board.get('id'))==self.active_board_id:return list(board.get('widgets') or [])
         return list(self.dashboard_widgets or [])
 
@@ -144,7 +213,7 @@ class BeastUI:
         if self.pref_path is None:return
         try:
             self.pref_path.parent.mkdir(parents=True,exist_ok=True)
-            self.pref_path.write_text(json.dumps({'theme':self.theme.id,'renderers':self.renderers,'theme_options':self.theme_options,'dashboard_widgets':self.dashboard_widgets,'custom_boards':self.custom_boards,'context_decks':self.context_decks,'active_context_deck':self.active_context_deck,'palette_overrides':self.palette_overrides,'correlation_keys':self.correlation_keys},indent=2)+'\n')
+            self.pref_path.write_text(json.dumps({'theme':self.theme.id,'face_profile':self.face_profile_pref,'animation_profile':self.animation_profile_pref,'renderers':self.renderers,'theme_options':self.theme_options,'dashboard_widgets':self.dashboard_widgets,'custom_boards':self.custom_boards,'context_decks':self.context_decks,'active_context_deck':self.active_context_deck,'palette_overrides':self.palette_overrides,'correlation_keys':self.correlation_keys},indent=2)+'\n')
             st=self.pref_path.stat();self._pref_sig=(int(st.st_mtime_ns),int(st.st_size))
         except Exception as exc: log.warning('could not persist UI prefs: %s',exc)
 
@@ -159,7 +228,9 @@ class BeastUI:
             if sig==self._pref_sig:return
             obj=json.loads(self.pref_path.read_text())
             tid=str(obj.get('theme') or self.theme.id)
-            if (self.root/'themes'/f'{tid}.json').exists():self.theme=load_theme(self.root/'themes'/f'{tid}.json');self._bg_cache=None;self._bg_cache_key=None
+            self._refresh_theme_catalog();tp=self._theme_path(tid)
+            if tp and tp.exists():self.theme=load_theme(tp);self._bg_cache=None;self._bg_cache_key=None
+            self.face_profile_pref=str(obj.get('face_profile') or 'builtin');self.animation_profile_pref=str(obj.get('animation_profile') or 'none');self.face.refresh_profiles();self.face.refresh_animation_profiles();self.face.set_profile(self.face_profile_pref);self.face.set_animation_profile(self.animation_profile_pref)
             incoming=obj.get('renderers') or {}
             if isinstance(incoming,dict):
                 for pid,choices in self.RENDERER_CHOICES.items():
@@ -169,8 +240,9 @@ class BeastUI:
             if isinstance(opts,dict):self.theme_options=opts
             self.dashboard_widgets=validate_dashboard_widgets(obj.get('dashboard_widgets'))
             self.custom_boards=validate_custom_boards(obj.get('custom_boards'))
+            self.pack_boards=discover_enabled_pack_boards()
             self.apps=self._build_app_registry()
-            if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self.custom_boards}:self.active_board_id=''
+            if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self._all_boards()}:self.active_board_id=''
             self.context_decks=validate_context_decks(obj.get('context_decks'),app_ids=[a.id for a in self.apps.all()])
             self.active_context_deck=str(obj.get('active_context_deck') or '')
             if self.active_context_deck not in {d['id'] for d in self.context_decks}:self.active_context_deck=''
@@ -183,10 +255,39 @@ class BeastUI:
                 if _label in _cats:self.app_category_idx=_cats.index(_label)
             self._pref_sig=sig;self.fb.reset_diff();self.dirty.set()
             self.button_flash='studio:applied';self.button_flash_at=time.monotonic()
+            self.show_notice('STUDIO APPLIED',kind='success',detail='Preferences updated')
         except FileNotFoundError:
             return
         except Exception as exc:
             log.warning('could not reload Beast Studio prefs: %s',exc)
+
+    def show_notice(self,title,*,kind='info',detail='',duration=None):
+        kind=str(kind or 'info').lower()
+        if kind not in {'info','success','warn','error','loading'}:kind='info'
+        try:seconds=float(TOKENS.notice_default_s if duration is None else duration)
+        except Exception:seconds=TOKENS.notice_default_s
+        self.notice={
+            'title':str(title or kind).strip()[:34],
+            'kind':kind,
+            'detail':str(detail or '').strip()[:54],
+        }
+        self.notice_started=time.monotonic()
+        self.notice_duration=max(.5,min(10.0,seconds))
+        self.dirty.set()
+        return dict(self.notice)
+
+    def _notice_active(self,now=None):
+        if not self.notice:return False
+        now=time.monotonic() if now is None else float(now)
+        age=now-float(self.notice_started or 0.0)
+        if age>=float(self.notice_duration or TOKENS.notice_default_s):
+            self.notice=None
+            return False
+        return True
+
+    def _transient_notice(self,d):
+        if not self._notice_active():return
+        transient_notice(d,self.notice,self.fonts,self.theme,phase=self.phase)
 
     def _fonts(self):
         paths=['/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']; path=next((p for p in paths if os.path.exists(p)),None)
@@ -204,8 +305,8 @@ class BeastUI:
             except Exception:continue
 
     def set_theme(self,theme_id,persist=True):
-        p=self.root/'themes'/f'{theme_id}.json'
-        if p.exists():
+        self._refresh_theme_catalog();p=self._theme_path(theme_id)
+        if p and p.exists():
             self.theme=load_theme(p);self._apply_palette_overrides();self._bg_cache=None;self._bg_cache_key=None
             if persist:self._save_prefs()
             self.button_flash=f'theme:{theme_id}'; self.button_flash_at=time.monotonic(); self.dirty.set()
@@ -322,6 +423,7 @@ class BeastUI:
     def _apply_theme_detail(self):
         self._save_prefs(); self.theme_detail=None; self.theme_detail_page=0; self.theme_library=False; self.drawer=False
         self._theme_preview_original=None; self._theme_preview_options=None; self.button_flash='theme:applied'; self.button_flash_at=time.monotonic(); self.dirty.set()
+        self.show_notice('THEME APPLIED',kind='success',detail=self.theme.id)
 
     def _cycle_theme_option(self,key,values):
         self._step_theme_option(key,values,1)
@@ -502,6 +604,10 @@ class BeastUI:
         if kind in {'touch_down','drag'}: self.touching=True; self.dirty.set(); return
         if kind=='touch_up': self.touching=False; self.dirty.set(); return
 
+        if kind=='tap' and reveal_active(self.state,dismissed_id=self.monster_reveal_dismissed_id):
+            self.monster_reveal_dismissed_id=str(self.state.get('roster.monster_reveal.id') or '')
+            self.dirty.set();return
+
         # Rare moments sit above every normal UI layer. A deliberate tap while
         # the cinematic is active is the only acknowledgement used for the
         # corresponding hidden achievement.
@@ -528,10 +634,20 @@ class BeastUI:
             if self.app_launcher:
                 axis=e.get('axis')
                 if axis=='y':
-                    rows=self._apps_current();step=6 if e.get('dy',0)<0 else -6;maxoff=max(0,((len(rows)-1)//6)*6)
+                    rows=self._apps_current();step=self.APP_PAGE_SIZE if e.get('dy',0)<0 else -self.APP_PAGE_SIZE;maxoff=max(0,((len(rows)-1)//self.APP_PAGE_SIZE)*self.APP_PAGE_SIZE)
                     self.app_offset=max(0,min(maxoff,self.app_offset+step));self.dirty.set()
                 elif axis=='x':
                     cats=self._app_categories();delta=1 if e.get('dx',0)<0 else -1;self.app_category_idx=(self.app_category_idx+delta)%len(cats);self.app_offset=0;self.dirty.set()
+                return
+            if self.capsule_share_overlay:
+                if e.get('axis')=='x':
+                    frames=((self.capsule_share.get('qr') or {}).get('frames') or []) if isinstance(self.capsule_share,dict) else []
+                    if frames:
+                        delta=1 if e.get('dx',0)<0 else -1
+                        self.capsule_frame_idx=(self.capsule_frame_idx+delta)%len(frames)
+                        self.dirty.set()
+                elif e.get('axis')=='y' and e.get('dy',0)>30:
+                    self.capsule_share_overlay=False;self.app_launcher=True;self.dirty.set()
                 return
             if self.telemetry_overlay:
                 if e.get('axis')=='y':
@@ -565,8 +681,8 @@ class BeastUI:
                     self.performance_offset=max(0,min(maxoff,self.performance_offset+step));self.dirty.set()
                 return
             if self.platform_overlay:
-                if e.get('axis')=='y':
-                    rows=self._platform_rows(self.platform_overlay);step=4 if e.get('dy',0)<0 else -4;maxoff=max(0,((len(rows)-1)//4)*4)
+                if e.get('axis')=='y' and self.platform_overlay not in {'topology','operations'}:
+                    rows=self._platform_rows(self.platform_overlay);step=self.PLATFORM_PAGE_SIZE if e.get('dy',0)<0 else -self.PLATFORM_PAGE_SIZE;maxoff=max(0,((len(rows)-1)//self.PLATFORM_PAGE_SIZE)*self.PLATFORM_PAGE_SIZE)
                     self.platform_offset=max(0,min(maxoff,self.platform_offset+step));self.dirty.set()
                 return
             if self.studio_overlay:
@@ -601,21 +717,31 @@ class BeastUI:
         elif kind=='tap':
             x,y=int(e.get('x',0)),int(e.get('y',0))
             if self.app_launcher:
-                if 40<=y<=61 and x<120:
+                if self.APP_CAT_PREV[0]<=x<=self.APP_CAT_PREV[2] and self.APP_CAT_PREV[1]<=y<=self.APP_CAT_PREV[3]:
                     cats=self._app_categories();self.app_category_idx=(self.app_category_idx-1)%len(cats);self.app_offset=0;self.dirty.set()
-                elif 40<=y<=61 and x>360:
+                elif self.APP_CAT_NEXT[0]<=x<=self.APP_CAT_NEXT[2] and self.APP_CAT_NEXT[1]<=y<=self.APP_CAT_NEXT[3]:
                     cats=self._app_categories();self.app_category_idx=(self.app_category_idx+1)%len(cats);self.app_offset=0;self.dirty.set()
                 else:
-                    rows=self._apps_current();cards=rows[self.app_offset:self.app_offset+6];positions=[(16,62,236,114),(244,62,464,114),(16,120,236,172),(244,120,464,172),(16,178,236,230),(244,178,464,230)]
+                    rows=self._apps_current();cards=rows[self.app_offset:self.app_offset+self.APP_PAGE_SIZE]
                     opened=False
-                    for app,box in zip(cards,positions):
+                    for app,box in zip(cards,self.APP_CARD_BOXES):
                         if box[0]<=x<=box[2] and box[1]<=y<=box[3]:
                             self._open_app(app.id);opened=True;break
-                    if not opened and 238<=y<=277:
-                        maxoff=max(0,((len(rows)-1)//6)*6)
-                        if x<155:self.app_offset=max(0,self.app_offset-6);self.dirty.set()
-                        elif x>324:self.app_offset=min(maxoff,self.app_offset+6);self.dirty.set()
+                    if not opened and 224<=y<=277:
+                        maxoff=max(0,((len(rows)-1)//self.APP_PAGE_SIZE)*self.APP_PAGE_SIZE)
+                        if x<155:self.app_offset=max(0,self.app_offset-self.APP_PAGE_SIZE);self.dirty.set()
+                        elif x>324:self.app_offset=min(maxoff,self.app_offset+self.APP_PAGE_SIZE);self.dirty.set()
                         else:self.app_launcher=False;self.dirty.set()
+            elif self.capsule_share_overlay:
+                frames=((self.capsule_share.get('qr') or {}).get('frames') or []) if isinstance(self.capsule_share,dict) else []
+                if hit('capsule-prev',self.CAPSULE_PREV,x,y,minimum=48):
+                    if frames:self.capsule_frame_idx=(self.capsule_frame_idx-1)%len(frames)
+                    self.dirty.set()
+                elif hit('capsule-next',self.CAPSULE_NEXT,x,y,minimum=48):
+                    if frames:self.capsule_frame_idx=(self.capsule_frame_idx+1)%len(frames)
+                    self.dirty.set()
+                elif hit('capsule-close',self.CAPSULE_CLOSE,x,y,minimum=48):
+                    self.capsule_share_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.telemetry_overlay:
                 if 238<=y<=277:
                     rows=list(self.aux.get('telemetry') or []);maxoff=max(0,((len(rows)-1)//4)*4)
@@ -663,14 +789,14 @@ class BeastUI:
                     elif x>324:self.performance_offset=min(maxoff,self.performance_offset+3);self.dirty.set()
                     else:self.performance_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.platform_overlay:
-                if 238<=y<=277:
-                    if self.platform_overlay in {'topology','operations'}:
+                if self.platform_overlay in {'topology','operations'}:
+                    if hit('platform-special-close',self.PLATFORM_SPECIAL_CLOSE,x,y,minimum=48):
                         self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
-                    else:
-                        rows=self._platform_rows(self.platform_overlay);maxoff=max(0,((len(rows)-1)//4)*4)
-                        if x<155:self.platform_offset=max(0,self.platform_offset-4);self.dirty.set()
-                        elif x>324:self.platform_offset=min(maxoff,self.platform_offset+4);self.dirty.set()
-                        else:self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
+                elif 224<=y<=277:
+                    rows=self._platform_rows(self.platform_overlay);maxoff=max(0,((len(rows)-1)//self.PLATFORM_PAGE_SIZE)*self.PLATFORM_PAGE_SIZE)
+                    if x<155:self.platform_offset=max(0,self.platform_offset-self.PLATFORM_PAGE_SIZE);self.dirty.set()
+                    elif x>324:self.platform_offset=min(maxoff,self.platform_offset+self.PLATFORM_PAGE_SIZE);self.dirty.set()
+                    else:self.platform_overlay=None;self.app_launcher=True;self.dirty.set()
             elif self.studio_overlay:
                 if 232<=y<=277:self.studio_overlay=False;self.app_launcher=True;self.dirty.set()
             elif self.theme_detail:
@@ -753,11 +879,18 @@ class BeastUI:
                     self.touch_zones_overlay=not self.touch_zones_overlay; self.help_overlay=False
                 elif hit('help-close',(0,244,238,277),x,y,minimum=56):self.help_overlay=False
             elif self.drawer:
-                if x>=365 and 36<=y<=66:self.app_launcher=True;self.app_offset=0;self.drawer=False;self.dirty.set()
-                elif 46<=y<=100:self.theme_library=True; self.drawer=False
-                elif 101<=y<=155:self.visualizer_overlay=True; self.visualizer_offset=0; self.drawer=False
-                elif 156<=y<=210:self.achievements_overlay=True; self.drawer=False
-                elif 211<=y<=270:self.help_overlay=True; self.drawer=False
+                if self.CONTROL_APP_BOX[0]<=x<=self.CONTROL_APP_BOX[2] and self.CONTROL_APP_BOX[1]<=y<=self.CONTROL_APP_BOX[3]:
+                    self.app_launcher=True;self.app_offset=0;self.drawer=False;self.dirty.set()
+                else:
+                    opened=False
+                    for idx,box in enumerate(self.CONTROL_QUICK_BOXES):
+                        if box[0]<=x<=box[2] and box[1]<=y<=box[3]:
+                            if idx==0:self.theme_library=True;self.drawer=False
+                            elif idx==1:self.visualizer_overlay=True;self.visualizer_offset=0;self.drawer=False
+                            elif idx==2:self.achievements_overlay=True;self.drawer=False
+                            elif idx==3:self.help_overlay=True;self.drawer=False
+                            opened=True;break
+                    if opened:self.dirty.set()
             else:
                 _pid=self.pages.IDS[self.page]
                 if _pid=='recon' and hit('recon-main',(8,58,252,244),x,y,minimum=72):self.cycle_renderer('recon')
@@ -823,13 +956,24 @@ class BeastUI:
         st,ev,hist,aux,err=self.feed.snapshot()
         if st:
             self.state=st
+            content_pack_sig=tuple(sorted((str(r.get('id') or ''),str(r.get('pack_type') or ''),bool(r.get('enabled')),str(r.get('version') or '')) for r in (st.get('packs.items') or []) if isinstance(r,dict) and str(r.get('pack_type') or '') in {'theme','face','animation','board','layout'}))
+            if content_pack_sig!=getattr(self,'_content_pack_sig',None):
+                self._content_pack_sig=content_pack_sig
+                self._refresh_theme_catalog();self.face.refresh_profiles();self.face.refresh_animation_profiles();self.face.set_profile(self.face_profile_pref);self.face.set_animation_profile(self.animation_profile_pref);self.pack_boards=discover_enabled_pack_boards();self.apps=self._build_app_registry()
+                if self.active_board_id and self.active_board_id not in {str(b.get('id')) for b in self._all_boards()}:self.active_board_id=''
             sig=(bool(st.get('containers.runtime.available')),bool(st.get('capabilities.rtlsdr.present')),int(st.get('display.connected_outputs') or 0))
             if sig!=self._capability_app_sig:
                 self._capability_app_sig=sig;self.apps=self._build_app_registry()
         self.events=ev
         self.histories=hist
         self.aux=aux
+        previous_error=self.data_error
         self.data_error=err
+        if err and err!=previous_error:
+            self.show_notice('DATA FEED ERROR',kind='error',detail=str(err)[:54],duration=4.0)
+        elif previous_error and not err:
+            self.show_notice('DATA FEED RESTORED',kind='success',detail='Live state is updating again')
+        self._last_data_error=err
         self._apply_rare_preview()
 
     def adaptive_fps(self):
@@ -859,11 +1003,21 @@ class BeastUI:
         now=time.monotonic() if now is None else float(now)
         if self.transition:return True
         if self.state.get('rare.omen.active') or self.state.get('rare.moment.active'):return True
+        mr=reveal_active(self.state,dismissed_id=self.monster_reveal_dismissed_id)
+        if mr:self._monster_reveal_was_active=True;return True
+        if self._monster_reveal_was_active:self._monster_reveal_was_active=False;return True
         if self.button_flash:
             age=now-self.button_flash_at
             if age<.30:return True
             self.button_flash=None
             return True  # one cleanup frame removes the highlight
+        if self.notice:
+            age=now-float(self.notice_started or 0.0)
+            if age>=float(self.notice_duration or TOKENS.notice_default_s):
+                self.notice=None
+                return True  # cleanup frame removes expired notice
+            if str(self.notice.get('kind') or '')=='loading':
+                return True
         opts=self.render_options_for_theme(self.theme.id);fps=self._background_cadence(opts)
         if fps>0:
             return self._bg_cache is None or now-self._bg_cache_at>=1.0/max(.1,fps)
@@ -871,40 +1025,128 @@ class BeastUI:
 
     def _header(self,d,title):
         t=self.theme; f=self.fonts
-        d.rectangle((0,0,480,34),fill=t.c('ink')); d.line((0,33,480,33),fill=t.c('edge'))
-        if t.id in {'pwn_dark','pwn_light','pwn_chroma'}:
-            d.text((8,7),'PWNAGOTCHI',font=f['title'],fill=t.c('primary'))
-            d.text((142,11),title,font=f['small'],fill=t.c('text'))
-        elif t.geometry=='lcars':d.rounded_rectangle((3,4,89,29),radius=10,fill=t.c('secondary'));d.text((13,8),'BEAST',font=f['medium'],fill=t.c('ink'));d.text((94,11),title,font=f['small'],fill=t.c('text'))
+        d.rectangle((0,0,self.W,self.HEADER_H),fill=t.c('ink'))
+        style=str(getattr(t,'geometry','classic'))
+        if style in {'terminal'}:
+            d.rectangle((2,2,self.W-3,self.HEADER_H-3),outline=t.c('edge'))
         else:
+            d.line((0,self.HEADER_H-1,self.W,self.HEADER_H-1),fill=t.c('edge'))
+
+        if t.id in {'pwn_dark','pwn_light','pwn_chroma'}:
+            brand='PWNAGOTCHI'
+            d.text((TOKENS.space_s,7),brand,font=f['title'],fill=t.c('primary'))
+            title_x=142
+        elif style=='lcars':
+            d.rounded_rectangle((4,4,94,29),radius=TOKENS.radius_l,fill=t.c('secondary'))
+            d.text((13,8),'BEAST',font=f['medium'],fill=t.c('ink'))
+            d.rounded_rectangle((99,4,122,29),radius=TOKENS.radius_s,fill=t.c('accent'))
+            title_x=132
+        else:
+            # Full product identity matters on a 480x320 appliance.  The old
+            # short "BEAST" label made every theme look like the same debug UI.
             d.text((8,7),'BEAST',font=f['title'],fill=t.c('primary'))
-            d.text((94,11),title,font=f['small'],fill=t.c('text'))
+            bw=d.textbbox((0,0),'BEAST',font=f['title'])[2]
+            d.text((10+bw,7),'AGOTCHI',font=f['title'],fill=t.c('secondary'))
+            title_x=min(182,18+bw+d.textbbox((0,0),'AGOTCHI',font=f['title'])[2])
+
+        page_label='HOME' if str(title).upper()=='BEAST CORE' else str(title).upper()[:16]
+        d.text((title_x,11),page_label,font=f['tiny'],fill=t.c('dim'))
         level=self.state.get('progression.level')
-        if isinstance(level,(int,float)):d.text((276,11),f'L{int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
-        d.text((326,11),f"CH{self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
-        if self.state.get('dock.docked'): d.text((366,11),'DOCK',font=f['tiny'],fill=t.c('accent'))
+        if isinstance(level,(int,float)):
+            d.text((302,10),f'LV {int(level):02d}',font=f['tiny'],fill=t.c('secondary'))
+        d.text((352,10),f"CH {self.state.get('radio.primary.channel','--')}",font=f['tiny'],fill=t.c('info'))
+
+        if self.state.get('dock.docked'):
+            right='DOCK'; col=t.c('accent')
         elif self.state.get('power.telemetry.available'):
-            pct=self.state.get('power.battery.percent_estimate'); d.text((366,11),f"BAT {pct:.0f}%" if isinstance(pct,(int,float)) else 'BAT',font=f['tiny'],fill=t.c('accent'))
-        health=str(self.state.get('health.core.state','--')).upper(); col=t.c('accent') if health=='HEALTHY' else t.c('warn'); d.text((426,11),health[:7],font=f['tiny'],fill=col)
+            pct=self.state.get('power.battery.percent_estimate')
+            right=f"BAT {pct:.0f}%" if isinstance(pct,(int,float)) else 'BAT'
+            col=t.c('accent')
+        else:
+            health=str(self.state.get('health.core.state','--')).upper()
+            right=health[:7]
+            col=t.c('accent') if health=='HEALTHY' else t.c('warn')
+        tw=d.textbbox((0,0),right,font=f['tiny'])[2]
+        d.text((472-tw,10),right,font=f['tiny'],fill=col)
 
     def _footer(self,d,idx=None):
-        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx;count=len(self.pages.IDS);name=self.pages.TITLES[self.pages.IDS[idx]]
-        if self.pages.IDS[idx]=='dashboard' and self.active_board_id:
-            name=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),name)
-        d.rectangle((0,278,480,320),fill=t.c('ink'));d.line((0,278,480,278),fill=t.c('edge'))
-        flash=self.button_flash if time.monotonic()-self.button_flash_at<.28 else None
-        lp=t.c('accent') if flash=='prev' else t.c('panel2');rp=t.c('accent') if flash=='next' else t.c('panel2');lc=t.c('ink') if flash=='prev' else t.c('primary');rc=t.c('ink') if flash=='next' else t.c('primary')
-        if t.footer_style=='minimal':
-            d.text((20,290),'‹',font=f['large'],fill=lc);d.text((446,290),'›',font=f['large'],fill=rc);d.text((205,288),name,font=f['small'],fill=t.c('text'))
+        t=self.theme;f=self.fonts;idx=self.page if idx is None else idx;count=len(self.pages.IDS)
+        cur_id=self.pages.IDS[idx];name=self.pages.TITLES[cur_id]
+        if cur_id=='dashboard' and self.active_board_id:
+            name=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),name)
+        prev_name=self.pages.TITLES[self.pages.IDS[max(0,idx-1)]] if idx>0 else ''
+        next_name=self.pages.TITLES[self.pages.IDS[min(count-1,idx+1)]] if idx<count-1 else ''
+        flash=self.button_flash if time.monotonic()-self.button_flash_at<TOKENS.motion_notice_s else None
+        style=str(getattr(t,'footer_style','classic'))
+
+        d.rectangle((0,self.FOOTER_Y,self.W,self.H),fill=t.c('ink'))
+        d.line((0,self.FOOTER_Y,self.W,self.FOOTER_Y),fill=t.c('edge'))
+        left_col=t.c('accent') if flash=='prev' else t.c('primary')
+        right_col=t.c('accent') if flash=='next' else t.c('primary')
+
+        if style=='terminal':
+            d.rectangle((6,284,112,314),outline=left_col)
+            d.rectangle((368,284,474,314),outline=right_col)
+            d.text((15,290),'<<',font=f['small'],fill=left_col)
+            d.text((392,290),'>>',font=f['small'],fill=right_col)
+            if prev_name:d.text((38,292),prev_name[:9],font=f['micro'],fill=t.c('dim'))
+            if next_name:d.text((432,292),next_name[:9],font=f['micro'],fill=t.c('dim'),anchor='ra')
+        elif style in {'angular','cut'}:
+            lf=t.c('panel2') if flash!='prev' else t.c('accent');rf=t.c('panel2') if flash!='next' else t.c('accent')
+            d.polygon([(6,284),(101,284),(112,294),(112,314),(6,314)],fill=lf,outline=left_col)
+            d.polygon([(368,294),(379,284),(474,284),(474,314),(368,314)],fill=rf,outline=right_col)
+            d.text((15,290),'‹',font=f['medium'],fill=left_col if flash!='prev' else t.c('ink'))
+            d.text((452,290),'›',font=f['medium'],fill=right_col if flash!='next' else t.c('ink'))
+            if prev_name:d.text((34,292),prev_name[:9],font=f['micro'],fill=t.c('dim'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:9],font=f['micro'])[2];d.text((448-tw,292),next_name[:9],font=f['micro'],fill=t.c('dim'))
+        elif style=='segments':
+            d.rounded_rectangle((5,283,116,315),radius=10,fill=t.c('secondary'))
+            d.rounded_rectangle((364,283,475,315),radius=10,fill=t.c('primary'))
+            d.text((16,290),'‹',font=f['medium'],fill=t.c('ink'));d.text((451,290),'›',font=f['medium'],fill=t.c('ink'))
+            if prev_name:d.text((34,292),prev_name[:9],font=f['micro'],fill=t.c('ink'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:9],font=f['micro'])[2];d.text((448-tw,292),next_name[:9],font=f['micro'],fill=t.c('ink'))
         else:
-            d.rounded_rectangle((4,281,92,317),radius=7,fill=lp,outline=t.c('primary'),width=2);d.text((39,289),'<',font=f['large'],fill=lc)
-            d.rounded_rectangle((388,281,476,317),radius=7,fill=rp,outline=t.c('primary'),width=2);d.text((423,289),'>',font=f['large'],fill=rc)
-            d.text((104,288),name,font=f['small'],fill=t.c('accent') if flash=='home' else t.c('text'));d.text((342,289),f'{idx+1}/{count}',font=f['small'],fill=t.c('dim'))
-        start=240-(count*7)//2
-        for i in range(count):d.rectangle((start+i*9,307,start+i*9+5,311),fill=t.c('accent') if i==idx else t.c('edge'))
+            # Flatter cockpit rail: same proven hit boxes, much less dashboard-card bulk.
+            d.line((6,314,112,314),fill=left_col,width=2);d.line((368,314,474,314),fill=right_col,width=2)
+            d.text((13,288),'‹',font=f['medium'],fill=left_col);d.text((454,288),'›',font=f['medium'],fill=right_col)
+            if prev_name:d.text((30,292),prev_name[:10],font=f['micro'],fill=t.c('dim'))
+            if next_name:
+                tw=d.textbbox((0,0),next_name[:10],font=f['micro'])[2];d.text((450-tw,292),next_name[:10],font=f['micro'],fill=t.c('dim'))
+
+        center_col=t.c('accent') if flash=='home' else t.c('text')
+        center_name='HOME' if cur_id=='home' else name
+        tw=d.textbbox((0,0),center_name,font=f['small'])[2]
+        d.text((240-tw//2,284),center_name,font=f['small'],fill=center_col)
+
+        # The page rail is a semantic product carousel, not an undifferentiated
+        # row of eleven pages. Group label adds orientation without changing
+        # swipe/touch behavior or consuming more vertical space.
+        group=page_group(cur_id).upper()
+        meta=f'{group} · {idx+1}/{count}'
+        iw=d.textbbox((0,0),meta,font=f['micro'])[2]
+        d.text((240-iw//2,298),meta,font=f['micro'],fill=t.c('dim'))
+
+        boundaries=set(page_group_boundaries())
+        widths=[13 if i==idx else 5 for i in range(count)]
+        total=sum(widths)+2*(count-1)+5*len(boundaries)
+        x=240-total//2
+        current_group=page_group(cur_id)
+        for i,page_id in enumerate(self.pages.IDS):
+            if i in boundaries:x+=5
+            w=widths[i]
+            if i==idx:dot_col=t.c('accent')
+            elif page_group(page_id)==current_group:dot_col=t.c('primary')
+            else:dot_col=t.c('edge')
+            d.rounded_rectangle((x,309,x+w,313),radius=2,fill=dot_col)
+            x+=w+2
+
         if flash and str(flash).startswith('renderer:'):
-            d.rectangle((126,281,354,303),fill=t.c('panel2'),outline=t.c('accent'))
-            d.text((153,288),f"SPECTRUM -> {str(flash).split(':',1)[1].upper()}",font=f['small'],fill=t.c('accent'))
+            label=str(flash).split(':')[-1].upper()[:18]
+            d.rounded_rectangle((132,281,348,302),radius=TOKENS.radius_s,fill=t.c('panel2'),outline=t.c('accent'))
+            tw=d.textbbox((0,0),label,font=f['small'])[2]
+            d.text((240-tw//2,287),label,font=f['small'],fill=t.c('accent'))
 
     @staticmethod
     def _reaction_label(ev):
@@ -977,25 +1219,44 @@ class BeastUI:
 
     def _physical_test_overlay(self,d):
         if not self.test_mode_path.exists():return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,49),fill=t.c('panel2'));d.text((6,37),'PHYS TEST // Beastagotchi v0.18.0 Platform / Compatibility Gate',font=f['tiny'],fill=t.c('warn'))
+        t=self.theme;f=self.fonts;d.rectangle((0,34,480,49),fill=t.c('panel2'));d.text((6,37),f'PHYS TEST // Beastagotchi {UI_VERSION} Physical Acceptance',font=f['tiny'],fill=t.c('warn'))
         if self.last_input and time.monotonic()-self.last_input_at<4:
             kind,e=self.last_input;x=int(e.get('x',240));y=int(e.get('y',160));d.line((max(0,x-10),y,min(479,x+10),y),fill=t.c('accent'),width=2);d.line((x,max(34,y-10),x,min(277,y+10)),fill=t.c('accent'),width=2)
 
     def _drawer(self,d):
         if not self.drawer:return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,39,472,274),t,accent=t.c('secondary'),width=2)
-        d.text((18,41),'BEAST CONTROL CENTER',font=f['tiny'],fill=t.c('secondary'))
-        d.rounded_rectangle((382,38,464,64),radius=5,fill=t.c('panel2'),outline=t.c('accent'),width=1);d.text((405,47),'APPS',font=f['tiny'],fill=t.c('accent'))
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,38,472,274),t,accent=t.c('secondary'),width=2)
+
+        d.text((18,48),'BEAST CONTROL CENTER',font=f['medium'],fill=t.c('secondary'))
+        beast_name=str(self.state.get('progression.beast.name') or 'BEAST').strip() or 'BEAST'
+        beast_level=self.state.get('progression.level')
+        beast_stage=str(self.state.get('progression.stage') or '').upper()
+        identity=f'{beast_name[:16]}'
+        if isinstance(beast_level,(int,float)):
+            identity+=f' · LV {int(beast_level):02d}'
+        if beast_stage:
+            identity+=f' {beast_stage[:10]}'
+        d.text((18,67),identity,font=f['tiny'],fill=t.c('accent'))
+        d.text((18,78),f'{self.theme.label[:22]} · {str(self.state.get("context.mode.effective") or "pwn").upper()[:10]}',font=f['micro'],fill=t.c('dim'))
+
+        box=self.CONTROL_APP_BOX
+        d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=t.c('accent'),width=2)
+        d.text((385,57),'APPS',font=f['small'],fill=t.c('accent'))
+
         rows=[
-            (46,100,'THEME LIBRARY','Looks, motion, palettes',t.c('primary')),
-            (101,155,'VISUALIZER STUDIO','Graphs, charts, renderers',t.c('info')),
-            (156,210,'ACHIEVEMENTS','Badges, awards, rarity',t.c('accent')),
-            (211,270,'CONTROLS / HELP','Gestures + touch-zone debug',t.c('warn')),
+            ('THEME LIBRARY','Identity, palette, motion',t.c('primary')),
+            ('VISUALIZER STUDIO','Graphs + renderers',t.c('info')),
+            ('ACHIEVEMENTS','Progress, awards, rarity',t.c('accent')),
+            ('CONTROLS / HELP','Gestures + touch debug',t.c('warn')),
         ]
-        for y1,y2,title,sub,col in rows:
-            d.rounded_rectangle((16,y1,464,y2),radius=7,fill=t.c('panel2'),outline=col,width=2)
-            d.text((28,y1+8),title,font=f['small'],fill=col);d.text((202,y1+9),sub,font=f['tiny'],fill=t.c('text'))
-        d.text((330,42),f'{self.theme.label[:20]}',font=f['tiny'],fill=t.c('dim'))
+        for box,(title,sub,col) in zip(self.CONTROL_QUICK_BOXES,rows):
+            x1,y1,x2,y2=box
+            d.rounded_rectangle(box,radius=8,fill=t.c('panel2'),outline=col,width=2)
+            d.text((x1+12,y1+14),title,font=f['small'],fill=col)
+            d.text((x1+12,y1+36),sub[:29],font=f['tiny'],fill=t.c('text'))
+            d.text((x1+12,y2-16),'OPEN',font=f['micro'],fill=t.c('dim'))
 
     def _deck_category_map(self):
         rows=list(getattr(self,'context_decks',[]) or [])
@@ -1010,6 +1271,31 @@ class BeastUI:
         cats=self._app_categories();idx=max(0,min(len(cats)-1,int(self.app_category_idx)));cat=cats[idx]
         deck=self._deck_category_map().get(cat)
         return self.apps.by_ids(deck.get('apps') or []) if deck else self.apps.by_category(cat)
+
+    def _load_capsule_share(self):
+        """Fetch a fresh real Lineage Capsule without blocking the render loop."""
+        if self.capsule_loading:return
+        self.capsule_loading=True
+        self.capsule_share={"loading":True}
+        self.capsule_frame_idx=0
+        self.dirty.set()
+        def worker():
+            try:
+                api=getattr(getattr(self,'feed',None),'api',None)
+                if api is None:
+                    row={"ok":False,"error":"Beast Core Capsule API is unavailable"}
+                else:
+                    row=api.capsule_export(qr_chars=220)
+                    if not isinstance(row,dict) or not row:
+                        row={"ok":False,"error":"Capsule export returned no data"}
+                self.capsule_share=row
+                self.capsule_frame_idx=0
+            except Exception as exc:
+                self.capsule_share={"ok":False,"error":f"{type(exc).__name__}: {exc}"}
+            finally:
+                self.capsule_loading=False
+                self.dirty.set()
+        threading.Thread(target=worker,name='beastui-capsule-export',daemon=True).start()
 
     def _open_app(self,app_id):
         app=self.apps.get(app_id)
@@ -1032,6 +1318,8 @@ class BeastUI:
         elif app.target=='beastdex':self.beastdex_overlay=True;self.beastdex_offset=0;self.beastdex_detail=None
         elif app.target=='capture_vault':self.capture_vault_overlay=True;self.capture_vault_offset=0;self.capture_vault_detail=None
         elif app.target=='performance':self.performance_overlay=True;self.performance_offset=0
+        elif app.target=='capsule_share':
+            self.capsule_share_overlay=True;self.capsule_frame_idx=0;self._load_capsule_share()
         elif app.target in {'timeline','notifications','diagnostics','services','hardware','storage','operations','topology','tasks','field_library','missions','containers','incidents','backups','ai_operator','connectivity','command_center'}:self.platform_overlay=app.target;self.platform_offset=0
         elif app.target=='studio':self.studio_overlay=True
         elif app.target=='help':self.help_overlay=True
@@ -1058,13 +1346,49 @@ class BeastUI:
         if page_id=='dashboard':
             row=self._dashboard_widget_at(x,y);return str((row or {}).get('key') or '') or None
         if page_id=='system':
-            zones=[((8,42,126,98),'health.core.state'),((132,42,238,98),'system.temp.cpu_c'),((244,42,350,98),'system.cpu.total'),((356,42,472,98),'system.memory.used_pct')]
+            # Match the actual v0.19 System header geometry. These used to
+            # point at pre-redesign metric boxes, which made inspector taps
+            # report the wrong source after the visual hierarchy changed.
+            zones=[
+                ((8,43,112,105),'health.core.state'),
+                ((113,43,175,105),'system.temp.cpu_c'),
+                ((176,43,235,105),'system.cpu.total'),
+                ((236,43,294,105),'system.memory.used_pct'),
+                ((302,43,472,105),'governor.mode'),
+            ]
         elif page_id=='captures':
-            zones=[((8,42,148,98),'captures.total'),((156,42,306,98),'pwnagotchi.handshakes'),((314,42,472,98),'wifi.handshake_ap_count')]
+            zones=[
+                ((8,43,214,111),'captures.total'),
+                ((222,43,347,111),'pwnagotchi.handshakes'),
+                ((348,43,472,111),'wifi.handshake_ap_count'),
+            ]
         elif page_id=='spectrum':
-            zones=[((246,194,356,264),'radio.primary.channel'),((364,194,472,264),'radio.primary.band'),((8,194,238,264),'wifi.ap_count')]
+            zones=[
+                ((8,43,123,91),'radio.primary.channel'),
+                ((124,43,239,91),'radio.primary.band'),
+                ((356,43,472,91),'wifi.ap_count'),
+            ]
         elif page_id=='expedition':
-            zones=[((8,113,157,181),'expedition.distance_m'),((164,113,313,181),'expedition.route_points'),((320,113,472,181),'expedition.ap_unique')]
+            zones=[
+                ((8,107,123,163),'expedition.distance_m'),
+                ((124,107,239,163),'expedition.route_points'),
+                ((240,107,355,163),'expedition.ap_unique'),
+                ((356,107,472,163),'expedition.captures_delta'),
+            ]
+        elif page_id=='beast':
+            zones=[
+                ((218,43,472,136),'progression.level'),
+                ((230,145,309,194),'pwnagotchi.mood'),
+                ((310,145,389,194),'progression.aura'),
+                ((390,145,472,194),'context.mode.effective'),
+                ((230,203,314,250),'progression.discovery.beast_unique_aps'),
+                ((315,203,389,250),'progression.discovery.device_first_witnessed'),
+                ((390,203,472,250),'progression.achievements.count'),
+            ]
+        elif page_id=='networks':
+            zones=[
+                ((8,43,123,91),'wifi.ap_count'),
+            ]
         else:
             zones=[]
         for box,key in zones:
@@ -1121,18 +1445,113 @@ class BeastUI:
 
     def _apps_overlay(self,d):
         if not self.app_launcher:return
-        t=self.theme;f=self.fonts;d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('accent'),width=2)
-        cats=self._app_categories();cat=cats[max(0,min(len(cats)-1,self.app_category_idx))];apps=self._apps_current();shown=apps[self.app_offset:self.app_offset+6];page=self.app_offset//6+1;pages=max(1,(len(apps)+5)//6)
-        d.text((20,47),'‹',font=f['medium'],fill=t.c('primary'));d.text((45,47),f'APPS // {cat}',font=f['medium'],fill=t.c('accent'));d.text((350,47),'›',font=f['medium'],fill=t.c('primary'));d.text((402,51),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
-        positions=[(16,62,236,114),(244,62,464,114),(16,120,236,172),(244,120,464,172),(16,178,236,230),(244,178,464,230)]
-        for app,box in zip(shown,positions):
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,38,472,276),t,accent=t.c('accent'),width=2)
+        cats=self._app_categories()
+        cat=cats[max(0,min(len(cats)-1,self.app_category_idx))]
+        apps=self._apps_current()
+        shown=apps[self.app_offset:self.app_offset+self.APP_PAGE_SIZE]
+        page=self.app_offset//self.APP_PAGE_SIZE+1
+        pages=max(1,(len(apps)+self.APP_PAGE_SIZE-1)//self.APP_PAGE_SIZE)
+
+        # Category navigation gets real finger-sized targets instead of tiny
+        # desktop-style arrow glyph hit areas.
+        for box,glyph in ((self.APP_CAT_PREV,'‹'),(self.APP_CAT_NEXT,'›')):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2)
+            gb=d.textbbox((0,0),glyph,font=f['large']);gw=gb[2]-gb[0]
+            d.text((box[0]+((box[2]-box[0])-gw)//2,box[1]+12),glyph,font=f['large'],fill=t.c('primary'))
+        d.text((86,47),'APPS',font=f['tiny'],fill=t.c('dim'))
+        d.text((86,60),str(cat).upper()[:30],font=f['medium'],fill=t.c('accent'))
+        d.text((347,60),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
+
+        for app,box in zip(shown,self.APP_CARD_BOXES):
             col=t.c(app.accent,t.c('primary'));x1,y1,x2,y2=box
             d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
             d.text((x1+10,y1+8),app.title.upper()[:22],font=f['small'],fill=col)
-            d.text((x1+10,y1+25),app.category.upper(),font=f['tiny'],fill=t.c('dim'))
-            d.text((x1+70,y1+25),app.description[:26],font=f['tiny'],fill=t.c('text'))
-        d.rounded_rectangle((12,238,154,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.rounded_rectangle((162,238,318,274),radius=5,fill=t.c('panel2'),outline=t.c('edge'));d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'))
-        d.text((45,250),'<< PREV',font=f['tiny'],fill=t.c('primary'));d.text((213,250),'CLOSE',font=f['tiny'],fill=t.c('text'));d.text((369,250),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+            d.text((x1+10,y1+27),app.description[:31],font=f['tiny'],fill=t.c('text'))
+            d.text((x2-64,y2-14),app.category.upper()[:10],font=f['micro'],fill=t.c('dim'))
+
+        if not shown:
+            d.text((155,140),'NO APPS IN THIS VIEW',font=f['medium'],fill=t.c('dim'))
+
+        for box,col in (
+            (self.APP_NAV_PREV,t.c('primary')),
+            (self.APP_NAV_CLOSE,t.c('edge')),
+            (self.APP_NAV_NEXT,t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
+        d.text((45,242),'<< PREV',font=f['tiny'],fill=t.c('primary'))
+        d.text((213,242),'CLOSE',font=f['tiny'],fill=t.c('text'))
+        d.text((369,242),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+
+    def _capsule_share_view(self,d):
+        if not self.capsule_share_overlay:return
+        t=self.theme;f=self.fonts
+        d.rectangle((0,34,480,278),fill=t.c('ink'))
+        panel(d,(8,40,472,274),t,accent=t.c('info'),width=2)
+        row=self.capsule_share if isinstance(self.capsule_share,dict) else {}
+        d.text((232,49),'BEAST CAPSULE // OFFLINE SHARE',font=f['small'],fill=t.c('info'))
+
+        if self.capsule_loading or row.get('loading'):
+            d.text((232,82),'PREPARING LINEAGE CAPSULE',font=f['medium'],fill=t.c('text'))
+            d.text((232,108),'Reading the active Beast from Core.',font=f['tiny'],fill=t.c('dim'))
+            d.text((232,126),'Nothing has been imported or published.',font=f['tiny'],fill=t.c('dim'))
+            d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('edge'),width=2)
+            d.text((63,143),'PREPARING',font=f['medium'],fill=t.c('dim'))
+        elif not row.get('ok'):
+            d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('warn'),width=2)
+            d.text((47,132),'CAPSULE',font=f['large'],fill=t.c('warn'))
+            d.text((38,160),'UNAVAILABLE',font=f['medium'],fill=t.c('warn'))
+            d.text((232,82),'EXPORT NOT READY',font=f['medium'],fill=t.c('warn'))
+            d.text((232,108),str(row.get('error') or 'No Capsule data available.')[:36],font=f['tiny'],fill=t.c('text'))
+            d.text((232,130),'No substitute/fake QR is shown.',font=f['tiny'],fill=t.c('dim'))
+        else:
+            qr=row.get('qr') if isinstance(row.get('qr'),dict) else {}
+            frames=[str(x) for x in (qr.get('frames') or []) if str(x)]
+            payload=((row.get('envelope') or {}).get('payload') or {}) if isinstance(row.get('envelope'),dict) else {}
+            total=max(1,len(frames));self.capsule_frame_idx=max(0,min(total-1,int(self.capsule_frame_idx)))
+            frame=frames[self.capsule_frame_idx] if frames else ''
+            qrstat=qr_backend_status();render_error=None;render_meta={}
+            if frame and qrstat.get('available'):
+                try:render_meta=draw_qr(d,self.CAPSULE_QR_BOX,frame,error_correction='M')
+                except Exception as exc:render_error=str(exc)
+            else:
+                render_error='QR renderer dependency is not installed' if not qrstat.get('available') else 'Capsule contains no QR frame'
+            if render_error:
+                d.rounded_rectangle(self.CAPSULE_QR_BOX,radius=8,fill=t.c('panel2'),outline=t.c('warn'),width=2)
+                d.text((49,126),'QR FRAME',font=f['medium'],fill=t.c('warn'))
+                d.text((53,149),'UNAVAILABLE',font=f['small'],fill=t.c('warn'))
+                d.text((32,176),render_error[:28],font=f['micro'],fill=t.c('dim'))
+
+            preview=bool(payload.get('preview'))
+            name=str(payload.get('name') or 'UNNAMED BEAST')
+            lineage=str(payload.get('lineage') or '--').replace('_',' ').upper()
+            level=payload.get('level');stage=str(payload.get('stage') or '--').upper()
+            kind=str(payload.get('kind') or 'beast').upper()
+            d.text((232,72),name[:24],font=f['medium'],fill=t.c('accent'))
+            d.text((232,94),f'{kind[:8]}  ·  {lineage[:18]}',font=f['tiny'],fill=t.c('text'))
+            d.text((232,112),f'LV {level if level is not None else "--"}  ·  {stage[:18]}',font=f['small'],fill=t.c('primary'))
+            d.text((232,136),f'FRAME {self.capsule_frame_idx+1}/{total}',font=f['medium'],fill=t.c('info'))
+            if render_meta:
+                d.text((336,139),f"{render_meta.get('modules','--')} MOD / {render_meta.get('scale_px','--')}PX",font=f['micro'],fill=t.c('dim'))
+            integrity=(row.get('envelope') or {}).get('integrity') if isinstance(row.get('envelope'),dict) else {}
+            authenticated=bool((integrity or {}).get('authenticated'))
+            d.text((232,160),'SIGNED / AUTHENTICATED' if authenticated else 'UNSIGNED · INTEGRITY ONLY',font=f['tiny'],fill=t.c('accent') if authenticated else t.c('warn'))
+            d.text((232,179),'NO CAPTURES · NO GPS · NO CREDS',font=f['tiny'],fill=t.c('dim'))
+            d.text((232,197),'LOCAL QR SHARE · NO CLOUD REQUIRED',font=f['tiny'],fill=t.c('text'))
+            if preview:
+                d.rounded_rectangle((232,204,464,220),radius=4,fill=t.c('panel2'),outline=t.c('warn'))
+                d.text((273,208),'GALLERY PREVIEW · NOT IMPORTABLE',font=f['micro'],fill=t.c('warn'))
+
+        for box,label,col in (
+            (self.CAPSULE_PREV,'< FRAME',t.c('primary')),
+            (self.CAPSULE_CLOSE,'CLOSE',t.c('edge')),
+            (self.CAPSULE_NEXT,'FRAME >',t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=col,width=2)
+            tb=d.textbbox((0,0),label,font=f['micro']);tw=tb[2]-tb[0]
+            d.text((box[0]+max(4,((box[2]-box[0])-tw)//2),box[1]+19),label,font=f['micro'],fill=t.c('text') if label=='CLOSE' else col)
 
     def _telemetry_inspector(self,d):
         if not self.telemetry_overlay:return
@@ -1328,6 +1747,60 @@ class BeastUI:
             rows.append({'title':'LOCAL MODELS','subtitle':'Model files discovered in Beast model roots','value':str(self.state.get('ai.models.count') or 0),'severity':'info'})
             rows.append({'title':'PRIVILEGE MODEL','subtitle':'Observer / Operator / Maintainer / Administrator Session','value':'ACTION BROKER','severity':'info'})
         elif mode=='diagnostics':
+            coverage=self.state.get('doctor.coverage') or {}
+            counts=coverage.get('counts') or {} if isinstance(coverage,dict) else {}
+            covered=int(counts.get('covered',0) or 0);unavailable=int(counts.get('unavailable',0) or 0);unknown=int(counts.get('unknown',0) or 0)
+            total=int(coverage.get('count',covered+unavailable+unknown) or 0) if isinstance(coverage,dict) else 0
+            if total:
+                rows.append({
+                    'title':'DOCTOR COVERAGE',
+                    'subtitle':f'{covered} covered / {unavailable} unavailable / {unknown} unknown',
+                    'value':'FULL' if unknown==0 else 'PARTIAL',
+                    'severity':'info' if unknown==0 else 'warning',
+                })
+            patient=self.state.get('doctor.patient.identity') or {}
+            if isinstance(patient,dict) and any(patient.values()):
+                model=str(patient.get('model') or 'unknown model')
+                arch=str(patient.get('architecture') or 'unknown arch')
+                kernel=str(patient.get('kernel') or 'unknown kernel')
+                rows.append({
+                    'title':'PATIENT CHART',
+                    'subtitle':f'{model} / {arch} / kernel {kernel}'[:67],
+                    'value':str(patient.get('os_id') or 'IDENTIFIED').upper()[:14],
+                    'severity':'info',
+                })
+                py=str(patient.get('python_version') or 'unknown')
+                pwn=str(patient.get('pwnagotchi_version') or 'unknown')
+                osver=str(patient.get('os_version_id') or patient.get('os_build_id') or 'unknown')
+                rows.append({
+                    'title':'COMPATIBILITY FINGERPRINT',
+                    'subtitle':f'Pwnagotchi {pwn} / Python {py} / OS {osver}'[:67],
+                    'value':'READ ONLY',
+                    'severity':'info',
+                })
+            memory=self.state.get('doctor.patient.memory') or {}
+            recurrence=(memory.get('recurrence') or {}) if isinstance(memory,dict) else {}
+            if isinstance(recurrence,dict) and recurrence:
+                recurrent=sum(1 for row in recurrence.values() if isinstance(row,dict) and row.get('recurrent'))
+                active=sum(1 for row in recurrence.values() if isinstance(row,dict) and row.get('active'))
+                rows.append({
+                    'title':'RECURRENCE MEMORY',
+                    'subtitle':f'{len(recurrence)} incident kinds / {recurrent} recurrent / {active} active',
+                    'value':'RECUR' if recurrent else 'QUIET',
+                    'severity':'warning' if active or recurrent else 'info',
+                })
+            kg_count=int(self.state.get('doctor.patient.known_good_count') or 0)
+            drift=self.state.get('doctor.patient.known_good_drift') or {}
+            if kg_count or (isinstance(drift,dict) and drift.get('found')):
+                change_count=int((drift.get('change_count') if isinstance(drift,dict) else 0) or 0)
+                checkpoint=(drift.get('checkpoint') or {}) if isinstance(drift,dict) else {}
+                label=str(checkpoint.get('label') or 'latest baseline')
+                rows.append({
+                    'title':'KNOWN-GOOD BASELINE',
+                    'subtitle':f'{kg_count} saved / {label}'[:67],
+                    'value':f'DRIFT {change_count}' if change_count else 'MATCH',
+                    'severity':'warning' if change_count else 'info',
+                })
             names=[]
             for k in self.state:
                 if k.startswith('health.collector.') and k.endswith('.state'):
@@ -1341,7 +1814,7 @@ class BeastUI:
 
     def _platform_browser(self,d):
         if not self.platform_overlay:return
-        mode=str(self.platform_overlay);t=self.theme;f=self.fonts;rows=self._platform_rows(mode);page=self.platform_offset//4+1;pages=max(1,(len(rows)+3)//4)
+        mode=str(self.platform_overlay);t=self.theme;f=self.fonts;rows=self._platform_rows(mode);page=self.platform_offset//self.PLATFORM_PAGE_SIZE+1;pages=max(1,(len(rows)+self.PLATFORM_PAGE_SIZE-1)//self.PLATFORM_PAGE_SIZE)
         if mode=='topology':
             d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('info'),width=2)
             d.text((20,47),'SERVICE TOPOLOGY // LIVE DEPENDENCIES',font=f['medium'],fill=t.c('info'))
@@ -1359,32 +1832,97 @@ class BeastUI:
             d.text((18,216),'RADIO → BETTERCAP → PWNAGOTCHI → BRIDGE → CORE',font=f['tiny'],fill=t.c('dim'))
             d.text((18,231),'GPS → CORE     CORE → UI / STUDIO',font=f['tiny'],fill=t.c('dim'))
             fail=int(self.state.get('topology.failure_count') or 0);d.text((18,248),f'{fail} DEPENDENCY FAILURE(S)',font=f['small'],fill=t.c('warn') if fail else t.c('accent'))
-            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
+            d.rounded_rectangle(self.PLATFORM_SPECIAL_CLOSE,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2);d.text((371,242),'CLOSE',font=f['tiny'],fill=t.c('primary'))
             return
         if mode=='operations':
             d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=t.c('primary'),width=2)
-            state=str(self.state.get('overview.state') or '--').upper();col=t.c('danger') if state=='CRITICAL' else t.c('warn') if state=='ATTENTION' else t.c('accent')
-            d.text((20,47),'OPERATIONS CENTER',font=f['medium'],fill=t.c('primary'));d.text((385,50),state,font=f['tiny'],fill=col)
-            cards=[
-                ('CORE',str(self.state.get('health.core.state') or '--').upper(),f"{self.state.get('health.core.collector_count',0)} COLLECTORS"),
-                ('SERVICES',str(sum(1 for x in (self.state.get('platform.services') or []) if isinstance(x,dict) and x.get('active')=='active')),f"{len(self.state.get('platform.services') or [])} TRACKED"),
-                ('TASKS',str(len((self.aux.get('jobs') or {}).get('items') or [])),'RECENT JOBS'),
-                ('LIBRARY',str(self.state.get('library.document_count',0)),f"{self.state.get('library.text_indexed_count',0)} SEARCHABLE"),
+            overall=str(self.state.get('overview.state') or '--').upper()
+            col=t.c('danger') if overall=='CRITICAL' else t.c('warn') if overall=='ATTENTION' else t.c('accent')
+            d.text((20,47),'OPERATIONS CENTER',font=f['medium'],fill=t.c('primary'))
+            # Keep the whole-device condition visible without turning it into
+            # another equal-weight tile.
+            ob=d.textbbox((0,0),overall,font=f['tiny']);ow=max(0,ob[2]-ob[0])
+            d.text((454-ow,51),overall,font=f['tiny'],fill=col)
+
+            panel(d,(18,72,304,222),t,accent=t.c('edge'))
+            d.text((28,82),'LIVE PLATFORM',font=f['tiny'],fill=t.c('dim'))
+            active_services=sum(1 for x in (self.state.get('platform.services') or []) if isinstance(x,dict) and x.get('active')=='active')
+            service_total=len(self.state.get('platform.services') or [])
+            recent_jobs=len((self.aux.get('jobs') or {}).get('items') or [])
+            rows=[
+                ('CORE',str(self.state.get('health.core.state') or '--').upper(),f"{self.state.get('health.core.collector_count',0)} collectors"),
+                ('SERVICES',f'{active_services}/{service_total}', 'active / tracked'),
+                ('TASKS',str(recent_jobs),'recent durable jobs'),
+                ('LIBRARY',str(self.state.get('library.document_count',0)),f"{self.state.get('library.text_indexed_count',0)} searchable"),
             ]
-            boxes=[(18,76,226,137),(246,76,454,137),(18,148,226,209),(246,148,454,209)]
-            for (lab,val,sub),box in zip(cards,boxes):
-                panel(d,box,t);x1,y1,x2,y2=box;d.text((x1+9,y1+7),lab,font=f['tiny'],fill=t.c('dim'));d.text((x1+9,y1+22),val,font=f['large'],fill=t.c('text'));d.text((x1+80,y1+38),sub,font=f['micro'],fill=t.c('accent'))
-            att=int(self.state.get('overview.attention_count') or 0);d.text((18,222),f'ATTENTION {att}',font=f['small'],fill=t.c('warn') if att else t.c('accent'));d.text((128,224),'LONG-PRESS TO RETURN TO APPS',font=f['tiny'],fill=t.c('dim'))
-            d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((371,250),'CLOSE',font=f['tiny'],fill=t.c('primary'))
+            for i,(lab,val,sub) in enumerate(rows):
+                y=100+i*29
+                d.text((28,y),lab,font=f['tiny'],fill=t.c('dim'))
+                d.text((100,y-2),val[:14],font=f['small'],fill=t.c('text'))
+                d.text((184,y),sub[:20],font=f['micro'],fill=t.c('info') if i else col)
+                if i<3:d.line((28,y+20,294,y+20),fill=t.c('edge'))
+
+            panel(d,(312,72,454,222),t,accent=col)
+            att=int(self.state.get('overview.attention_count') or 0)
+            d.text((322,82),'ATTENTION',font=f['tiny'],fill=t.c('dim'))
+            d.text((322,98),str(att),font=f['large'],fill=t.c('warn') if att else t.c('accent'))
+            d.text((350,104),'ITEMS',font=f['tiny'],fill=t.c('dim'))
+            d.line((322,126,444,126),fill=t.c('edge'))
+            temp=self.state.get('system.temp.cpu_c')
+            cpu=self.state.get('system.cpu.total')
+            gov=str(self.state.get('governor.mode') or 'FULL').upper()
+            d.text((322,138),'TEMP',font=f['micro'],fill=t.c('dim'))
+            d.text((375,136),f'{float(temp):.1f}C' if isinstance(temp,(int,float)) else '--',font=f['small'],fill=t.c('warn'))
+            d.text((322,158),'CPU',font=f['micro'],fill=t.c('dim'))
+            d.text((375,156),f'{float(cpu):.0f}%' if isinstance(cpu,(int,float)) else '--',font=f['small'],fill=t.c('primary'))
+            d.text((322,178),'MODE',font=f['micro'],fill=t.c('dim'))
+            d.text((375,176),gov[:10],font=f['small'],fill=t.c('secondary'))
+            d.text((322,201),'OPEN DETAIL APPS FOR DEPTH',font=f['micro'],fill=t.c('dim'))
+
+            d.text((18,214),'Detail apps keep incidents, services and history one layer deeper.',font=f['micro'],fill=t.c('dim'))
+            d.rounded_rectangle(self.PLATFORM_SPECIAL_CLOSE,radius=7,fill=t.c('panel2'),outline=t.c('primary'),width=2)
+            d.text((371,242),'CLOSE',font=f['tiny'],fill=t.c('primary'))
             return
         accent={'timeline':'info','notifications':'warn','diagnostics':'warn','services':'accent','hardware':'secondary','storage':'info','operations':'primary','topology':'info','tasks':'secondary','field_library':'accent','missions':'primary','containers':'info','incidents':'warn','backups':'accent','ai_operator':'primary','connectivity':'info','command_center':'accent'}.get(mode,'primary')
         col=t.c(accent,t.c('primary'));d.rectangle((0,34,480,278),fill=t.c('ink'));panel(d,(8,40,472,274),t,accent=col,width=2)
-        d.text((20,47),mode.upper()+' // LIVE',font=f['medium'],fill=col);d.text((395,51),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
-        for i,row in enumerate(rows[self.platform_offset:self.platform_offset+4]):
-            y=67+i*40;sev=str(row.get('severity') or 'info').lower();vcol=t.c('danger') if sev in {'error','critical'} else t.c('warn') if sev=='warning' else t.c('accent')
-            d.text((20,y),str(row.get('title') or '--')[:32],font=f['small'],fill=t.c('text'));d.text((370,y),str(row.get('value') or '')[:14],font=f['tiny'],fill=vcol);d.text((20,y+17),str(row.get('subtitle') or '')[:64],font=f['tiny'],fill=t.c('dim'));d.line((18,y+32,462,y+32),fill=t.c('edge'))
-        if not rows:d.text((95,140),'NO CURRENT ITEMS',font=f['small'],fill=t.c('dim'))
-        d.rounded_rectangle((12,238,154,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.rounded_rectangle((162,238,318,274),radius=5,fill=t.c('panel2'),outline=t.c('edge'));d.rounded_rectangle((326,238,468,274),radius=5,fill=t.c('panel2'),outline=t.c('primary'));d.text((45,250),'<< PREV',font=f['tiny'],fill=t.c('primary'));d.text((216,250),'APPS',font=f['tiny'],fill=t.c('text'));d.text((369,250),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
+        labels={
+            'notifications':'NOTIFICATIONS','diagnostics':'COLLECTOR HEALTH','services':'SERVICES',
+            'hardware':'HARDWARE','storage':'STORAGE','timeline':'TIMELINE','tasks':'TASK CENTER',
+            'field_library':'FIELD LIBRARY','missions':'MISSIONS','containers':'CONTAINERS',
+            'incidents':'INCIDENTS','backups':'BACKUPS','ai_operator':'AI OPERATOR',
+            'connectivity':'CONNECTIVITY','command_center':'COMMAND CENTER',
+        }
+        title=labels.get(mode,mode.replace('_',' ').upper())
+        d.text((20,47),title+' // LIVE',font=f['medium'],fill=col)
+        d.text((405,50),f'{page}/{pages}',font=f['small'],fill=t.c('dim'))
+        visible=rows[self.platform_offset:self.platform_offset+self.PLATFORM_PAGE_SIZE]
+        for i,row in enumerate(visible):
+            y=72+i*49;sev=str(row.get('severity') or 'info').lower();vcol=t.c('danger') if sev in {'error','critical'} else t.c('warn') if sev=='warning' else t.c('accent')
+            d.text((20,y),str(row.get('title') or '--')[:31],font=f['small'],fill=t.c('text'))
+            value=str(row.get('value') or '')[:14];vb=d.textbbox((0,0),value,font=f['tiny']);vw=max(0,vb[2]-vb[0])
+            d.text((458-vw,y+1),value,font=f['tiny'],fill=vcol)
+            d.text((20,y+18),str(row.get('subtitle') or '')[:67],font=f['tiny'],fill=t.c('dim'))
+            if i<self.PLATFORM_PAGE_SIZE-1:d.line((18,y+39,462,y+39),fill=t.c('edge'))
+        if not rows:
+            empty={
+                'notifications':('NO ACTIVE NOTICES','Important events and warnings will appear here.'),
+                'incidents':('NO OPEN INCIDENTS','Black Box has no incident rows to surface.'),
+                'tasks':('NO RECENT TASKS','Durable background operations will appear here.'),
+                'hardware':('NO HARDWARE ROWS','Detected capabilities will appear when available.'),
+                'backups':('NO BACKUP ROWS','Create and verify backups from Beast Studio.'),
+            }.get(mode,('NO CURRENT ITEMS','This live surface has no rows to display.'))
+            d.text((20,100),empty[0],font=f['medium'],fill=t.c('dim'))
+            d.text((20,126),empty[1][:68],font=f['tiny'],fill=t.c('dim'))
+            d.text((20,151),'Unavailable stays unavailable; Beast does not invent demo state.',font=f['micro'],fill=t.c('warn'))
+        for box,bcol in (
+            (self.PLATFORM_NAV_PREV,t.c('primary')),
+            (self.PLATFORM_NAV_CLOSE,t.c('edge')),
+            (self.PLATFORM_NAV_NEXT,t.c('primary')),
+        ):
+            d.rounded_rectangle(box,radius=7,fill=t.c('panel2'),outline=bcol,width=2)
+        d.text((45,242),'<< PREV',font=f['tiny'],fill=t.c('primary'))
+        d.text((216,242),'APPS',font=f['tiny'],fill=t.c('text'))
+        d.text((369,242),'NEXT >>',font=f['tiny'],fill=t.c('primary'))
 
     def _studio_status(self,d):
         if not self.studio_overlay:return
@@ -1423,7 +1961,7 @@ class BeastUI:
         for i,(y1,y2) in enumerate(rows):
             idx=self.theme_library_offset+i
             if idx>=len(self.THEMES):continue
-            tid=self.THEMES[idx];th=load_theme(self.root/'themes'/f'{tid}.json');active=tid==self.theme.id
+            tid=self.THEMES[idx];tp=self._theme_path(tid);th=load_theme(tp) if tp else self.theme;active=tid==self.theme.id
             d.rounded_rectangle((18,y1,458,y2),radius=9,fill=th.c('panel2'),outline=th.c('accent') if active else th.c('primary'),width=3 if active else 2)
             # Larger preview block and bigger text make the entire card obvious.
             d.rounded_rectangle((30,y1+11,112,y2-11),radius=6,fill=th.c('bg'),outline=th.c('accent'))
@@ -1623,19 +2161,20 @@ class BeastUI:
             avg=lambda rows: sum(rows)/len(rows) if rows else 0.0
             elapsed=max(0.001,time.monotonic()-self._runtime_started)
             obj={
-                'version':'0.18.0','theme':self.theme.id,'page':self.pages.IDS[self.page],
+                'version':UI_VERSION,'theme':self.theme.id,'page':self.pages.IDS[self.page],
                 'frames':self._frame_count,'avg_render_ms':round(avg(self._render_samples),2),'max_render_ms':round(max(self._render_samples or [0]),2),
                 'avg_compose_ms':round(avg(self._compose_samples),2),'avg_fb_write_ms':round(avg(self._write_samples),2),'max_fb_write_ms':round(max(self._write_samples or [0]),2),
                 'target_fps':round(self.adaptive_fps(),1),'lifetime_fps':round(self._frame_count/elapsed,2),
                 'drawer':self.drawer,'help':self.help_overlay,'touch_zones':self.touch_zones_overlay,
                 'spectrum_renderer':self.renderer_for('spectrum'),'data_error':self.data_error,'native_pwnagotchi':self.native_source.info().__dict__ if self._is_native_theme() else None,
-                'framebuffer':self.fb.telemetry(),'display':self.display_transform.metadata(),'ts':time.time(),
+                'framebuffer':self.fb.telemetry(),'display':self.display_transform.metadata(),
+                'scene':self.scene_runtime.snapshot(),'compositor_cache':compositor_cache_telemetry(),'ts':time.time(),
             }
             self.runtime_path.parent.mkdir(parents=True,exist_ok=True); self.runtime_path.write_text(json.dumps(obj,separators=(',',':'))+'\n')
         except Exception:log.debug('runtime telemetry write failed',exc_info=True)
 
     def _compose_native(self):
-        self.phase=time.monotonic()
+        self.phase=float(self.phase_override) if self.phase_override is not None else time.monotonic()
         mode=self._native_mode()
         opts=self.options_for_theme(self.theme.id)
         ink=self._native_ink_color()
@@ -1661,9 +2200,9 @@ class BeastUI:
         # No Beast header/footer/event reaction/scanline is painted in Native
         # Dark/Light: the untouched Jayofelony composition is the point.
         # Chroma only recolors/glows the exact native foreground mask.
-        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
-        # Rare omens/moments remain a Beast-wide top layer by design, including
-        # while the native Pwnagotchi profile is selected.
+        self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d);self._transient_notice(d)
+        # Monster reveals remain available above Native; Rare Moments still win final priority.
+        im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         return render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
 
     def _background_cadence(self,opts):
@@ -1699,19 +2238,27 @@ class BeastUI:
     def _compose(self,page_idx):
         if self._is_native_theme():
             return self._compose_native()
-        self.phase=time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
+        self.phase=float(self.phase_override) if self.phase_override is not None else time.monotonic();im=self._background_frame();d=ImageDraw.Draw(im)
         page_id=self.pages.IDS[page_idx];title=self.pages.TITLES[page_id]
-        if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self.custom_boards if str(b.get('id'))==self.active_board_id),title)
-        self._header(d,title);getattr(self.pages,page_id)(d,self.state,self)
+        self.scene_runtime.begin(page_id=page_id,scene_id=f'page:{page_id}',theme_id=self.theme.id)
+        self.scene_runtime.update_signals(self.state)
+        if page_id=='dashboard' and self.active_board_id:title=next((str(b.get('label') or b.get('id')) for b in self._all_boards() if str(b.get('id'))==self.active_board_id),title)
+        self._header(d,title);getattr(self.pages,page_id)(d,self.state,self);self.scene_runtime.end()
         im=draw_foreground_effects(im,self.theme,self.phase,self.render_options_for_theme(self.theme.id));d=ImageDraw.Draw(im)
-        self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d)
+        self._event_reaction(d);self._physical_test_overlay(d);self._footer(d,page_idx);self._drawer(d);self._apps_overlay(d);self._telemetry_inspector(d);self._widget_inspector(d);self._correlation_lab(d);self._plugins_manager(d);self._beastdex(d);self._capture_vault(d);self._performance_lab(d);self._platform_browser(d);self._studio_status(d);self._visualizers(d);self._theme_library_overlay(d);self._theme_detail_overlay(d);self._achievements(d);self._help(d);self._touch_zones(d);self._transient_notice(d)
         _scanline_opt=str(self.render_options_for_theme(self.theme.id).get('scanline','on')).lower()
         if self.theme.scanlines and _scanline_opt!='off':
             speed=float(getattr(self.theme,'scanline_speed',31.0) or 31.0);width=max(1,int(getattr(self.theme,'scanline_width',1) or 1));y=35+int((self.phase*speed)%240)
             # Protected scanline layer: always painted after normal/foreground
             # theme effects so Matrix rain can never segment it.
             col=self.theme.c('scanline',self.theme.c('edge'));d.rectangle((0,y,479,y+width-1),fill=col)
-        # Rare omens/moments are the final compositing layer by design.
+        # Machine-readable transport must remain above theme scanlines/effects.
+        # A decorative sweep through a QR can make a mathematically valid code
+        # physically unscannable. Monster/Rare overlays intentionally retain
+        # higher precedence than ordinary transport UI.
+        self._capsule_share_view(d)
+        # Monster reveals are celebratory, but Rare Moments remain the absolute top layer.
+        im=render_monster_reveal(im,self.state,self.phase,self.theme,self.fonts,dismissed_id=self.monster_reveal_dismissed_id)
         im=render_rare_overlay(im,self.state,self.phase,self.theme,self.fonts)
         return im
 

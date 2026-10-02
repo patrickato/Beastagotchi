@@ -9,7 +9,7 @@ import PIL
 print('Pillow OK', getattr(PIL,'__version__','?'))
 PY
 systemctl stop beast-ui.service beast-studio.service 2>/dev/null || true
-install -d -m 0755 /opt/beast-ui /opt/beast-ui/themes /opt/beast-ui/config /opt/beast-ui/bin /var/lib/beastagotchi/display-handoff
+install -d -m 0755 /opt/beast-ui /opt/beast-ui/themes /opt/beast-ui/config /opt/beast-ui/bin /opt/beast-python /opt/beast-python/site-packages /var/lib/beastagotchi/display-handoff
 install -d -o pi -g pi -m 0755 /var/lib/beastagotchi/ui
 install -d -o pi -g beastagotchi -m 0750 /var/lib/beastagotchi/library /var/lib/beastagotchi/library/imports
 rm -rf /opt/beast-ui/beastui /opt/beast-ui/beaststudio
@@ -39,17 +39,19 @@ install -m 0755 "$SRC/tools/beast_touchlab.sh" /usr/local/bin/beast-touchlab
 install -m 0755 "$SRC/tools/touch_calibration.py" /usr/local/bin/beast-touchcal
 install -m 0755 "$SRC/tools/pwn_native_status.py" /usr/local/bin/beast-pwn-native
 install -m 0755 "$SRC/tools/beast_studio_token.py" /usr/local/bin/beast-studio-token
+install -m 0755 "$SRC/tools/v019_acceptance_report.py" /opt/beast-ui/bin/v019_acceptance_report.py
+install -m 0755 "$SRC/tools/v019_physical_acceptance.sh" /usr/local/bin/beast-v019-accept
 install -m 0644 "$SRC/ui_systemd/beast-ui.service" /etc/systemd/system/beast-ui.service
 install -m 0644 "$SRC/ui_systemd/beast-studio.service" /etc/systemd/system/beast-studio.service
 systemctl daemon-reload
 systemctl stop beast-ui.service 2>/dev/null || true
 systemctl disable beast-ui.service 2>/dev/null || true
 cat <<'EOF'
-Beast UI v0.18.1 Platform / Compatibility milestone installed but NOT started.
+Beast UI development build installed but NOT started.
 Physical display ownership is protected: beast-ui refuses to start while Pwnagotchi ui.display.enabled=true.
 
 Off-screen test:
-  sudo -u pi PYTHONPATH=/opt/beast-ui /opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --output /tmp/beast-ui-v017.png --duration 2
+  sudo -u pi PYTHONPATH=/opt/beast-ui:/opt/beast-python/site-packages /opt/.pwn/bin/python3 -m beastui --root /opt/beast-ui --output /tmp/beast-ui-v019.png --duration 2
 
 Reversible physical handoff test:
   sudo /opt/beast-ui/bin/claim_display_test.sh 15

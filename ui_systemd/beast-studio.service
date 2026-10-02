@@ -7,7 +7,7 @@ Wants=beast-core.service
 Type=simple
 User=pi
 SupplementaryGroups=beastagotchi
-Environment=PYTHONPATH=/opt/beast-ui
+Environment=PYTHONPATH=/opt/beast-ui:/opt/beast-python/site-packages
 ExecStart=/opt/.pwn/bin/python3 -m beaststudio --root /opt/beast-ui --host 0.0.0.0 --port 8091
 Restart=on-failure
 RestartSec=3

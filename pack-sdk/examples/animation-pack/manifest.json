@@ -1,0 +1,11 @@
+{
+  "id": "example-gentle-motion",
+  "label": "Example Gentle Motion",
+  "version": "1.0.0",
+  "pack_type": "animation",
+  "description": "Low-cost declarative face motion example.",
+  "author": "Beastagotchi SDK",
+  "license": "MIT",
+  "resource_class": "none",
+  "thermal_class": "static"
+}

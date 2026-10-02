@@ -34,5 +34,5 @@ def test_plugin_inventory_exposes_repository_counts(tmp_path):
 
 def test_master_readme_and_path_helper_ship():
     root=Path(__file__).resolve().parents[1]
-    assert (root/'docs/BEASTAGOTCHI_MASTER_README_DRAFT.md').exists()
+    assert (root/'docs/archive/drafts/BEASTAGOTCHI_MASTER_README_DRAFT.md').exists()
     assert (root/'tools/beast_paths.sh').exists()

@@ -1,0 +1,10 @@
+{
+  "id": "triad",
+  "label": "Triad",
+  "description": "Three large instruments across the reference board.",
+  "widgets": [
+    {"id":"left","key":"system.cpu.total","label":"CPU","style":"radial","x":0,"y":1,"w":4,"h":5,"min":0,"max":100},
+    {"id":"middle","key":"system.temp.cpu_c","label":"TEMP","style":"bar","x":4,"y":1,"w":4,"h":5,"min":25,"max":85},
+    {"id":"right","key":"wifi.ap_count","label":"APS","style":"microtrend","x":8,"y":1,"w":4,"h":5,"min":0,"max":100}
+  ]
+}

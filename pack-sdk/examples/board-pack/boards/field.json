@@ -1,0 +1,11 @@
+{
+  "id": "field",
+  "label": "Field Board",
+  "widgets": [
+    {"id":"aps","key":"wifi.ap_count","label":"APS","style":"microtrend","x":0,"y":0,"w":6,"h":3,"min":0,"max":100},
+    {"id":"gps","key":"gps.satellites_used","label":"GPS SAT","style":"bar","x":6,"y":0,"w":6,"h":3,"min":0,"max":16},
+    {"id":"temp","key":"system.temp.cpu_c","label":"TEMP","style":"radial","x":0,"y":4,"w":4,"h":3,"min":25,"max":85},
+    {"id":"channel","key":"radio.primary.channel","label":"CHANNEL","style":"metric","x":4,"y":4,"w":4,"h":3},
+    {"id":"trip","key":"expedition.distance_m","label":"TRIP","style":"metric","x":8,"y":4,"w":4,"h":3}
+  ]
+}

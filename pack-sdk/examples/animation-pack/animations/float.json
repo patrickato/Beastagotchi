@@ -1,0 +1,25 @@
+{
+  "id": "float",
+  "label": "Gentle Float",
+  "target": "face",
+  "motion": {
+    "bob_px": 3,
+    "bob_period_s": 3.5,
+    "sway_px": 1.5,
+    "sway_period_s": 5.5,
+    "breath_px": 1,
+    "breath_period_s": 4.5
+  },
+  "orbit": {
+    "count": 2,
+    "radius_pct": 48,
+    "speed_rps": 0.06,
+    "dot_radius_px": 2,
+    "color_role": "accent"
+  },
+  "reactive": {
+    "alert": 1.7,
+    "excited": 1.4,
+    "sleep": 0.35
+  }
+}

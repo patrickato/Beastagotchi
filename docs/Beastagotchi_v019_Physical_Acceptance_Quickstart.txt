@@ -1,0 +1,100 @@
+BEASTAGOTCHI v0.19 — PI PHYSICAL ACCEPTANCE QUICKSTART
+=======================================================
+
+This package is for the bounded reference Pi 4 / 480×320 TFT acceptance session.
+
+IMPORTANT
+---------
+- Keep the entire GitHub artifact folder together.
+- The staging script verifies the commit-pinned source archive before installing.
+- Staging does NOT claim the TFT.
+- Beast UI remains stopped until you explicitly start the physical acceptance session.
+- Pwnagotchi's /opt/.pwn Python packages are not used for Beast-only QR packages.
+
+1) STAGE THE TESTED BUILD
+-------------------------
+From the extracted GitHub artifact folder:
+
+  sudo ./STAGE_ON_PI.sh --prepare-qr
+
+This:
+- verifies archive SHA-256 and source provenance;
+- installs the exact tested Beast Core/UI source;
+- preserves an existing Beast Core config;
+- starts Beast Core only;
+- installs qrcode 8.2 into /opt/beast-python/site-packages;
+- runs the target preflight;
+- leaves the Pwnagotchi display alone.
+
+If you do not want to test QR scanning yet:
+
+  sudo ./STAGE_ON_PI.sh
+
+2) START ONE BOUNDED TFT SESSION
+--------------------------------
+
+  sudo beast-v019-accept start 15
+
+The existing display-handoff rollback timer remains authoritative.
+
+3) USE THE TFT NORMALLY
+-----------------------
+During one substantial interaction window:
+
+- swipe through primary pages;
+- use footer/page navigation;
+- open/close Control Center;
+- open Apps and move through categories;
+- open Capsules;
+- inspect QR clarity/quiet border;
+- scan QR with a phone;
+- use PREV/NEXT and horizontal swipe;
+- open at least one dense operational surface;
+- open at least one visual/theme surface;
+- note readability, missed taps/swipes, clipping, stutter, glare, heat and polish.
+
+4) WHILE YOU ARE USING THE TFT
+------------------------------
+
+From SSH:
+
+  sudo beast-v019-accept sample 60
+
+This collects objective render/framebuffer/thermal evidence while you interact.
+
+5) END THE SESSION
+------------------
+
+Collect evidence without making a permanent ownership decision:
+
+  sudo beast-v019-accept finish observe
+
+Immediately return display ownership to Pwnagotchi:
+
+  sudo beast-v019-accept finish rollback
+
+Only if you explicitly want to confirm Beast display ownership:
+
+  sudo beast-v019-accept finish pass
+
+6) SEND BACK
+------------
+
+The command prints the private evidence archive path, normally:
+
+  /home/pi/beast-v019-physical-acceptance-<timestamp>.tar.gz
+
+Keep it private when sending it back for review. Framebuffer screenshots may
+contain whatever was visibly displayed on the TFT.
+
+Also tell ChatGPT what you physically noticed:
+- readability;
+- touch accuracy/feel;
+- navigation;
+- QR phone scanning;
+- QR frame switching;
+- smoothness;
+- brightness/glare;
+- thermal feel;
+- overall polish;
+- anything that annoyed you or felt especially good.

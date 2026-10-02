@@ -1,0 +1,28 @@
+{
+  "id": "orchard_example",
+  "label": "Orchard Example",
+  "geometry": "classic",
+  "background": "grid",
+  "face_style": "classic",
+  "footer_style": "classic",
+  "reaction_style": "pulse",
+  "scanlines": true,
+  "glow": "low",
+  "motion": "low",
+  "colors": {
+    "bg": "#0b110b",
+    "ink": "#111a11",
+    "panel": "#172217",
+    "panel2": "#1d2b1d",
+    "edge": "#355035",
+    "primary": "#9acb68",
+    "secondary": "#d5a85d",
+    "accent": "#dcefc2",
+    "info": "#8fc9c1",
+    "warn": "#e8c36b",
+    "danger": "#e07a74",
+    "text": "#edf4e5",
+    "dim": "#91a38b",
+    "scanline": "#294229"
+  }
+}

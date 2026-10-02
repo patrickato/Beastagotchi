@@ -18,7 +18,8 @@ _SAFE_PREFIXES=(
     'gps.service.','plugins.catalog_count','plugins.enabled_count',
     'plugins.integrated_count','plugins.display_conflict_count',
     'network.route.available','network.internet.state','library.',
-    'incidents.open_count','backups.count','system.beast_version',
+    'incidents.open_count','backups.count','system.beast_version','owner.',
+    'providers.','doctor.','plugins.provider_summary',
 )
 
 
@@ -85,6 +86,12 @@ class SupportBundleManager:
             base=Path(td)/'beast-support';base.mkdir()
             manifest={
                 'format':1,'created_at':now,'privacy':'sanitized','beast_version':snapshot.get('system.beast_version'),
+                'support_state':snapshot.get('owner.support_state','managed'),
+                'expert_mode_enabled':bool(snapshot.get('owner.expert_mode.enabled',False)),
+                'customized':bool(snapshot.get('owner.customized',False)),
+                'provider_preference_count':int(snapshot.get('providers.preference_count',0) or 0),
+                'doctor_state':snapshot.get('doctor.state'),
+                'doctor_attention_count':int(snapshot.get('doctor.attention_count',0) or 0),
                 'hostname_omitted':True,'raw_logs_included':False,'network_identifiers_included':False,'gps_coordinates_included':False,
             }
             (base/'manifest.json').write_text(json.dumps(manifest,indent=2,default=str)+'\n')

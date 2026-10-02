@@ -24,3 +24,30 @@ Every pack should be able to declare identity/version, compatible Beast/Pwnagotc
 Install/update should be transactional where practical and integrated with Beast backups, config snapshots, Action Broker, Task Center, health observation and Update Center.
 
 Inactive packs must not consume continuous compute merely because they are installed.
+
+## Extension role metadata
+
+Pack type remains a broad technical category. Do not create a new `pack_type`
+for every product idea.
+
+v0.19 manifests now also support:
+
+- `extension_class`: `pack` or `companion`;
+- `content_roles`: e.g. achievement catalog, trophy art, widget bundle,
+  challenge catalog, capsule schema;
+- `signals_provides`;
+- `signals_consumes`;
+- `offline_transports`;
+- `capsule_types`;
+- `companion.pwnagotchi_plugins`;
+- `companion.beast_apps`;
+- `companion.beast_packs`.
+
+A **Companion Expansion** may therefore describe one coherent user-facing feature
+whose pieces legitimately live in several subsystems without forcing all logic
+into one giant plugin or Pack.
+
+This metadata is descriptive until a dedicated activation adapter exists. It does
+not cause Pwnagotchi plugin installation, service changes or code execution by
+itself.
+

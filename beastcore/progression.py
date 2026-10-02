@@ -21,6 +21,18 @@ STAGES = [
     (100, 'Monstergotchi'),
 ]
 
+MONSTER_STAGES = [
+    (1, 'Origin'),
+    (5, 'Awakened'),
+    (10, 'Morph'),
+    (20, 'Adapted'),
+    (35, 'Chimera'),
+    (50, 'Ascendant'),
+    (70, 'Prime'),
+    (85, 'Mythic'),
+    (100, 'Monstergotchi'),
+]
+
 AURAS = [
     (0, 'none'),
     (10, 'static'),
@@ -78,17 +90,17 @@ RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic']
 
 ACHIEVEMENT_META = {
     # key: category, metric, target, description, hidden-until-unlocked
-    'first_signal': ('signals','lifetime_new_aps',1,'Discover a lifetime-first access point.',False),
-    'signals_10': ('signals','lifetime_new_aps',10,'Discover 10 lifetime-first access points.',False),
-    'signal_scout': ('signals','lifetime_new_aps',25,'Discover 25 lifetime-first access points.',False),
-    'signals_50': ('signals','lifetime_new_aps',50,'Discover 50 lifetime-first access points.',False),
-    'signal_tracker': ('signals','lifetime_new_aps',100,'Discover 100 lifetime-first access points.',False),
-    'signals_250': ('signals','lifetime_new_aps',250,'Discover 250 lifetime-first access points.',False),
-    'signal_hunter': ('signals','lifetime_new_aps',500,'Discover 500 lifetime-first access points.',False),
-    'signals_1000': ('signals','lifetime_new_aps',1000,'Discover 1,000 lifetime-first access points.',False),
-    'signals_2500': ('signals','lifetime_new_aps',2500,'Discover 2,500 lifetime-first access points.',False),
-    'signals_5000': ('signals','lifetime_new_aps',5000,'Discover 5,000 lifetime-first access points.',False),
-    'signals_10000': ('signals','lifetime_new_aps',10000,'Discover 10,000 lifetime-first access points.',False),
+    'first_signal': ('signals','beast_unique_aps',1,'Discover an access point this creature has never encountered.',False),
+    'signals_10': ('signals','beast_unique_aps',10,'Discover 10 unique access points with this creature.',False),
+    'signal_scout': ('signals','beast_unique_aps',25,'Discover 25 unique access points with this creature.',False),
+    'signals_50': ('signals','beast_unique_aps',50,'Discover 50 unique access points with this creature.',False),
+    'signal_tracker': ('signals','beast_unique_aps',100,'Discover 100 unique access points with this creature.',False),
+    'signals_250': ('signals','beast_unique_aps',250,'Discover 250 unique access points with this creature.',False),
+    'signal_hunter': ('signals','beast_unique_aps',500,'Discover 500 unique access points with this creature.',False),
+    'signals_1000': ('signals','beast_unique_aps',1000,'Discover 1,000 unique access points with this creature.',False),
+    'signals_2500': ('signals','beast_unique_aps',2500,'Discover 2,500 unique access points with this creature.',False),
+    'signals_5000': ('signals','beast_unique_aps',5000,'Discover 5,000 unique access points with this creature.',False),
+    'signals_10000': ('signals','beast_unique_aps',10000,'Discover 10,000 unique access points with this creature.',False),
     'first_vendor': ('vendors','vendors',1,'Identify your first hardware vendor.',False),
     'vendors_10': ('vendors','vendors',10,'Identify 10 unique hardware vendors.',False),
     'vendor_collector': ('vendors','vendors',25,'Identify 25 unique hardware vendors.',False),
@@ -145,9 +157,10 @@ def level_for_xp(xp: int) -> int:
     return lo
 
 
-def stage_for_level(level: int) -> str:
-    stage = STAGES[0][1]
-    for threshold, name in STAGES:
+def stage_for_level(level: int, kind: str = 'beast') -> str:
+    table = MONSTER_STAGES if str(kind).lower() == 'monster' else STAGES
+    stage = table[0][1]
+    for threshold, name in table:
         if level >= threshold:
             stage = name
     return stage
@@ -170,9 +183,12 @@ class ProgressionEngine:
     more than any active behavior.
     """
 
-    def __init__(self, state, path: str = '/var/lib/beastagotchi/profile.json') -> None:
+    def __init__(self, state, path: str = '/var/lib/beastagotchi/profile.json', profile_store=None) -> None:
         self.state = state
         self.path = Path(path)
+        self.profile_store = profile_store
+        self._active_beast_id = None
+        self._active_identity = {}
         self._last_tick = time.monotonic()
         self._runtime_dirty = 0.0
         self.profile = self._load()
@@ -194,6 +210,11 @@ class ProgressionEngine:
             'last_achievement': None,
             'counters': {
                 'lifetime_new_aps': 0,
+                'beast_unique_aps': 0,
+                'device_first_aps_witnessed': 0,
+                'familiar_discovery_xp_date': '',
+                'familiar_discovery_xp_day': 0,
+                'familiar_discovery_remainder': 0,
                 'vendors': 0,
                 'gps_locks': 0,
                 'handshakes': 0,
@@ -202,26 +223,59 @@ class ProgressionEngine:
         }
 
     def _load(self) -> dict[str, Any]:
-        try:
-            obj = json.loads(self.path.read_text())
-            if not isinstance(obj, dict):
-                raise ValueError('profile is not an object')
-        except Exception:
-            obj = self._default_profile()
+        if self.profile_store is not None:
+            self._active_identity = self.profile_store.active_identity()
+            self._active_beast_id = str(self._active_identity.get('id') or '')
+            obj = self.profile_store.load_profile(self._active_beast_id)
+        else:
+            try:
+                obj = json.loads(self.path.read_text())
+                if not isinstance(obj, dict):
+                    raise ValueError('profile is not an object')
+            except Exception:
+                obj = self._default_profile()
         base = self._default_profile()
         base.update(obj)
         if not isinstance(base.get('counters'), dict):
             base['counters'] = self._default_profile()['counters']
         else:
+            raw_counters = dict(base['counters'])
             c = self._default_profile()['counters']
-            c.update(base['counters'])
+            c.update(raw_counters)
+            # Pre-roster profiles used lifetime_new_aps for the one creature that
+            # existed. Preserve that exact progress when interpreting old JSON.
+            if 'beast_unique_aps' not in raw_counters:
+                c['beast_unique_aps'] = int(c.get('lifetime_new_aps') or 0)
+            c['lifetime_new_aps'] = int(c.get('beast_unique_aps') or 0)
             base['counters'] = c
         base['seen_vendors'] = list(dict.fromkeys(str(v) for v in (base.get('seen_vendors') or []) if str(v).strip()))
         base['achievements'] = list(dict.fromkeys(str(v) for v in (base.get('achievements') or []) if str(v).strip()))
         return base
 
+    def _ensure_active(self) -> bool:
+        if self.profile_store is None:
+            return False
+        identity = self.profile_store.active_identity()
+        active_id = str(identity.get('id') or '')
+        if active_id == self._active_beast_id:
+            self._active_identity = dict(identity)
+            return False
+        if self._active_beast_id:
+            self.profile_store.save_profile(str(self._active_beast_id), self.profile)
+        self._active_beast_id = active_id
+        self._active_identity = dict(identity)
+        self.profile = self._load()
+        self._runtime_dirty = 0.0
+        self._last_tick = time.monotonic()
+        return True
+
     def _save(self) -> None:
         self.profile['updated_at'] = time.time()
+        if self.profile_store is not None:
+            if not self._active_beast_id:
+                self._ensure_active()
+            self.profile_store.save_profile(str(self._active_beast_id), self.profile)
+            return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(prefix='.profile.', suffix='.json', dir=str(self.path.parent))
         try:
@@ -287,6 +341,7 @@ class ProgressionEngine:
         return rows
 
     def _state_values(self) -> dict[str, Any]:
+        self._ensure_active()
         xp = max(0, int(self.profile.get('xp') or 0))
         level = level_for_xp(xp)
         current = xp_threshold(level)
@@ -309,7 +364,7 @@ class ProgressionEngine:
             'progression.xp_current_level': max(0, xp - current),
             'progression.xp_next_level': next_needed,
             'progression.level_progress_pct': round(pct, 2),
-            'progression.stage': stage_for_level(level),
+            'progression.stage': stage_for_level(level, self._active_identity.get('kind') if self.profile_store is not None else 'beast'),
             'progression.aura': aura,
             'progression.session_unique': session_unique_i,
             'progression.achievements.count': len(self.profile.get('achievements') or []),
@@ -328,22 +383,34 @@ class ProgressionEngine:
             'progression.awards.count': sum(1 for row in self._award_catalog(level, session_unique_i) if row.get('unlocked')),
             'progression.achievement.last': self.profile.get('last_achievement'),
             'progression.vendors.count': len(self.profile.get('seen_vendors') or []),
+            'progression.discovery.beast_unique_aps': int((self.profile.get('counters') or {}).get('beast_unique_aps') or 0),
+            'progression.discovery.device_first_witnessed': int((self.profile.get('counters') or {}).get('device_first_aps_witnessed') or 0),
+            'progression.discovery.familiar_xp_today': int((self.profile.get('counters') or {}).get('familiar_discovery_xp_day') or 0),
+            'progression.discovery.familiar_xp_daily_cap': 20,
             'progression.lifetime_runtime_sec': round(float(self.profile.get('lifetime_runtime_sec') or 0.0), 1),
-            'progression.profile_path': str(self.path),
+            'progression.profile_path': self.profile_store.storage_label(str(self._active_beast_id)) if self.profile_store is not None else str(self.path),
+            'progression.storage': 'roster' if self.profile_store is not None else 'legacy_json',
+            'progression.beast.id': self._active_identity.get('id') if self.profile_store is not None else 'legacy',
+            'progression.beast.name': self._active_identity.get('name') if self.profile_store is not None else None,
+            'progression.beast.kind': self._active_identity.get('kind') if self.profile_store is not None else 'beast',
+            'progression.beast.lineage': self._active_identity.get('lineage_id') if self.profile_store is not None else 'legacy',
+            'progression.beast.generation': int(self._active_identity.get('generation') or 0) if self.profile_store is not None else 0,
+            'progression.roster.summary': self.profile_store.roster_summary() if self.profile_store is not None else {'total':1,'beasts':1,'monsters':0,'legends':0},
         }
 
     def _publish_state(self) -> None:
         self.state.update_many('progression', self._state_values(), priority=88)
 
     def _award(self, amount: int, reason: str) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         amount = max(0, int(amount))
         if amount <= 0:
             return []
         before_level = level_for_xp(int(self.profile.get('xp') or 0))
-        before_stage = stage_for_level(before_level)
+        before_stage = stage_for_level(before_level, self._active_identity.get('kind') if self.profile_store is not None else 'beast')
         self.profile['xp'] = int(self.profile.get('xp') or 0) + amount
         after_level = level_for_xp(int(self.profile['xp']))
-        after_stage = stage_for_level(after_level)
+        after_stage = stage_for_level(after_level, self._active_identity.get('kind') if self.profile_store is not None else 'beast')
         self._save(); self._publish_state()
         out: list[tuple[str, str, dict[str, Any], str]] = [
             ('progression.xp_awarded', 'progression', {'amount': amount, 'reason': reason, 'xp': self.profile['xp']}, 'info')
@@ -359,6 +426,7 @@ class ProgressionEngine:
         return out
 
     def _unlock_achievement(self, key: str) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         if key in set(self.profile.get('achievements') or []):
             return []
         label, bonus, rarity = ACHIEVEMENT_DEFS[key]
@@ -379,7 +447,7 @@ class ProgressionEngine:
     def _check_achievements(self) -> list[tuple[str, str, dict[str, Any], str]]:
         c = self.profile.get('counters') or {}
         level = level_for_xp(int(self.profile.get('xp') or 0))
-        apn = int(c.get('lifetime_new_aps') or 0)
+        apn = int(c.get('beast_unique_aps') or c.get('lifetime_new_aps') or 0)
         vendors = len(self.profile.get('seen_vendors') or [])
         gps = int(c.get('gps_locks') or 0)
         caps = int(c.get('handshakes') or 0)
@@ -404,20 +472,56 @@ class ProgressionEngine:
                 out.extend(self._unlock_achievement(key))
         return out
 
+    def _familiar_discovery_xp(self, familiar_count: int) -> int:
+        """1 XP per 3 creature-first-but-device-known APs, capped at 20 XP/day.
+
+        This makes a new creature's familiar world worth exploring without turning
+        one static set of nearby APs into an unlimited multi-roster XP source.
+        """
+        familiar_count=max(0,int(familiar_count))
+        if familiar_count<=0:return 0
+        c=self.profile.setdefault('counters',{})
+        today=time.strftime('%Y-%m-%d',time.gmtime())
+        if str(c.get('familiar_discovery_xp_date') or '')!=today:
+            c['familiar_discovery_xp_date']=today
+            c['familiar_discovery_xp_day']=0
+        used=max(0,int(c.get('familiar_discovery_xp_day') or 0))
+        remainder=max(0,int(c.get('familiar_discovery_remainder') or 0))
+        credits=remainder+familiar_count
+        possible=credits//3
+        c['familiar_discovery_remainder']=credits%3
+        awarded=min(possible,max(0,20-used))
+        c['familiar_discovery_xp_day']=used+awarded
+        return int(awarded)
+
     def on_event(self, ev) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         et = str(getattr(ev, 'type', '') or '')
         data = getattr(ev, 'data', {}) or {}
         out: list[tuple[str, str, dict[str, Any], str]] = []
         amount = 0; reason = ''
 
         if et == 'wifi.ap_discovered':
-            # Only lifetime-first APs count for persistent XP; session repeats do not.
-            try: new_lifetime = int(data.get('lifetime_new_count') or 0)
-            except Exception: new_lifetime = 0
-            if new_lifetime:
-                self.profile['counters']['lifetime_new_aps'] = int(self.profile['counters'].get('lifetime_new_aps') or 0) + new_lifetime
-                amount += new_lifetime
-                reason = 'new APs'
+            # Device-first discovery and creature-first discovery are separate.
+            try: device_new = max(0,int(data.get('device_new_count',data.get('lifetime_new_count',0)) or 0))
+            except Exception: device_new = 0
+            try: beast_new = max(device_new,int(data.get('beast_new_count',device_new) or 0))
+            except Exception: beast_new = device_new
+            familiar_new=max(0,beast_new-device_new)
+            if beast_new:
+                current=int(self.profile['counters'].get('beast_unique_aps') or self.profile['counters'].get('lifetime_new_aps') or 0)
+                current+=beast_new
+                self.profile['counters']['beast_unique_aps']=current
+                # Compatibility alias: this now means this creature's lifetime unique APs.
+                self.profile['counters']['lifetime_new_aps']=current
+            if device_new:
+                self.profile['counters']['device_first_aps_witnessed']=int(self.profile['counters'].get('device_first_aps_witnessed') or 0)+device_new
+                amount += device_new
+                reason = 'device-first AP discoveries'
+            familiar_xp=self._familiar_discovery_xp(familiar_new)
+            if familiar_xp:
+                amount += familiar_xp
+                reason = 'new-to-Beast discoveries' if not reason else reason+' + new-to-Beast discoveries'
             seen = set(self.profile.get('seen_vendors') or [])
             new_vendors = []
             for ap in data.get('aps') or []:
@@ -449,6 +553,7 @@ class ProgressionEngine:
         return out
 
     def tick(self) -> list[tuple[str, str, dict[str, Any], str]]:
+        self._ensure_active()
         now = time.monotonic()
         delta = max(0.0, min(60.0, now - self._last_tick))
         self._last_tick = now

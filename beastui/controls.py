@@ -19,14 +19,17 @@ GLOBAL_CONTROLS = [
 ]
 
 PAGE_HINTS = {
-    "home": "HOME: summary; tap-able widgets arrive as app/detail views mature.",
-    "recon": "RECON: radar/signal objects will gain tap-for-detail and filters.",
-    "networks": "NETWORKS: list/detail sorting and search are planned here.",
-    "spectrum": "SPECTRUM: per-widget renderer switching is the next major UI control.",
-    "captures": "CAPTURES: Capture Vault browsing/validation/session links live here.",
-    "map": "MAP: pan/layers/markers/routes will use the same interaction registry.",
-    "beast": "BEAST: progression, evolution, face packs, auras and achievements.",
-    "system": "SYSTEM: Hardware Studio, power, dock, services and diagnostics.",
+    "home": "HOME: Beast identity first; live mode, health and exploration stay glanceable.",
+    "overview": "OVERVIEW: attention first; Operations keeps the dense diagnostic detail.",
+    "dashboard": "DASHBOARD: user-composed live instruments; long-press a tile for its source.",
+    "recon": "RECON: tap the live field to cycle truthful views of observed Wi-Fi objects.",
+    "networks": "NETWORKS: strongest live APs here; deeper detail/search keeps the complete catalog.",
+    "spectrum": "SPECTRUM: tap the chart to change renderer; values are observed occupancy, not raw RF power.",
+    "captures": "CAPTURES: tap analytics to change renderer; Capture Vault holds indexed file detail.",
+    "map": "MAP: route trace uses recorded GPS fixes only; no fix means no invented position.",
+    "expedition": "EXPEDITION: live field-session glance; archive/replay belongs in deeper history.",
+    "beast": "BEAST: active creature progression, evolution, aura and achievement context.",
+    "system": "SYSTEM: health/resource glance; Hardware and Operations provide deeper controls.",
 }
 
 TOUCH_ZONES = [

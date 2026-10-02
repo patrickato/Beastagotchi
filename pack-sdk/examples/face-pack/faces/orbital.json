@@ -1,0 +1,26 @@
+{
+  "id": "orbital",
+  "label": "Orbital Companion",
+  "renderer": "vector",
+  "background": "transparent",
+  "fallback": "awake",
+  "expressions": {
+    "awake": [
+      {"type":"ellipse","box":[120,100,880,900],"stroke":"primary","width":3},
+      {"type":"ellipse","box":[280,350,410,500],"fill":"accent","stroke":"accent"},
+      {"type":"ellipse","box":[590,350,720,500],"fill":"accent","stroke":"accent"},
+      {"type":"arc","box":[330,480,670,780],"start":20,"end":160,"stroke":"primary","width":3}
+    ],
+    "alert": [
+      {"type":"polygon","points":[[120,500],[500,100],[880,500],[500,900]],"stroke":"danger","width":3},
+      {"type":"line","points":[[310,380],[430,500]],"stroke":"danger","width":3},
+      {"type":"line","points":[[690,380],[570,500]],"stroke":"danger","width":3}
+    ],
+    "sleep": [
+      {"type":"ellipse","box":[120,100,880,900],"stroke":"dim","width":2},
+      {"type":"arc","box":[250,330,440,500],"start":15,"end":165,"stroke":"primary","width":3},
+      {"type":"arc","box":[560,330,750,500],"start":15,"end":165,"stroke":"primary","width":3},
+      {"type":"line","points":[[400,680],[600,680]],"stroke":"dim","width":2}
+    ]
+  }
+}

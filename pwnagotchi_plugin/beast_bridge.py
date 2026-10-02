@@ -42,6 +42,28 @@ class BeastBridge(plugins.Plugin):
         except Exception as exc:
             logging.debug("BeastBridge write failed: %r", exc)
 
+    def _peer_data(self, peer):
+        def call(name, default=None):
+            try:
+                fn = getattr(peer, name, None)
+                return fn() if callable(fn) else default
+            except Exception:
+                return default
+        return {
+            "identity": call("identity", "???"),
+            "name": call("name", "???"),
+            "version": call("version", ""),
+            "face": call("face", ""),
+            "rssi": getattr(peer, "rssi", None),
+            "channel": getattr(peer, "last_channel", None),
+            "encounters": getattr(peer, "encounters", None),
+            "session_id": getattr(peer, "session_id", ""),
+            "pwnd_run": call("pwnd_run", 0),
+            "pwnd_total": call("pwnd_total", 0),
+            "uptime": call("uptime", 0),
+            "epoch": call("epoch", 0),
+        }
+
     def on_loaded(self): self._write("loaded")
     def on_ready(self, agent): self.state["pwnagotchi.mode"] = "ready"; self._write("ready")
     def on_channel_hop(self, agent, channel): self.state["radio.hop.current"] = channel; self._write("channel_hop", {"channel":channel})
@@ -81,9 +103,9 @@ class BeastBridge(plugins.Plugin):
         sta = client_station if isinstance(client_station, dict) else {}
         self._write("deauthentication", {"ap":ap.get("mac") or ap.get("hostname"), "client":sta.get("mac")})
     def on_peer_detected(self, agent, peer):
-        self.peer_count += 1; self.state["pwnagotchi.peers"] = self.peer_count; self._write("peer_detected")
+        self.peer_count += 1; self.state["pwnagotchi.peers"] = self.peer_count; self._write("peer_detected", self._peer_data(peer))
     def on_peer_lost(self, agent, peer):
-        self.peer_count = max(0,self.peer_count-1); self.state["pwnagotchi.peers"] = self.peer_count; self._write("peer_lost")
+        self.peer_count = max(0,self.peer_count-1); self.state["pwnagotchi.peers"] = self.peer_count; self._write("peer_lost", self._peer_data(peer))
     def on_bored(self, agent): self.state["pwnagotchi.mood"]="bored"; self._write("mood", {"mood":"bored"})
     def on_sad(self, agent): self.state["pwnagotchi.mood"]="sad"; self._write("mood", {"mood":"sad"})
     def on_excited(self, agent): self.state["pwnagotchi.mood"]="excited"; self._write("mood", {"mood":"excited"})
