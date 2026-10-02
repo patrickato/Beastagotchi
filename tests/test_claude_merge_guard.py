@@ -42,6 +42,21 @@ DENY = [
     "cat <(gh pr merge 31)",
     "bash <<< 'gh pr merge 31'",
     "gh pr merge 31 > /tmp/out",
+    # round 5: newlines separate commands
+    "echo preparing\ngh pr merge 31",
+    # round 5: leading redirections precede the executable
+    ">/tmp/merge.log gh pr merge 31",
+    "2>/dev/null gh pr merge 31",
+    # round 5: reserved words / compound commands
+    "if true; then gh pr merge 31; fi",
+    "{ gh pr merge 31; }",
+    # round 5: gh option value sits between pr and merge
+    "gh pr --repo owner/repo merge 31",
+    # round 5: ANSI-C here-string and a heredoc fed to a shell
+    "bash <<< $'gh pr merge 31'",
+    "bash <<'EOF'\ngh pr merge 31\nEOF",
+    # round 5: a quoted ) inside a substitution must not end it early
+    "echo \"$(printf ')'; gh pr merge 31)\"",
 ]
 
 ALLOW = [
@@ -61,6 +76,10 @@ ALLOW = [
     "echo 'docs: $(gh pr merge)'",
     # process substitution of a non-merge command stays allowed
     "diff <(echo a) <(echo b)",
+    # round 5: a GET on the merge endpoint only reads status; a commented merge is inert
+    "gh api repos/owner/repo/pulls/31/merge",
+    "gh api repos/owner/repo/pulls/31/merge --jq .merged",
+    "printf ok # $(gh pr merge 31)",
 ]
 
 
