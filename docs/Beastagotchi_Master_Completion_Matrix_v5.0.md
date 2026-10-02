@@ -2,7 +2,7 @@
 
 **Status date:** 2026-09-24  
 **Stable baseline:** v0.18.1 on `main`  
-**Active development:** `v0.19-unified-experience`, Draft PR #9  
+**Active development:** `integration/v0.19`  
 **Current v0.19 source gate:** **415 automated tests passing** + Python compile + shell syntax
 
 This is the current implementation checklist and anti-forgetting execution

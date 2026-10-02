@@ -143,8 +143,9 @@ readability and touch on the real screen.
 - A change to `beastui/**` attaches stress-state renders until CI renders them automatically.
   The states are: baseline, unknown/cold boot, degraded, critical fault or thermal, low battery,
   busy 2.4 GHz, and GPS route.
-- Physical evidence means the acceptance report (`tools/v019_acceptance_report.py --json`) for a
-  named `source_commit`. A hardware claim without one is anecdote.
+- Physical (tier 3) evidence is Patrick's recorded on-device judgment (`owner-decision.txt` or his
+  written observations) plus the acceptance report (`tools/v019_acceptance_report.py --json`) for
+  a named `source_commit`. The report alone isn't tier 3: it says `physical_user_judgment: required`.
 
 ## 9. Reviews and disagreements
 
@@ -191,8 +192,7 @@ python -m compileall -q beastcore beastui beaststudio
 bash -n install.sh install_ui.sh install_bridge.sh uninstall.sh validate_v018.sh   # CI checks more scripts
 ```
 
-Without `qrcode` (in `requirements-dev.txt`), three `test_v019_capsule_*` tests fail. That is
-environmental, not a regression.
+Without `qrcode` (from `requirements-dev.txt`) three `test_v019_capsule_*` tests fail; that's environmental.
 
 ## 13. Architecture map and gotchas
 

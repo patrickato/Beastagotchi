@@ -52,7 +52,7 @@ native-responsive Dashboard/Board renderer.
 are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
-Development lives on `v0.19-unified-experience` in Draft PR #9. The last green
+Development lives on `integration/v0.19`. The last green
 pre-reconstruction checkpoint passed **415 tests** plus Python compile/shell
 validation. Gate 1 has since been intentionally reopened for visual reconstruction
 and contract consolidation, so the active head must return to a new green source
