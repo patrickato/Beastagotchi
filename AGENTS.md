@@ -220,8 +220,7 @@ Gotchas:
 
 ## Review guidelines
 
-These apply to every reviewer, including Codex code review. Flag only real problems, and cite
-the file and line.
+For every reviewer, including Codex code review. Flag only real problems; cite file and line.
 
 Treat as **P0**:
 - Any path that writes to, commands or reconfigures Pwnagotchi, Bettercap or the radios, or that
@@ -244,6 +243,7 @@ Treat as **P1**:
 - New polling or rendering work that the thermal governor cannot shed, or unbounded growth in
   hot paths (state copies, event history, caches).
 - Hardware behaviour claimed from sandbox or CI results alone.
-- A PR without its header block (§6), or commits without an `AI-Agent:` trailer.
+- A PR without its header block (§6), or a PR commit without an `AI-Agent:` trailer. Check the
+  commits in `base..head`, not GitHub's synthetic merge commit.
 
 Do not flag style, naming or wording preferences unless asked.

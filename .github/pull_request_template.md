@@ -5,7 +5,7 @@ Touches:
 - 
 Reviewer: openai | claude
 Review-round: 0/3
-Evidence: CI | stress-state renders | off-screen Pi | physical Pi (acceptance JSON)
+Evidence: tier 1 source/CI (incl. stress-state renders) | tier 2 off-screen Pi | tier 3 physical Pi (acceptance JSON)
 
 ## Summary
 

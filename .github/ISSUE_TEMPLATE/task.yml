@@ -50,7 +50,7 @@ body:
     id: evidence
     attributes:
       label: Evidence required
-      description: Which tiers prove it. Tiers are CI, stress-state renders, off-screen Pi, or physical Pi (acceptance JSON).
+      description: Which evidence tiers prove it (AGENTS.md §8). 1 = source/CI, including stress-state renders; 2 = off-screen Pi; 3 = physical Pi (acceptance JSON).
     validations:
       required: true
   - type: textarea
