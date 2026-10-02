@@ -1,3 +1,12 @@
+<!-- Agents must fill in this header block (AGENTS.md §6). Humans may delete lines that don't apply. -->
+Agent: claude-code | openai-chatgpt | openai-codex | human
+Closes #
+Touches:
+- 
+Reviewer: openai | claude
+Review-round: 0/3
+Evidence: CI | stress-state renders | off-screen Pi | physical Pi (acceptance JSON)
+
 ## Summary
 
 What changed and why?
