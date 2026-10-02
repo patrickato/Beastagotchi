@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 from . import __version__
@@ -99,7 +100,7 @@ class BeastCore:
         self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
         self.semantic = SemanticEngine(self.state, self.store, active_beast_id=self.progression_store.current_id)
         self.global_achievements = GlobalAchievementEngine(self.state,self.store,self.roster)
-        self.rare = RareMomentEngine(self.state)
+        self.rare = RareMomentEngine(self.state, root=str(Path(db_path).parent / 'secrets'))
         self.ambient = AmbientContextEngine(self.state)
         self.governor = ResourceGovernor(self.state)
         self.expedition = ExpeditionEngine(self.state, self.store)
