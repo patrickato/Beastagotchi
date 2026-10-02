@@ -17,10 +17,13 @@ fi
 "$VENV/bin/python" -m pip install --quiet --disable-pip-version-check --root-user-action=ignore -r requirements-dev.txt
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  # Shell-escape the literal paths with %q so a clone path containing spaces or shell
+  # metacharacters ($HOME, $(...), backticks) is preserved verbatim when the file is sourced,
+  # while $PATH and $PYTHONPATH are still expanded at that time on purpose.
   {
-    echo "export VIRTUAL_ENV=\"$VENV\""
-    echo "export PATH=\"$VENV/bin:\$PATH\""
+    printf 'export VIRTUAL_ENV=%q\n' "$VENV"
+    printf 'export PATH=%q:"$PATH"\n' "$VENV/bin"
     # The import root is the repo root (there is no conftest.py); keep any existing entries.
-    echo "export PYTHONPATH=\"$CLAUDE_PROJECT_DIR\${PYTHONPATH:+:\$PYTHONPATH}\""
+    printf 'export PYTHONPATH=%q${PYTHONPATH:+:"$PYTHONPATH"}\n' "$CLAUDE_PROJECT_DIR"
   } >> "$CLAUDE_ENV_FILE"
 fi

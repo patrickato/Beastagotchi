@@ -18,6 +18,17 @@ DENY = [
     'bash -c "gh pr merge 31"',
     "curl -X PUT https://api.github.com/repos/o/r/pulls/31/merge",
     "echo 31 | xargs gh pr merge",
+    # round 3: wrappers with their own options must not hide the guarded command
+    "env -i gh pr merge 31",
+    "nice -n 5 gh pr merge 31",
+    "echo 31 | xargs -n1 gh pr merge",
+    "sudo -u ci gh pr merge 31",
+    "timeout 10 gh pr merge 31",
+    "env bash -c 'gh pr merge 31'",
+    # round 3: backslash-newline continuations are joined before parsing
+    "gh pr \\\nmerge 31",
+    "curl -X PUT \\\n https://api.github.com/repos/o/r/pulls/31/merge",
+    "gh api -X PUT \\\n repos/o/r/pulls/31/merge",
 ]
 
 ALLOW = [
@@ -27,6 +38,10 @@ ALLOW = [
     "printf '%s\\n' 'gh pr merge is forbidden'",
     "cat > /tmp/notes.md <<'EOF'\nUse mergePullRequest carefully\ngh pr merge 31\nEOF",
     'git commit -m "gh pr merge is blocked by the guard"',
+    # round 3: still allow searching/testing the guard itself, and unrelated merges
+    "rg 'pulls/31/merge' .claude/hooks",
+    "env FOO=bar git merge --no-ff origin/integration/v0.19",
+    "grep -r enablePullRequestAutoMerge tests",
 ]
 
 
