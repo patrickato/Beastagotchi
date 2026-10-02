@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
 import time
+from pathlib import Path
 from typing import Any
 
 from . import __version__
@@ -99,7 +101,13 @@ class BeastCore:
         self.progression = ProgressionEngine(self.state, profile_store=self.progression_store)
         self.semantic = SemanticEngine(self.state, self.store, active_beast_id=self.progression_store.current_id)
         self.global_achievements = GlobalAchievementEngine(self.state,self.store,self.roster)
-        self.rare = RareMomentEngine(self.state)
+        if db_path == ':memory:':
+            # An in-memory Core is throwaway, so its rare-moment seed is too.
+            self._scratch_dir = tempfile.TemporaryDirectory(prefix='beast-core-')
+            state_dir = Path(self._scratch_dir.name)
+        else:
+            state_dir = Path(db_path).parent
+        self.rare = RareMomentEngine(self.state, root=str(state_dir / 'secrets'))
         self.ambient = AmbientContextEngine(self.state)
         self.governor = ResourceGovernor(self.state)
         self.expedition = ExpeditionEngine(self.state, self.store)
