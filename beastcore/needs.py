@@ -12,10 +12,11 @@ class NeedsEngine:
     Four needs rise over hours and are eased by a real satisfying signal; heritage temperament
     shifts the rates (idea 2). A need whose driving signal is not present -- or whose driver has gone
     stale or unavailable -- is reported *unavailable* (``None`` here, published with
-    ``quality="unavailable"`` by Core) rather than a fabricated number (ADR-0008). Needs are
-    session-live for now; they start easing from boot and reset when the active Beast changes.
-    Cross-restart persistence is a planned follow-up. This engine never changes Pwnagotchi
-    behaviour; it only interprets observed state.
+    ``quality="unavailable"`` by Core) rather than a fabricated number (ADR-0008). Needs reset when
+    the active Beast changes. Given a Store, need state **persists across restarts** and **fades
+    gently while powered off** (see ``_restore``): a quick reboot resumes the Beast where it was, a
+    long absence relaxes it rather than freezing or resetting it (idea 1). This engine never changes
+    Pwnagotchi behaviour; it only interprets observed state.
 
     Published under the ``needs.*`` namespace (each an int 0-100, or unavailable):
 
@@ -32,14 +33,22 @@ class NeedsEngine:
     RISE_SEC = 4 * 3600.0        # neutral time for a time-based need to climb 0 -> 100
     TIRED_RISE_SEC = 2 * 3600.0  # full-swing of the tiredness integrator under sustained stress
     TIRED_FALL_SEC = 1 * 3600.0  # recovery time when conditions are good
+    OFF_FADE_HALF_LIFE_SEC = 6 * 3600.0  # powered-off relaxation: needs halve for every ~6h off
+    SAVE_INTERVAL_SEC = 60.0     # throttle for persisting need state to the Store
+    META_KEY = "needs.persistence"
 
-    def __init__(self, state, clock=time.monotonic) -> None:
+    def __init__(self, state, clock=time.monotonic, wall_clock=time.time, store=None) -> None:
         self.state = state
-        self.clock = clock
+        self.clock = clock              # monotonic: in-session rise/integration durations
+        self.wall_clock = wall_clock    # wall time: powered-off duration across a restart
+        self.store = store              # optional Store (meta KV); None -> session-live, no persistence
         now = clock()
         self._beast_id: Any = None
         self._last_tick = now
+        self._last_save = now
         self._reset_session(now)
+        if self.store is not None:
+            self._restore(now)
 
     def _reset_session(self, now: float) -> None:
         # Session baselines/integrator. Reset on construction and whenever the active Beast changes,
@@ -50,6 +59,57 @@ class NeedsEngine:
         self._peer_val: float | None = None
         self._peer_t = now
         self._tired = 0.0
+
+    def _restore(self, now: float) -> None:
+        # Load the last persisted need state and age it by how long the Beast was powered off. Needs
+        # are stored as their current *ages* (time since the last discovery/movement/peer) plus the
+        # tiredness integrator and a wall-clock stamp; on restore each is multiplied by a fade that
+        # decays with off-duration (half-life OFF_FADE_HALF_LIFE_SEC). A quick reboot (off ~= 0) keeps
+        # the needs intact; a long absence relaxes them toward 0 rather than freezing or resetting them.
+        try:
+            blob = self.store.get_meta_json(self.META_KEY, None)
+        except Exception:
+            blob = None
+        if not isinstance(blob, dict):
+            return
+        try:
+            off = max(0.0, float(self.wall_clock()) - float(blob["saved_at"]))
+            fade = 0.5 ** (off / self.OFF_FADE_HALF_LIFE_SEC)
+            self._beast_id = blob.get("beast_id", self._beast_id)
+            self._novelty_val = blob.get("novelty_val")
+            self._peer_val = blob.get("peer_val")
+            na, ma, pa = blob.get("novelty_age"), blob.get("move_age"), blob.get("peer_age")
+            if na is not None:
+                self._novelty_t = now - float(na) * fade
+            if ma is not None:
+                self._move_t = now - float(ma) * fade
+            if pa is not None:
+                self._peer_t = now - float(pa) * fade
+            self._tired = max(0.0, min(100.0, float(blob.get("tired", 0.0)) * fade))
+        except Exception:
+            # Corrupt/partial persisted state is not trusted -- fall back to a fresh session.
+            self._reset_session(now)
+
+    def _persist(self, now: float) -> None:
+        if self.store is None:
+            return
+        try:
+            self.store.set_meta_json(self.META_KEY, {
+                "saved_at": float(self.wall_clock()),
+                "beast_id": self._beast_id,
+                "novelty_age": (now - self._novelty_t) if self._novelty_val is not None else None,
+                "novelty_val": self._novelty_val,
+                "move_age": now - self._move_t,
+                "peer_age": (now - self._peer_t) if self._peer_val is not None else None,
+                "peer_val": self._peer_val,
+                "tired": self._tired,
+            })
+        except Exception:
+            pass
+
+    def save(self) -> None:
+        """Flush need state to the Store now (e.g. on a clean shutdown)."""
+        self._persist(self.clock())
 
     def _live(self, key: str) -> Any:
         # Per-key live-truth: return the value only while the registry considers the key live. A key
@@ -184,4 +244,7 @@ class NeedsEngine:
             out['needs.tiredness'] = int(round(self._tired))
 
         out['needs.source'] = 'derived_live'
+        if self.store is not None and (now - self._last_save) >= self.SAVE_INTERVAL_SEC:
+            self._persist(now)
+            self._last_save = now
         return out
