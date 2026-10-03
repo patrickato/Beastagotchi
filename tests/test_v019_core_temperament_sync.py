@@ -81,26 +81,31 @@ def test_switch_overwrites_previous_beast_no_stale():
     assert core._temperament_beast_id == "B"
 
 
-def test_empty_active_id_clears_to_neutral():
+def test_empty_active_id_marks_temperament_unavailable():
     core = _core({"A": _parent(curiosity=95, focus=95, boldness=95, nocturnal=95, social=95)}, "A")
     BeastCore._sync_temperament(core)
     assert _temp(core, "curiosity") == 95
     _set_active(core, "")  # no active Beast
     BeastCore._sync_temperament(core)
-    # A's 95 must not linger; neutral (50) is the honest "no temperament".
+    # A's 95 must not linger, and "no Beast" is published as unavailable -- not a plausible neutral a
+    # consumer couldn't tell from a real all-50 Beast (ADR-0008). The engine still falls back to 50.
     for axis in TEMPERAMENT_AXES:
-        assert _temp(core, axis) == 50
+        meta = core.state.meta("beast.temperament." + axis)
+        assert meta["quality"] == "unavailable"
+        assert meta["value"] is None
     assert core._temperament_beast_id == ""
 
 
-def test_lookup_failure_clears_to_neutral_without_raising():
+def test_lookup_failure_marks_temperament_unavailable_without_raising():
     core = _core({"A": _parent(curiosity=95, focus=95, boldness=95, nocturnal=95, social=95)}, "A")
     BeastCore._sync_temperament(core)
     assert _temp(core, "curiosity") == 95
     _set_active(core, "ghost")  # not in the roster -> roster.get raises BeastRosterError
     BeastCore._sync_temperament(core)  # must not propagate the exception
+    # An unreadable identity is published as unavailable (ADR-0008), not a plausible neutral.
     for axis in TEMPERAMENT_AXES:
-        assert _temp(core, axis) == 50
+        meta = core.state.meta("beast.temperament." + axis)
+        assert meta["quality"] == "unavailable" and meta["value"] is None
 
 
 def test_zero_axis_is_preserved_not_coerced_to_neutral():
