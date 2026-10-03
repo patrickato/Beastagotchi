@@ -48,7 +48,7 @@ from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .peerdex import PeerDex
 from .roster import BeastRoster
-from .heritage import normalize_parent_traits
+from .heritage import TEMPERAMENT_AXES, normalize_parent_traits
 from .global_sync import GlobalProfileSync
 from .memories import BeastMemoryEngine
 from .actions import ActionBroker
@@ -412,21 +412,28 @@ class BeastCore:
 
         Hot-path safe: reads the already-published active-Beast id each tick and only recomputes
         when it changes. Deliberately does not call roster.active() (which bootstraps a founder).
+
+        When there is no active Beast, or its identity cannot be read, every axis is published as
+        neutral (50) instead of leaving the previous Beast's values live (ADR-0008: stale data must
+        never be shown as live). The resolved id -- empty or unreadable included -- is cached, so a
+        persistent condition does not re-query the roster on every 2 s tick. A real axis value of 0
+        is kept (it is a valid heritage minimum), never coerced to neutral.
         """
         beast_id=str(self.state.get('progression.beast.id') or '')
-        if not beast_id or beast_id==self._temperament_beast_id:
+        if beast_id==self._temperament_beast_id:
             return
-        try:
-            temperament=normalize_parent_traits(self.roster.get(beast_id)).get('temperament',{})
-        except Exception:
-            return
+        temperament={}
+        if beast_id:
+            try:
+                temperament=normalize_parent_traits(self.roster.get(beast_id)).get('temperament',{}) or {}
+            except Exception:
+                temperament={}
         patch={}
-        for axis,value in (temperament or {}).items():
-            try:patch['beast.temperament.'+str(axis)]=max(0,min(100,int(value)))
-            except (TypeError,ValueError):continue
-        if patch:
-            self._temperament_beast_id=beast_id
-            self.state.update_many("personality", patch, priority=87)
+        for axis in TEMPERAMENT_AXES:
+            try:patch['beast.temperament.'+axis]=max(0,min(100,int(temperament[axis])))
+            except (KeyError,TypeError,ValueError):patch['beast.temperament.'+axis]=50
+        self._temperament_beast_id=beast_id
+        self.state.update_many("personality", patch, priority=87)
 
     async def _personality_loop(self) -> None:
         while not self.stop_event.is_set():

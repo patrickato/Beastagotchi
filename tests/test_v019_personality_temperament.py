@@ -66,3 +66,13 @@ def test_nocturnal_axis_depends_on_day_phase():
 def test_mood_selection_is_unchanged_by_temperament():
     # Temperament biases the numbers, not which mood is chosen.
     assert _out(curiosity=95, boldness=95)["beast.mood"] == _out(curiosity=5, boldness=5)["beast.mood"]
+
+
+def test_zero_axis_is_distinct_from_absent_neutral():
+    # A real 0 is a valid heritage minimum (0..100); it must bias toward the minimum, not be
+    # coerced to neutral by a truthiness default (finding F5 / P2). Absent still == neutral.
+    zero = _out(curiosity=0)
+    neutral = _out(curiosity=50)
+    absent = PersonalityEngine(FakeState(dict(BASE)), clock=lambda: 0.0).tick()
+    assert zero["beast.curiosity"] < neutral["beast.curiosity"]
+    assert absent["beast.curiosity"] == neutral["beast.curiosity"]

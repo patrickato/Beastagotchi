@@ -60,7 +60,11 @@ class PersonalityEngine:
         # deeper temperament->mood work belongs to the needs system. `social` is reserved for the
         # peer/needs system. Values stay live/derived (ADR-0008).
         def _temp(axis:str)->int:
-            try:return max(0,min(100,int(self.state.get('beast.temperament.'+axis,50) or 50)))
+            # Neutral (50) only when the axis is absent / None / invalid. A real 0 is a valid
+            # heritage minimum (0..100) and must be kept, so no truthiness `or 50` here (F5/P2).
+            v=self.state.get('beast.temperament.'+axis,50)
+            if v is None:return 50
+            try:return max(0,min(100,int(v)))
             except (TypeError,ValueError):return 50
         cur_t,foc_t,bold_t,noct_t=_temp('curiosity'),_temp('focus'),_temp('boldness'),_temp('nocturnal')
         night=phase in {'night','late_night'}
