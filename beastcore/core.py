@@ -49,6 +49,7 @@ from .incidents import IncidentEngine
 from .peerdex import PeerDex
 from .roster import BeastRoster
 from .heritage import TEMPERAMENT_AXES, normalize_parent_traits
+from .needs import NeedsEngine
 from .global_sync import GlobalProfileSync
 from .memories import BeastMemoryEngine
 from .actions import ActionBroker
@@ -119,6 +120,7 @@ class BeastCore:
         self.operator_policy = OperatorPolicy()
         self.personality = PersonalityEngine(self.state)
         self._temperament_beast_id = None
+        self.needs = NeedsEngine(self.state)
         self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
         self.packs = PackRegistryEngine(self.state, resolver=self.dependencies)
@@ -445,6 +447,11 @@ class BeastCore:
                 personality_patch=self.personality.tick()
                 self.state.update_many("personality", personality_patch, priority=87)
                 self.memories.observe_personality(personality_patch)
+                needs_patch=self.needs.tick()
+                live_needs={k:v for k,v in needs_patch.items() if v is not None}
+                absent_needs=[k for k,v in needs_patch.items() if v is None]
+                if live_needs:self.state.update_many("needs", live_needs, priority=86)
+                if absent_needs:self.state.update_many("needs", {k:None for k in absent_needs}, quality="unavailable", priority=86)
                 self.state.update_many("operator_session", {"operator.session":self.actions.operator_sessions.current(),"operator.policy.level":self.actions.operator_sessions.current().get("level","observer")}, priority=96)
             except Exception as exc:
                 log.exception("personality engine failed")

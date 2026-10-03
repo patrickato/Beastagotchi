@@ -47,3 +47,4 @@ See also `docs/ARCHITECTURE_CONTRACTS.md` — the full set of architecture contr
 - 0007 — No silent scope loss
 - 0008 — Live data, never decorative fiction
 - 0009 — Heritage temperament is a canonical `beast.*` contract
+- 0010 — The Beast's needs are a live, honest `needs.*` contract (Proposed)
