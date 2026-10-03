@@ -103,3 +103,17 @@ def test_field_xp_today_reads_zero_after_a_utc_day_rollover(tmp_path):
     engine.profile["counters"]["field_xp_day"] = 7
     engine._publish_state()
     assert state.get("progression.discovery.field_xp_today") == 7
+
+
+def test_familiar_xp_today_reads_zero_after_a_utc_day_rollover(tmp_path):
+    # Codex (#55 round 2): the shared _daily_today helper also governs familiar_xp_today, so cover its
+    # rollover explicitly -- a mistyped counter key would otherwise keep publishing yesterday's total.
+    state, engine = _runtime(tmp_path)
+    engine.profile["counters"]["familiar_discovery_xp_date"] = "2000-01-01"   # stale (past) UTC day
+    engine.profile["counters"]["familiar_discovery_xp_day"] = 12
+    engine._publish_state()
+    assert state.get("progression.discovery.familiar_xp_today") == 0
+    engine.profile["counters"]["familiar_discovery_xp_date"] = engine._utc_today()
+    engine.profile["counters"]["familiar_discovery_xp_day"] = 9
+    engine._publish_state()
+    assert state.get("progression.discovery.familiar_xp_today") == 9
