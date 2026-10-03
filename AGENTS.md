@@ -25,7 +25,7 @@ Pwnagotchi/Bettercap engine. It is not a fork of that engine.
    Work branches are short-lived and merge back by PR. Nothing new lands on `main` during v0.19
    except a hotfix Patrick asks for; he decides how `main` catches up at release. Old branch
    heads are preserved as `archive/<name>` tags.
-4. **Live data first.** Production views show real data, persisted data, or an explicit
+4. **Live data first (ADR-0008).** Production views show real data, persisted data, or an explicit
    "unavailable". They never show decorative fake telemetry, and unknown is never rendered as zero.
 5. **The TFT is the cockpit; the WebUI is the workshop (ADR-0004).**
 6. **Physical truth wins.** Every claim names the evidence tier that supports it (§8). A hardware
