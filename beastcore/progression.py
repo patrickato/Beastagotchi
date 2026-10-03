@@ -178,10 +178,19 @@ class ProgressionEngine:
     """Persistent, cosmetic progression derived from safe Beast activity.
 
     The engine never changes RF behavior. It only tracks identity/progression and
-    publishes state/events used by the UI. It intentionally rewards exploration,
-    longevity, first-time vendor discoveries, GPS locks and cataloged captures far
-    more than any active behavior.
+    publishes state/events used by the UI. XP is driven by genuine discovery --
+    first-time APs, vendors, GPS locks and cataloged captures -- not by idle uptime:
+    passive field time is a small daily floor and docked (at-home) uptime no longer
+    grinds XP, so a Beast that goes nowhere no longer levels like one that explores
+    (finding F3). Longevity still lands in the runtime achievements and records.
     """
+
+    # F3 -- field-time XP is a bounded floor, not the main source. The 1-XP-per-10-min
+    # drip accrues only while undocked (real field time) and is capped per day; genuine
+    # discovery (on_event) is uncapped and does the real leveling. Runtime achievements
+    # keep their one-time bonuses -- longevity belongs there, not in a per-tick drip.
+    FIELD_XP_AWARD_SEC = 600.0   # one field-time XP per 10 minutes undocked
+    FIELD_XP_DAILY_CAP = 20      # max field-time XP per day (mirrors the familiar-rediscovery cap)
 
     def __init__(self, state, path: str = '/var/lib/beastagotchi/profile.json', profile_store=None) -> None:
         self.state = state
@@ -215,6 +224,8 @@ class ProgressionEngine:
                 'familiar_discovery_xp_date': '',
                 'familiar_discovery_xp_day': 0,
                 'familiar_discovery_remainder': 0,
+                'field_xp_date': '',
+                'field_xp_day': 0,
                 'vendors': 0,
                 'gps_locks': 0,
                 'handshakes': 0,
@@ -387,6 +398,8 @@ class ProgressionEngine:
             'progression.discovery.device_first_witnessed': int((self.profile.get('counters') or {}).get('device_first_aps_witnessed') or 0),
             'progression.discovery.familiar_xp_today': int((self.profile.get('counters') or {}).get('familiar_discovery_xp_day') or 0),
             'progression.discovery.familiar_xp_daily_cap': 20,
+            'progression.discovery.field_xp_today': int((self.profile.get('counters') or {}).get('field_xp_day') or 0),
+            'progression.discovery.field_xp_daily_cap': self.FIELD_XP_DAILY_CAP,
             'progression.lifetime_runtime_sec': round(float(self.profile.get('lifetime_runtime_sec') or 0.0), 1),
             'progression.profile_path': self.profile_store.storage_label(str(self._active_beast_id)) if self.profile_store is not None else str(self.path),
             'progression.storage': 'roster' if self.profile_store is not None else 'legacy_json',
@@ -494,6 +507,26 @@ class ProgressionEngine:
         c['familiar_discovery_xp_day']=used+awarded
         return int(awarded)
 
+    def _grant_field_xp(self, raw_awards: int) -> int:
+        """Daily-capped field-time XP (finding F3).
+
+        ``raw_awards`` is the number of 10-minute field-time increments that elapsed this tick. XP is
+        granted up to ``FIELD_XP_DAILY_CAP`` per UTC day; increments past the cap are dropped, not
+        banked, so passive presence stays a small daily floor while genuine discovery drives leveling.
+        """
+        raw_awards = max(0, int(raw_awards))
+        if raw_awards <= 0:
+            return 0
+        c = self.profile.setdefault('counters', {})
+        today = time.strftime('%Y-%m-%d', time.gmtime())
+        if str(c.get('field_xp_date') or '') != today:
+            c['field_xp_date'] = today
+            c['field_xp_day'] = 0
+        used = max(0, int(c.get('field_xp_day') or 0))
+        grant = min(raw_awards, max(0, self.FIELD_XP_DAILY_CAP - used))
+        c['field_xp_day'] = used + grant
+        return int(grant)
+
     def on_event(self, ev) -> list[tuple[str, str, dict[str, Any], str]]:
         self._ensure_active()
         et = str(getattr(ev, 'type', '') or '')
@@ -557,14 +590,26 @@ class ProgressionEngine:
         now = time.monotonic()
         delta = max(0.0, min(60.0, now - self._last_tick))
         self._last_tick = now
+        # lifetime_runtime_sec is the longevity odometer -- it keeps counting all uptime, docked or
+        # not, because the runtime achievements and records below are built on it.
         self.profile['lifetime_runtime_sec'] = float(self.profile.get('lifetime_runtime_sec') or 0.0) + delta
-        remainder = float(self.profile.get('runtime_award_remainder_sec') or 0.0) + delta
-        awards = int(remainder // 600.0)
-        self.profile['runtime_award_remainder_sec'] = remainder - awards * 600.0
         out: list[tuple[str, str, dict[str, Any], str]] = []
+        # F3: field-time XP only. Accrue the 10-minute XP bucket solely while undocked (real field
+        # time); docked/at-home uptime neither earns XP nor banks seconds to dump on undock. Missing
+        # dock state defaults to "field" so a Beast with no home dock is never starved. The granted
+        # amount is daily-capped (_grant_field_xp), so idle presence can no longer dominate leveling.
+        field = not bool(self.state.get('dock.docked', False))
+        remainder = float(self.profile.get('runtime_award_remainder_sec') or 0.0)
+        awards = 0
+        if field:
+            remainder += delta
+            raw = int(remainder // self.FIELD_XP_AWARD_SEC)
+            remainder -= raw * self.FIELD_XP_AWARD_SEC
+            awards = self._grant_field_xp(raw)
+        self.profile['runtime_award_remainder_sec'] = remainder
         if awards:
             self.profile['counters']['runtime_awards'] = int(self.profile['counters'].get('runtime_awards') or 0) + awards
-            out.extend(self._award(awards, 'runtime milestone'))
+            out.extend(self._award(awards, 'field time'))
         else:
             self._runtime_dirty += delta
             if self._runtime_dirty >= 60.0:

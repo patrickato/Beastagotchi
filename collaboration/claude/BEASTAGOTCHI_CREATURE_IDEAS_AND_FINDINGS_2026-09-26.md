@@ -70,6 +70,8 @@ For scale: level 30 = 9,841 XP, level 50 = 22,779, level 100 = 70,182.
 
 This conflicts with the Adaptive Behavior spec's own rule that XP should reward varied use rather than repetition. **Opinion:** award time XP only for *field* time (`dock.docked` is false), or cap it per day. Keep total uptime for the runtime achievements and records, where longevity belongs.
 
+**Addressed (F3 fix).** `ProgressionEngine.tick()` now accrues the 10-minute XP bucket only while **undocked** (real field time) and caps it at **20 XP/day** (`FIELD_XP_DAILY_CAP`); docked/at-home uptime neither earns XP nor banks seconds for a burst on undock. `lifetime_runtime_sec` and the runtime achievements are unchanged, so longevity still lands there. Genuine discovery (`on_event`: new APs/vendors/GPS/captures) stays uncapped and drives leveling; ideas 10/11 add richer discovery XP on top later. Tests: `tests/test_v019_progression_field_xp.py`.
+
 ### F4. Data that arrives and is discarded
 
 - **Satellites:** gpsd's SKY message carries every satellite's PRN, elevation, azimuth, signal strength and whether it's used in the fix. `beastcore/collectors/gps.py:90` only counts them. This is the input for idea 11.
@@ -262,7 +264,7 @@ Suggested entries for the next Completion Matrix delta. All are `[ ]` planned un
 ```text
 - [ ] Fix personality cascade: novelty-keyed quiet timer; gps-searching/hunting not gated on always-on auto expedition (F1)
 - [ ] Fix personality GPS confidence check 'locked' -> 'fixed' (F2)
-- [ ] Rebalance runtime XP: field time only or daily cap; uptime stays in runtime achievements/records (F3)
+- [x] Rebalance runtime XP: field time only + daily cap; uptime stays in runtime achievements/records (F3) — done
 - [ ] Parse gpsd SKY satellite array into canonical keys (F4)
 - [ ] Persisted needs system (curiosity hunger / restlessness / loneliness / tiredness) replacing mood cascade
 - [ ] Heritage temperament axes bias needs and expression behaviour
