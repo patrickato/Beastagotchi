@@ -90,7 +90,14 @@ def test_a_new_network_resets_quiet():
 
 
 def test_recent_new_network_drives_curious_when_stationary():
-    assert _tick(**{"gps.state": "fixed", "wifi.ap_count": 20, "wifi.encounters.session_unique": 10})["beast.mood"] == "curious"
+    # curious (no-needs fallback) needs a genuine novelty edge, not just APs present at boot.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 20, "wifi.encounters.session_unique": 10})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()                                       # baseline, no discovery edge yet
+    s["wifi.encounters.session_unique"] = 11       # a genuinely new network
+    clock[0] = 25.0                                # past the mood dwell
+    assert e.tick()["beast.mood"] == "curious"
 
 
 # --- real motion, real captures, real GPS state ---------------------------------------------
@@ -160,11 +167,11 @@ def test_tick_returns_the_stable_beast_contract_keys():
 
 def test_hysteresis_holds_a_nonurgent_mood_but_urgent_preempts():
     clock = [0.0]
-    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 0})
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 0, "wifi.encounters.session_unique": 10})
     e = PersonalityEngine(s, clock=lambda: clock[0])
-    assert e.tick()["beast.mood"] == "idle"                     # establish idle at t0
+    assert e.tick()["beast.mood"] == "idle"                     # establish idle at t0 (aps 0, no edge)
     s["wifi.ap_count"] = 5
-    s["wifi.encounters.session_unique"] = 10
+    s["wifi.encounters.session_unique"] = 11                    # a genuine new network (novelty edge)
     clock[0] = 5.0
     assert e.tick()["beast.mood"] == "idle"                     # curious conditions, but within the dwell
     clock[0] = 30.0

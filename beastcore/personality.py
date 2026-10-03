@@ -225,7 +225,7 @@ class PersonalityEngine:
              (tiredness is None and night and quiet > QUIET_SLEEPY_SEC):
             raw = "sleepy"
         elif (hunger is not None and hunger >= HUNGRY_MOOD) or \
-             (hunger is None and aps > 0 and quiet < NOVELTY_WARM_SEC):
+             (hunger is None and aps > 0 and self._novel_seen and quiet < NOVELTY_WARM_SEC):
             raw = "curious"
         elif (restless is not None and restless >= RESTLESS_MOOD) or \
              (lonely is not None and lonely >= RESTLESS_MOOD) or \
