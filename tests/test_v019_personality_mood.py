@@ -219,9 +219,32 @@ def test_celebrating_ignores_capture_source_recovery():
     s["captures.total"] = 50                             # cache mounts with pre-existing captures
     clock[0] = 5.0
     assert e.tick()["beast.mood"] != "celebrating"
-    s["captures.total"] = 51                             # a real new capture (+1)
+    s["captures.total"] = 51                             # a real new capture (+1) on a now-positive base
     clock[0] = 10.0
     assert e.tick()["beast.mood"] == "celebrating"
+    # a *small* recovery (0 -> 5) is also a source becoming readable, not a live capture
+    clock2 = [0.0]
+    s2 = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 0})
+    e2 = PersonalityEngine(s2, clock=lambda: clock2[0])
+    e2.tick()
+    s2["captures.total"] = 5
+    clock2[0] = 5.0
+    assert e2.tick()["beast.mood"] != "celebrating"
+
+
+def test_switching_beasts_clears_pending_reactions():
+    # Celebrate/hunt are the active Beast's presentation; a roster switch must not inherit the previous
+    # Beast's pending reaction (e.g. a capture observed seconds before the switch).
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 5, "progression.beast.id": "A"})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["captures.total"] = 6
+    clock[0] = 2.0
+    assert e.tick()["beast.mood"] == "celebrating"       # Beast A celebrates its own capture
+    s["progression.beast.id"] = "B"
+    clock[0] = 5.0
+    assert e.tick()["beast.mood"] != "celebrating"       # Beast B does not inherit A's celebration
 
 
 # --- end to end: NeedsEngine + PersonalityEngine over a simulated day ------------------------

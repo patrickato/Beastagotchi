@@ -12,8 +12,6 @@ NOVELTY_WARM_SEC = 120.0     # recently found something new -> curious (fallback
 QUIET_SLEEPY_SEC = 600.0     # fallback: quiet this long at night -> sleepy (tiredness unavailable)
 QUIET_BORED_SEC = 900.0      # fallback: quiet this long -> bored (needs unavailable)
 CAPTURE_CELEBRATE_SEC = 60.0  # celebrate for this long after a genuinely new capture
-CAPTURE_MAX_DELTA = 10        # a live capture adds a few handshakes per tick; a larger jump is the
-                              # capture source mounting/recovering, not a capture happening now
 DWELL_MIN_SEC = 10.0         # a non-urgent mood is held at least this long (hysteresis) ...
 DWELL_FOCUS_SEC = 20.0       # ... plus up to this much more at maximum focus temperament (-> ~30 s)
 
@@ -116,6 +114,14 @@ class PersonalityEngine:
             self._beast_id = beast_id
             self._mood = None
             self._mood_since = now
+            # A new Beast does not inherit the previous one's pending reactions: re-baseline the
+            # novelty/capture detectors so it does not celebrate or hunt the prior Beast's events.
+            self._novel_t = now
+            self._novel_seen = False
+            self._sess_val = None
+            self._life_val = None
+            self._cap_t = None
+            self._cap_val = None
 
         # --- edge detectors: time since the last genuinely new network / capture ----------------
         # ``quiet`` keys on genuine novelty, not raw AP-count churn, so simply re-seeing the same
@@ -143,20 +149,17 @@ class PersonalityEngine:
 
         # ``celebrating`` fires on a real new capture (handshake); ``semantic.capture.recent`` --
         # the old gate -- has no producer, so it never fired. ``captures.total`` is the live count.
-        # Only a modest live increment counts as "a capture just happened": captures.total reads 0
-        # both for a genuinely empty cache and for an absent/unmounted one, so a later 0 -> N jump is
-        # the source recovering, not a capture now -- update the baseline but do not celebrate it.
+        # captures.total reads 0 both for a genuinely empty cache and for an absent/unmounted one, so
+        # a rise from a zero/uninitialized baseline (of any size) is the source becoming readable, not
+        # a capture happening now. Only an increase above an already-positive -- i.e. confirmed
+        # non-empty -- baseline counts as a live capture worth celebrating.
         cap = self._num("captures.total")
         if cap is None:
             cap = self._num("pwnagotchi.handshakes")
         if cap is not None:
-            if self._cap_val is None:
-                self._cap_val = cap
-            elif cap > self._cap_val:
-                delta = cap - self._cap_val
-                self._cap_val = cap
-                if delta <= CAPTURE_MAX_DELTA:
-                    self._cap_t = now
+            if self._cap_val is not None and self._cap_val > 0 and cap > self._cap_val:
+                self._cap_t = now
+            self._cap_val = cap
         recent_capture = self._cap_t is not None and (now - self._cap_t) <= CAPTURE_CELEBRATE_SEC
 
         # --- observed conditions ----------------------------------------------------------------
