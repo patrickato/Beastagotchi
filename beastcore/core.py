@@ -48,6 +48,7 @@ from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .peerdex import PeerDex
 from .roster import BeastRoster
+from .heritage import normalize_parent_traits
 from .global_sync import GlobalProfileSync
 from .memories import BeastMemoryEngine
 from .actions import ActionBroker
@@ -117,6 +118,7 @@ class BeastCore:
         self.field_library = FieldLibraryEngine(self.state, self.store)
         self.operator_policy = OperatorPolicy()
         self.personality = PersonalityEngine(self.state)
+        self._temperament_beast_id = None
         self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
         self.packs = PackRegistryEngine(self.state, resolver=self.dependencies)
@@ -405,9 +407,31 @@ class BeastCore:
             except asyncio.TimeoutError: pass
 
 
+    def _sync_temperament(self) -> None:
+        """Publish the active Beast's heritage temperament to state when it changes (finding F5).
+
+        Hot-path safe: reads the already-published active-Beast id each tick and only recomputes
+        when it changes. Deliberately does not call roster.active() (which bootstraps a founder).
+        """
+        beast_id=str(self.state.get('progression.beast.id') or '')
+        if not beast_id or beast_id==self._temperament_beast_id:
+            return
+        try:
+            temperament=normalize_parent_traits(self.roster.get(beast_id)).get('temperament',{})
+        except Exception:
+            return
+        patch={}
+        for axis,value in (temperament or {}).items():
+            try:patch['beast.temperament.'+str(axis)]=max(0,min(100,int(value)))
+            except (TypeError,ValueError):continue
+        if patch:
+            self._temperament_beast_id=beast_id
+            self.state.update_many("personality", patch, priority=87)
+
     async def _personality_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
+                self._sync_temperament()
                 personality_patch=self.personality.tick()
                 self.state.update_many("personality", personality_patch, priority=87)
                 self.memories.observe_personality(personality_patch)
