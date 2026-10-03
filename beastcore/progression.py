@@ -396,9 +396,9 @@ class ProgressionEngine:
             'progression.vendors.count': len(self.profile.get('seen_vendors') or []),
             'progression.discovery.beast_unique_aps': int((self.profile.get('counters') or {}).get('beast_unique_aps') or 0),
             'progression.discovery.device_first_witnessed': int((self.profile.get('counters') or {}).get('device_first_aps_witnessed') or 0),
-            'progression.discovery.familiar_xp_today': int((self.profile.get('counters') or {}).get('familiar_discovery_xp_day') or 0),
+            'progression.discovery.familiar_xp_today': self._daily_today('familiar_discovery_xp_day', 'familiar_discovery_xp_date'),
             'progression.discovery.familiar_xp_daily_cap': 20,
-            'progression.discovery.field_xp_today': int((self.profile.get('counters') or {}).get('field_xp_day') or 0),
+            'progression.discovery.field_xp_today': self._daily_today('field_xp_day', 'field_xp_date'),
             'progression.discovery.field_xp_daily_cap': self.FIELD_XP_DAILY_CAP,
             'progression.lifetime_runtime_sec': round(float(self.profile.get('lifetime_runtime_sec') or 0.0), 1),
             'progression.profile_path': self.profile_store.storage_label(str(self._active_beast_id)) if self.profile_store is not None else str(self.path),
@@ -494,7 +494,7 @@ class ProgressionEngine:
         familiar_count=max(0,int(familiar_count))
         if familiar_count<=0:return 0
         c=self.profile.setdefault('counters',{})
-        today=time.strftime('%Y-%m-%d',time.gmtime())
+        today=self._utc_today()
         if str(c.get('familiar_discovery_xp_date') or '')!=today:
             c['familiar_discovery_xp_date']=today
             c['familiar_discovery_xp_day']=0
@@ -518,7 +518,7 @@ class ProgressionEngine:
         if raw_awards <= 0:
             return 0
         c = self.profile.setdefault('counters', {})
-        today = time.strftime('%Y-%m-%d', time.gmtime())
+        today = self._utc_today()
         if str(c.get('field_xp_date') or '') != today:
             c['field_xp_date'] = today
             c['field_xp_day'] = 0
@@ -526,6 +526,19 @@ class ProgressionEngine:
         grant = min(raw_awards, max(0, self.FIELD_XP_DAILY_CAP - used))
         c['field_xp_day'] = used + grant
         return int(grant)
+
+    @staticmethod
+    def _utc_today() -> str:
+        return time.strftime('%Y-%m-%d', time.gmtime())
+
+    def _daily_today(self, day_key: str, date_key: str) -> int:
+        # A per-UTC-day counter reads 0 once the day has rolled over, even before the next award resets
+        # it, so a stale "today" total is never published as live (finding F3 review; ADR-0008). Applied
+        # to both the field-time and familiar-rediscovery daily counts.
+        c = self.profile.get('counters') or {}
+        if str(c.get(date_key) or '') != self._utc_today():
+            return 0
+        return int(c.get(day_key) or 0)
 
     def on_event(self, ev) -> list[tuple[str, str, dict[str, Any], str]]:
         self._ensure_active()

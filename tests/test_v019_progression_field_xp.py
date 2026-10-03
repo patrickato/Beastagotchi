@@ -89,3 +89,17 @@ def test_discovery_xp_is_uncapped_and_drives_leveling(tmp_path):
     xp = int(engine.profile["xp"])
     assert xp >= 200                                             # >= 1 XP per device-first AP, uncapped
     assert xp > engine.FIELD_XP_DAILY_CAP * 5                    # dwarfs a whole day's idle field floor
+
+
+def test_field_xp_today_reads_zero_after_a_utc_day_rollover(tmp_path):
+    # Codex P1: the published daily count must not keep showing yesterday's capped total after midnight
+    # UTC, even while docked / before the next award resets the stored counter.
+    state, engine = _runtime(tmp_path)
+    engine.profile["counters"]["field_xp_date"] = "2000-01-01"   # a stale (past) UTC day
+    engine.profile["counters"]["field_xp_day"] = 15
+    engine._publish_state()
+    assert state.get("progression.discovery.field_xp_today") == 0
+    engine.profile["counters"]["field_xp_date"] = engine._utc_today()   # today -> live count shows
+    engine.profile["counters"]["field_xp_day"] = 7
+    engine._publish_state()
+    assert state.get("progression.discovery.field_xp_today") == 7
