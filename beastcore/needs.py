@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 
@@ -59,57 +60,123 @@ class NeedsEngine:
         self._peer_val: float | None = None
         self._peer_t = now
         self._tired = 0.0
+        self._restlessness_restore_pending = False  # a restored restlessness age is awaiting the first GPS fix
+        self._pending_decay: dict[str, Any] | None = None  # deferred powered-off fade (applied once wall clock is trusted)
+        self._decay_probe: tuple[float, float] | None = None  # (wall, mono) of the first trustworthy reading
+
+    @staticmethod
+    def _finite(x: Any) -> float | None:
+        # A real, finite number or None -- so a corrupt blob (NaN/inf/non-numeric) never reaches the
+        # tick-time float comparisons and raises there instead of taking the fresh-session fallback.
+        try:
+            v = float(x)
+        except (TypeError, ValueError):
+            return None
+        return v if math.isfinite(v) else None
+
+    def _capped_age(self, age: float, axis: str | None) -> float:
+        # Cap an age at its *saturation* age (where the need already reads 100) before it is persisted,
+        # so the powered-off half-life then halves the need *value*, not an unbounded age: a need saved
+        # saturated fades 100 -> ~50 over one half-life instead of staying pinned at 100. rate matches
+        # tick(): restlessness is 1.0 (axis=None), curiosity/loneliness scale with temperament.
+        rate = 1.0 if axis is None else (0.5 + self._temp(axis) / 100.0)
+        cap = self.RISE_SEC / rate if rate > 0 else self.RISE_SEC
+        return max(0.0, min(float(age), cap))
 
     def _restore(self, now: float) -> None:
-        # Load the last persisted need state and age it by how long the Beast was powered off. Needs
-        # are stored as their current *ages* (time since the last discovery/movement/peer) plus the
-        # tiredness integrator and a wall-clock stamp; on restore each is multiplied by a fade that
-        # decays with off-duration (half-life OFF_FADE_HALF_LIFE_SEC). A quick reboot (off ~= 0) keeps
-        # the needs intact; a long absence relaxes them toward 0 rather than freezing or resetting them.
+        # Load the last persisted need state. Needs are stored as their current *ages* (time since the
+        # last discovery/movement/peer, already capped at saturation) plus the tiredness value and a
+        # wall-clock stamp. The ages are loaded *un-faded* here (quick-reboot semantics); the
+        # powered-off fade is applied lazily by _maybe_decay once the wall clock is trustworthy, so a
+        # bad boot clock (unset RTC reading behind/at epoch) can never bake in a bogus decay (ADR-0008).
         try:
             blob = self.store.get_meta_json(self.META_KEY, None)
         except Exception:
             blob = None
         if not isinstance(blob, dict):
             return
-        try:
-            off = max(0.0, float(self.wall_clock()) - float(blob["saved_at"]))
-            fade = 0.5 ** (off / self.OFF_FADE_HALF_LIFE_SEC)
-            self._beast_id = blob.get("beast_id", self._beast_id)
-            self._novelty_val = blob.get("novelty_val")
-            self._peer_val = blob.get("peer_val")
-            na, ma, pa = blob.get("novelty_age"), blob.get("move_age"), blob.get("peer_age")
-            if na is not None:
-                self._novelty_t = now - float(na) * fade
-            if ma is not None:
-                self._move_t = now - float(ma) * fade
-            if pa is not None:
-                self._peer_t = now - float(pa) * fade
-            self._tired = max(0.0, min(100.0, float(blob.get("tired", 0.0)) * fade))
-        except Exception:
-            # Corrupt/partial persisted state is not trusted -- fall back to a fresh session.
-            self._reset_session(now)
+        saved_at = self._finite(blob.get("saved_at"))
+        if saved_at is None:
+            return  # no trustworthy save stamp -> keep the fresh session rather than guess
+        self._beast_id = blob.get("beast_id", self._beast_id)
+        self._novelty_val = self._finite(blob.get("novelty_val"))
+        self._peer_val = self._finite(blob.get("peer_val"))
+        na = self._finite(blob.get("novelty_age"))
+        ma = self._finite(blob.get("move_age"))
+        pa = self._finite(blob.get("peer_age"))
+        tired = self._finite(blob.get("tired")) or 0.0
+        if na is not None:
+            self._novelty_t = now - max(0.0, na)
+        if ma is not None:
+            self._move_t = now - max(0.0, ma)
+        if pa is not None:
+            self._peer_t = now - max(0.0, pa)
+        self._tired = max(0.0, min(100.0, tired))
+        # A restored restlessness age must survive the pre-fix startup window (Codex P1): keep it pending
+        # until the first live fix realizes it, instead of the normal "re-baseline during an outage".
+        self._restlessness_restore_pending = ma is not None
+        # Defer the fade; _maybe_decay applies it once the wall clock is confirmed trustworthy.
+        self._pending_decay = {"saved_at": saved_at, "restore_mono": now,
+                               "na": na, "ma": ma, "pa": pa, "tired0": self._tired}
 
-    def _persist(self, now: float) -> None:
+    def _maybe_decay(self, now: float) -> None:
+        # Apply the deferred powered-off fade, but only once the wall clock is trustworthy. A clock
+        # behind the save stamp (unsynced/epoch at boot) is not trusted -- we keep the needs preserved
+        # and re-check next tick rather than treating skew as a huge outage. A single transient spike
+        # is rejected by requiring two consistent readings (wall advancing ~ like the monotonic clock),
+        # so a clock that briefly jumps far into the future cannot zero the needs (Codex P1).
+        pd = self._pending_decay
+        if pd is None:
+            return
+        w = float(self.wall_clock())
+        off = w - pd["saved_at"]
+        if off < 0.0:
+            self._decay_probe = None  # clock behind the stamp -> not trustworthy yet; preserve, revisit
+            return
+        probe = self._decay_probe
+        if probe is None:
+            self._decay_probe = (w, now)  # first trustworthy reading; confirm it is stable next tick
+            return
+        w0, mono0 = probe
+        if abs((w - w0) - (now - mono0)) > 5.0:
+            self._decay_probe = (w, now)  # clock jumped between readings -> re-probe, don't trust it
+            return
+        fade = 0.5 ** (off / self.OFF_FADE_HALF_LIFE_SEC)
+        elapsed = max(0.0, now - pd["restore_mono"])  # real run-time since restore keeps accruing
+        if pd["na"] is not None:
+            self._novelty_t = now - (max(0.0, pd["na"]) * fade + elapsed)
+        if pd["ma"] is not None:
+            self._move_t = now - (max(0.0, pd["ma"]) * fade + elapsed)
+        if pd["pa"] is not None:
+            self._peer_t = now - (max(0.0, pd["pa"]) * fade + elapsed)
+        self._tired = max(0.0, min(100.0, pd["tired0"] * fade))
+        self._pending_decay = None
+        self._decay_probe = None
+
+    def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
             return
         try:
             self.store.set_meta_json(self.META_KEY, {
                 "saved_at": float(self.wall_clock()),
                 "beast_id": self._beast_id,
-                "novelty_age": (now - self._novelty_t) if self._novelty_val is not None else None,
+                "novelty_age": self._capped_age(now - self._novelty_t, "curiosity") if self._novelty_val is not None else None,
                 "novelty_val": self._novelty_val,
-                "move_age": now - self._move_t,
-                "peer_age": (now - self._peer_t) if self._peer_val is not None else None,
+                "move_age": self._capped_age(now - self._move_t, None),
+                "peer_age": self._capped_age(now - self._peer_t, "social") if self._peer_val is not None else None,
                 "peer_val": self._peer_val,
                 "tired": self._tired,
             })
         except Exception:
-            pass
+            # A periodic in-tick save swallows transient write errors so the loop never dies; the
+            # explicit clean-shutdown save (strict) propagates so BeastCore.run() can log a real
+            # failure instead of silently leaving a stale checkpoint (Codex P2).
+            if strict:
+                raise
 
     def save(self) -> None:
-        """Flush need state to the Store now (e.g. on a clean shutdown)."""
-        self._persist(self.clock())
+        """Flush need state to the Store now (e.g. on a clean shutdown); raises on a real write error."""
+        self._persist(self.clock(), strict=True)
 
     def _live(self, key: str) -> Any:
         # Per-key live-truth: return the value only while the registry considers the key live. A key
@@ -154,6 +221,10 @@ class NeedsEngine:
             self._beast_id = beast_id
             self._reset_session(now)
 
+        # Apply any deferred powered-off fade now that we are ticking (a Beast-identity change above
+        # clears it, so there is nothing to fade onto a different Beast's fresh session).
+        self._maybe_decay(now)
+
         # curiosity_hunger -- rises since the last lifetime-first discovery; eased by novelty.
         novelty = self._num('wifi.encounters.lifetime_unique')
         if novelty is None:
@@ -177,11 +248,15 @@ class NeedsEngine:
         # Only an actual fix is usable motion evidence: "unavailable"/"connected_no_fix" are live values
         # with no position, and a stale gps.state reads as "unknown" (per-key quality) -- neither is a fix.
         if motion == 'unknown' or str(self._live('gps.state') or 'unknown') != 'fixed':
-            # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
-            # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100).
-            self._move_t = now
+            # Movement is unknowable now. Normally re-baseline so a real outage is not charged on recovery
+            # (a 4h GPS gap must not resume as an instant restlessness=100). But while a *restored*
+            # restlessness age is still waiting for the first boot fix, preserve it instead of erasing it
+            # (Codex P1: an unknown startup sample must not wipe known persisted state).
+            if not self._restlessness_restore_pending:
+                self._move_t = now
             out['needs.restlessness'] = None
         else:
+            self._restlessness_restore_pending = False  # first live fix realizes the restored age
             if motion in _MOVING:
                 self._move_t = now  # moving now -> restlessness eases to 0
             out['needs.restlessness'] = self._rise(now - self._move_t, self.RISE_SEC, 1.0)
