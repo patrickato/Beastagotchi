@@ -1,9 +1,18 @@
 # Beastagotchi Canonical Architecture Contracts
 
-**Date:** 2026-09-27  
-**Status:** canonical pre-implementation architecture rewrite after Doctor, Capability Expansion, AI, Monster, and Security/Pentest reconciliation  
-**Implementation:** still paused until the companion build-order/roadmap rewrite is completed
+**Status:** Living (canonical) — the single home for Beastagotchi's architecture contracts.
+**Originated:** 2026-09-27, as the pre-implementation synthesis of the Architecture Contract Reviews (Parts 1–11).
+**Promoted to live / reconciled:** 2026-10-03, against ADRs 0001–0009 and the current `integration/v0.19` code.
 
+This file is the **what-must-be-true** layer of Beastagotchi's architecture — one corner of a triad:
+
+- **Contracts (this file)** — what must be true.
+- **ADRs** (`docs/adr/`) — the costly-to-reverse *decisions* behind specific contracts, with rationale (`docs/adr/README.md` is the index + rules map).
+- **Migration ledger** (`docs/architecture_migration_ledger.json`) — *how far* each contract is migrated in code, with runtime/legacy paths and test evidence.
+
+Where a contract maps to a decision we would not want to reverse silently, an ADR governs it and is authoritative: Pwnagotchi/Bettercap boundary → ADR-0001; canonical state via Beast Core → ADR-0002; one physical presentation owner → ADR-0003; TFT vs WebUI → ADR-0004; optional growth via Beast Packs → ADR-0005; recovery evidence persists → ADR-0006; no silent scope loss → ADR-0007; live data, never decorative fiction → ADR-0008; heritage temperament as a `beast.*` contract → ADR-0009.
+
+**Provenance & scope.** The eleven source reviews (`Architecture_Contract_Review_Part1..11`) remain archived under `docs/archive/from-branches/visual-reference-archive/` and are not edited here. This promotion reconciles the front matter and cross-links; the contract bodies below are the 2026-09-27 synthesis. Per-contract verification against current code is tracked incrementally in the migration ledger, not re-audited line-by-line here.
 ---
 
 # 1. Product identity

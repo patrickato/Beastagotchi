@@ -27,11 +27,14 @@ Beastagotchi's rules intentionally live in three places for three audiences: **A
 | Recovery evidence persists locally | 0006 | — | — |
 | No silent scope loss | 0007 | §2.2 | #12 |
 | Live data, never decorative fiction | 0008 | §2.4 | #3, #13 |
+| Heritage temperament is a canonical `beast.*` contract | 0009 | — | — |
 | Layer separation (UI / theme / layout / renderer / face) | — | — | #4–#7, §33 |
 | Visual richness degrades gracefully | — | — | #8 |
 | Offline exchange is first-class | — | — | #11 |
 
 Rules without an ADR live in the Bible as their canonical home. Promote one to an ADR when it becomes a decision that would be costly to reverse.
+
+See also `docs/ARCHITECTURE_CONTRACTS.md` — the full set of architecture contracts (the *what-must-be-true* layer these decisions sit within) — and `docs/architecture_migration_ledger.json` (how far each contract is migrated in code).
 
 ## The ADRs
 
@@ -43,4 +46,4 @@ Rules without an ADR live in the Bible as their canonical home. Promote one to a
 - 0006 — Recovery evidence persists locally
 - 0007 — No silent scope loss
 - 0008 — Live data, never decorative fiction
-- 0009 — Heritage temperament is a canonical `beast.*` contract (Proposed)
+- 0009 — Heritage temperament is a canonical `beast.*` contract
