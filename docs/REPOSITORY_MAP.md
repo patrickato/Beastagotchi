@@ -42,6 +42,12 @@ installers, tests or active documentation still depend on its exact path, keep i
 active until those references are migrated safely. Use `docs/README.md` as the
 navigation/source-of-truth layer. See `docs/REPOSITORY_HYGIENE.md` for the living cleanup/archive policy and unresolved consolidation candidates.
 
+### Architecture contracts & canonical references
+- `docs/ARCHITECTURE_CONTRACTS.md` — the canonical architecture contracts (what must be true); the *what* layer of the contracts ↔ ADRs ↔ migration-ledger triad.
+- `docs/adr/` — Architecture Decision Records (costly-to-reverse decisions); see `docs/adr/README.md` for the rules map and index.
+- `docs/architecture_migration_ledger.json` — per-contract migration status with runtime paths and test evidence.
+- `docs/Beastagotchi_Canonical_Data_Keys_v7.json` — the single consolidated canonical state-key spec (supersedes v1–v6, archived under `docs/archive/superseded-specs/`); guarded by `tests/test_canonical_data_keys.py`.
+
 
 ## Extension / Capsule additions
 

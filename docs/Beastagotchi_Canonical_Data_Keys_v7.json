@@ -1,7 +1,7 @@
 {
   "schema_version": 7,
   "generated": "2026-10-03",
-  "description": "Single consolidated canonical state-key spec, superseding v1-v6 (archived under docs/archive/superseded-specs/). Not loaded by code. VERIFICATION SCOPE: the `beast` namespace is checked bidirectionally against PersonalityEngine.tick() by tests/test_canonical_data_keys.py -- it holds exactly the beast.* keys the engine emits. The other namespaces are a faithful consolidation of the archived specs (no key lost -- see the no-key-loss test); verifying each against its collector/engine producers is future work. Keys the current code does not produce are documented in legacy_keys (factual notes, no supersession asserted) and deferred_keys, never in the live namespaces (ADR-0008 live-truth).",
+  "description": "Single consolidated canonical state-key spec, superseding v1-v6 (archived under docs/archive/superseded-specs/). Not loaded by code. VERIFICATION SCOPE: the `beast` namespace is checked bidirectionally by tests/test_canonical_data_keys.py against everything Beast Core produces for a Beast -- PersonalityEngine.tick()'s expression keys plus the ADR-0009 temperament axes published by core._sync_temperament -- so it holds exactly those keys, no more and no fewer. Other namespaces are a faithful consolidation of the archived specs (no key lost -- see the no-key-loss test); verifying each against its collector/engine producers is future work. Keys the current code does not produce are documented in legacy_keys (factual notes, no supersession asserted), never in the live namespaces (ADR-0008).",
   "supersedes": [
     "v1",
     "v2",
@@ -29,7 +29,12 @@
       "beast.mood",
       "beast.personality.source",
       "beast.quiet_sec",
-      "beast.stress"
+      "beast.stress",
+      "beast.temperament.boldness",
+      "beast.temperament.curiosity",
+      "beast.temperament.focus",
+      "beast.temperament.nocturnal",
+      "beast.temperament.social"
     ],
     "bettercap": [
       "bettercap.api_latency_ms",
@@ -299,13 +304,7 @@
     "beast.traits": "Not emitted as beast.* state; heritage traits live under the roster/heritage record.",
     "beast.xp": "Produced as progression.xp, not beast.xp."
   },
-  "deferred_keys": {
-    "beast.temperament.boldness": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
-    "beast.temperament.curiosity": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
-    "beast.temperament.focus": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
-    "beast.temperament.nocturnal": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
-    "beast.temperament.social": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree."
-  },
+  "deferred_keys": {},
   "read_only_api": [
     "/encounters"
   ]

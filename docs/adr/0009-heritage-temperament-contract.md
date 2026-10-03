@@ -1,8 +1,8 @@
 # ADR 0009 — Heritage temperament is a canonical `beast.*` contract
 
-**Status:** Proposed
+**Status:** Accepted
 
-**Implementation:** complete (landed with the finding-F5 PR); the decision still needs acceptance.
+**Implementation:** complete (landed with the finding-F5 PR #39, merged 2026-10-03).
 
 Heritage already derives five temperament axes per Beast — `curiosity`, `social`, `focus`,
 `boldness`, `nocturnal`, each an integer `0..100` (`beastcore/heritage.py`, `TEMPERAMENT_AXES`).
@@ -47,8 +47,7 @@ presentation and the future needs system will depend.
 Scope note: this is a governance / seam decision. Claude owns creature _truth_ (heritage,
 personality) and proposes this contract; it touches the `beast.*` expression vocabulary, where
 **OpenAI holds the pen and both agents review**, and **Patrick accepts ADRs** (`AGENTS.md` §3, §7).
-It is therefore **Proposed** pending both-agent review and Patrick's acceptance, even though the
-implementation already landed with the F5 PR. On acceptance, add its row to the rules map above.
+It was **accepted by Patrick** via the #39 merge (2026-10-03) and its row is recorded in the ADR rules map. (OpenAI/Codex, the seam's pen-holder, requested this ADR during the #39 review and did not post a change to its content.)
 
 Alternatives considered:
 
