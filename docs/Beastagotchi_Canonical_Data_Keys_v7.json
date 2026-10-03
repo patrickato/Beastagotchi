@@ -1,7 +1,7 @@
 {
   "schema_version": 7,
   "generated": "2026-10-03",
-  "description": "Single consolidated canonical state-key spec for Beastagotchi, superseding v1-v6 (archived under docs/archive/superseded-specs/). This is the human-facing canonical reference; it is not loaded by code. A drift guard (tests/test_canonical_data_keys.py) checks it against the beast.* keys Beast Core actually emits, so the spec cannot silently diverge from the machine (ADR-0008).",
+  "description": "Single consolidated canonical state-key spec, superseding v1-v6 (archived under docs/archive/superseded-specs/). Not loaded by code. VERIFICATION SCOPE: the `beast` namespace is checked bidirectionally against PersonalityEngine.tick() by tests/test_canonical_data_keys.py -- it holds exactly the beast.* keys the engine emits. The other namespaces are a faithful consolidation of the archived specs (no key lost -- see the no-key-loss test); verifying each against its collector/engine producers is future work. Keys the current code does not produce are documented in legacy_keys (factual notes, no supersession asserted) and deferred_keys, never in the live namespaces (ADR-0008 live-truth).",
   "supersedes": [
     "v1",
     "v2",
@@ -21,31 +21,15 @@
       "ambient.weekday"
     ],
     "beast": [
-      "beast.aura",
-      "beast.badges",
       "beast.confidence",
       "beast.curiosity",
       "beast.energy",
       "beast.expression",
       "beast.focus",
-      "beast.kind",
-      "beast.level",
-      "beast.memories",
       "beast.mood",
-      "beast.name",
       "beast.personality.source",
-      "beast.pwnagotchi_bridge",
       "beast.quiet_sec",
-      "beast.stage",
-      "beast.streak",
-      "beast.stress",
-      "beast.temperament.boldness",
-      "beast.temperament.curiosity",
-      "beast.temperament.focus",
-      "beast.temperament.nocturnal",
-      "beast.temperament.social",
-      "beast.traits",
-      "beast.xp"
+      "beast.stress"
     ],
     "bettercap": [
       "bettercap.api_latency_ms",
@@ -302,10 +286,25 @@
       "wifi.vendor_count"
     ]
   },
-  "retired_keys": {
-    "beast.boredom": "superseded by beast.stress (PersonalityEngine emits beast.stress, not beast.boredom)",
-    "beast.current_expression": "renamed to beast.expression (PersonalityEngine emits beast.expression)",
-    "beast.current_animation": "presentation-owned animation track, not Beast Core state"
+  "legacy_keys": {
+    "beast.badges": "Not emitted by current code (legacy beast.* key).",
+    "beast.boredom": "Not emitted. Prolonged quiet is represented by the `bored` value of beast.mood, not a separate boredom scalar. No supersession asserted.",
+    "beast.current_animation": "Presentation-owned animation track; not Beast Core state.",
+    "beast.current_expression": "Not emitted; the engine emits beast.expression. A formal rename of the beast.* vocabulary is deferred to an ADR (AGENTS.md creature boundary).",
+    "beast.level": "Produced as progression.level, not beast.level.",
+    "beast.memories": "Not emitted as beast.* state.",
+    "beast.name": "Identity label; produced via the roster/progression path, not as beast.* state.",
+    "beast.stage": "Produced as progression.stage, not beast.stage.",
+    "beast.streak": "Not emitted by current code (legacy beast.* key).",
+    "beast.traits": "Not emitted as beast.* state; heritage traits live under the roster/heritage record.",
+    "beast.xp": "Produced as progression.xp, not beast.xp."
+  },
+  "deferred_keys": {
+    "beast.temperament.boldness": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
+    "beast.temperament.curiosity": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
+    "beast.temperament.focus": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
+    "beast.temperament.nocturnal": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree.",
+    "beast.temperament.social": "Proposed creature-truth contract; lands with F5 (PR #39) + ADR-0009 once accepted. Producer: core._sync_temperament. Not live in this tree."
   },
   "read_only_api": [
     "/encounters"
