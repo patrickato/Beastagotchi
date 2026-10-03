@@ -240,6 +240,27 @@ def test_first_capture_on_a_readable_cache_celebrates():
     assert e2.tick()["beast.mood"] != "celebrating"
 
 
+def test_unavailable_gps_state_is_not_live_motion():
+    # gps.state="unavailable" (and "connected_no_fix") are live values with no fix; ContextEngine may
+    # preserve "walking" during a brief fix drop, but only an actual "fixed" is usable motion evidence.
+    assert _after_new_network(**{"gps.state": "unavailable", "context.motion.state": "walking"})["beast.mood"] != "hunting"
+
+
+def test_capture_count_dip_then_recovery_does_not_celebrate():
+    # captures.total is monotonic; a transient partial-scan dip that recovers to the prior total is not a
+    # new capture (high-water mark), so it must not celebrate.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 10, "captures.cache_present": True})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["captures.total"] = 8                               # a file briefly unreadable -> count dips
+    clock[0] = 2.0
+    assert e.tick()["beast.mood"] != "celebrating"
+    s["captures.total"] = 10                              # scan recovers to the prior total
+    clock[0] = 4.0
+    assert e.tick()["beast.mood"] != "celebrating"
+
+
 def test_capped_session_counter_still_registers_novelty_via_lifetime():
     # SemanticEngine bounds session_unique (~50k BSSIDs) and evicts, so on a long wardrive it sits
     # flat while the DB-backed lifetime counter keeps climbing. A genuinely new AP then shows up only

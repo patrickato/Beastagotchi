@@ -175,7 +175,10 @@ class PersonalityEngine:
         if cap is not None and readable_now:
             if self._cap_ready and self._cap_val is not None and cap > self._cap_val:
                 self._cap_t = now
-            self._cap_val = cap
+            # captures.total is monotonic; keep the high-water mark so a transient partial-scan dip
+            # (an .apcache file briefly unreadable) that then recovers is not read as a new capture.
+            if self._cap_val is None or cap > self._cap_val:
+                self._cap_val = cap
         else:
             self._cap_val = None  # source not readable -> re-baseline when it returns
         self._cap_ready = readable_now
@@ -186,18 +189,17 @@ class PersonalityEngine:
         health = str(self.state.get("health.core.state", "starting") or "starting")
         gov = str(self.state.get("governor.mode", "FULL") or "FULL")
         temp = float(self._live("system.temp.cpu_c") or 0)   # stale/unavailable temp -> 0 (not overheated)
-        gps_val = self._live("gps.state")
-        gps_live = gps_val is not None                        # False when the gps.* keys are stale/unavailable
-        gps_state = str(gps_val or "unknown")
+        gps_state = str(self._live("gps.state") or "unknown")  # stale/absent -> "unknown"
         pwn = str(self.state.get("pwnagotchi.service.state", "unknown") or "unknown")
         bc = str(self.state.get("bettercap.state", "unknown") or "unknown")
         phase = str(self.state.get("ambient.day_phase", "day") or "day")
         cpu = float(self.state.get("system.cpu.total", 0) or 0)
         lvl = int(self.state.get("progression.level", 1) or 1)
-        # GPS can stall: ContextEngine still republishes context.motion.state from retained gps.* values
-        # as if live, so trust motion (and the connected_no_fix search state) only while the gps.* keys
-        # are themselves live per the registry (ADR-0008: never treat stale data as live).
-        moving = gps_live and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
+        # Motion is trustworthy only with an actual fix: gps.state "unavailable"/"connected_no_fix" are
+        # live values but carry no usable position, and ContextEngine may preserve stale motion during a
+        # brief fix drop, so require "fixed" before trusting context.motion.state (ADR-0008). A stale
+        # gps.state reads as "unknown" here (per-key quality), which is likewise not "fixed".
+        moving = gps_state == "fixed" and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 
         cur_t = self._temp("curiosity")
@@ -231,7 +233,7 @@ class PersonalityEngine:
              (lonely is not None and lonely >= RESTLESS_MOOD) or \
              (restless is None and lonely is None and quiet > QUIET_BORED_SEC):
             raw = "bored"
-        elif gps_live and gps_state == "connected_no_fix":
+        elif gps_state == "connected_no_fix":
             raw = "gps-searching"
         else:
             raw = "idle"

@@ -114,7 +114,9 @@ class NeedsEngine:
         # usable GPS fix (motion "unknown") or when the GPS collector is stale, so frozen motion from
         # a stalled collector cannot masquerade as "not moving" (ADR-0008).
         motion = str(self.state.get('context.motion.state', 'unknown') or 'unknown')
-        if motion == 'unknown' or self._live('gps.state') is None:
+        # Only an actual fix is usable motion evidence: "unavailable"/"connected_no_fix" are live values
+        # with no position, and a stale gps.state reads as "unknown" (per-key quality) -- neither is a fix.
+        if motion == 'unknown' or str(self._live('gps.state') or 'unknown') != 'fixed':
             # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
             # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100).
             self._move_t = now

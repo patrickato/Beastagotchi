@@ -140,11 +140,12 @@ class SystemCollector(Collector):
         mono = time.monotonic()
         if mono - self._throttle_at >= 5.0 or self._throttle_value is None:
             rc, out, _ = run(["vcgencmd", "get_throttled"], timeout=1.5)
-            if rc == 0 and "=" in out:
-                self._throttle_value = out.strip().split("=", 1)[1]
+            # Clear on a failed refresh rather than retaining the last reading: a retained active bit
+            # would keep driving derived fatigue as if live after the condition ended (ADR-0008).
+            self._throttle_value = out.strip().split("=", 1)[1] if (rc == 0 and "=" in out) else None
             self._throttle_at = mono
-        if self._throttle_value is not None:
-            values["system.throttle.flags"] = self._throttle_value
+        # Publish even when None (unavailable) so a stale flag is not left looking live in the registry.
+        values["system.throttle.flags"] = self._throttle_value
 
         # Pi clock/GPU allocation telemetry is useful in Performance/Hardware
         # Studio, but vcgencmd shell-outs are cached so instrumentation itself
