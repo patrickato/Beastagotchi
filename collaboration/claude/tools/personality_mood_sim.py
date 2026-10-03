@@ -76,6 +76,20 @@ def main() -> None:
     for label, extra, drift in scenarios:
         print(f"  {label:46s} {mood_distribution({**common, **extra}, drift)}")
 
+    print()
+    print("Temperament effect (identical state, different Beasts) -- finding F5 fix:")
+    idle = {k: v for k, v in common.items() if k != "expedition.active"}
+    idle.update({"gps.state": "fixed", "ambient.day_phase": "day", "system.cpu.total": 0.0})
+    for label, temperament in (
+        ("neutral (or no heritage)", {}),
+        ("curious + bold", {"curiosity": 95, "boldness": 95}),
+        ("timid + incurious", {"curiosity": 5, "boldness": 5}),
+    ):
+        state = FakeState({**idle, **{f"beast.temperament.{k}": v for k, v in temperament.items()}})
+        out = PersonalityEngine(state, clock=lambda: 0.0).tick()
+        print(f"  {label:26s} energy={out['beast.energy']:3d} focus={out['beast.focus']:3d} "
+              f"curiosity={out['beast.curiosity']:3d} stress={out['beast.stress']:3d}")
+
     xp = uptime_only_xp_after_one_year()
     level = level_for_xp(xp)
     print()

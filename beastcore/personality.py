@@ -53,6 +53,25 @@ class PersonalityEngine:
 
         confidence=max(10,min(100,35 + lvl//2 + (20 if health=='healthy' else 0) + (10 if gps_state=='fixed' else 0)))
         stress=max(0,min(100,(100-energy)//2 + (35 if gov in {'REDUCED','SURVIVAL'} else 0) + (45 if health not in {'healthy','starting'} else 0)))
+
+        # Heritage temperament biases the expressed numbers so two Beasts differ (finding F5).
+        # Core publishes beast.temperament.* for the active Beast; absent axes default to 50
+        # (neutral), leaving behaviour unchanged. Mood selection is left untouched on purpose —
+        # deeper temperament->mood work belongs to the needs system. `social` is reserved for the
+        # peer/needs system. Values stay live/derived (ADR-0008).
+        def _temp(axis:str)->int:
+            # Neutral (50) only when the axis is absent / None / invalid. A real 0 is a valid
+            # heritage minimum (0..100) and must be kept, so no truthiness `or 50` here (F5/P2).
+            v=self.state.get('beast.temperament.'+axis,50)
+            if v is None:return 50
+            try:return max(0,min(100,int(v)))
+            except (TypeError,ValueError):return 50
+        cur_t,foc_t,bold_t,noct_t=_temp('curiosity'),_temp('focus'),_temp('boldness'),_temp('nocturnal')
+        night=phase in {'night','late_night'}
+        curiosity=max(0,min(100,curiosity+round((cur_t-50)*0.5)))
+        focus=max(0,min(100,focus+round((foc_t-50)*0.4)))
+        energy=max(0,min(100,energy+round((bold_t-50)*0.3)+round((noct_t-50)*(0.3 if night else -0.15))))
+        stress=max(0,min(100,stress-round((bold_t-50)*0.2)))
         return {
             'beast.mood':mood,
             'beast.energy':int(energy),

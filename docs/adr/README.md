@@ -43,3 +43,4 @@ Rules without an ADR live in the Bible as their canonical home. Promote one to a
 - 0006 — Recovery evidence persists locally
 - 0007 — No silent scope loss
 - 0008 — Live data, never decorative fiction
+- 0009 — Heritage temperament is a canonical `beast.*` contract (Proposed)
