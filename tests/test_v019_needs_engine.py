@@ -56,6 +56,16 @@ def test_restlessness_unavailable_without_gps():
     assert e.tick()["needs.restlessness"] is None  # can't know movement without GPS (ADR-0008)
 
 
+def test_restlessness_unavailable_when_gps_is_stale():
+    # A stalled GPS collector keeps its last values (quality marked stale); frozen distance must not
+    # read as "not moving" -> restlessness is unavailable, same as no GPS at all (ADR-0008).
+    clock = [0.0]
+    e = _engine({"gps.state": "fixed", "gps.session_distance_m": 100.0,
+                 "health.collector.gps.state": "stale"}, clock)
+    clock[0] = 3600.0
+    assert e.tick()["needs.restlessness"] is None
+
+
 def test_movement_eases_restlessness():
     clock = [0.0]
     e = _engine({"gps.state": "fixed", "gps.session_distance_m": 0.0}, clock)

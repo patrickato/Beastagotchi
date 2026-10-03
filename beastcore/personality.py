@@ -66,8 +66,9 @@ class PersonalityEngine:
         self.state = state
         self.clock = clock
         now = clock()
-        self._novel_val: float | None = None  # last-seen count of genuinely-new networks
-        self._novel_t = now                   # when it last rose -> ``quiet`` is measured from here
+        self._sess_val: float | None = None   # last-seen session-unique AP count (bounded; see tick)
+        self._life_val: float | None = None   # last-seen lifetime-unique AP count (DB-backed, unbounded)
+        self._novel_t = now                   # when either last rose -> ``quiet`` is measured from here
         self._cap_val: float | None = None    # last-seen capture total
         self._cap_t: float | None = None      # when a capture was last added
         self._mood: str | None = None         # currently expressed mood (for hysteresis)
@@ -105,16 +106,24 @@ class PersonalityEngine:
         now = self.clock()
 
         # --- edge detectors: time since the last genuinely new network / capture ----------------
-        # ``quiet`` keys on genuine novelty (session-unique APs, falling back to lifetime-unique),
-        # not raw AP-count churn, so simply re-seeing the same room cannot keep the Beast excited.
-        novelty = self._num("wifi.encounters.session_unique")
-        if novelty is None:
-            novelty = self._num("wifi.encounters.lifetime_unique")
-        if novelty is not None:
-            if self._novel_val is None:
-                self._novel_val = novelty
-            elif novelty > self._novel_val:
-                self._novel_val = novelty
+        # ``quiet`` keys on genuine novelty, not raw AP-count churn, so simply re-seeing the same
+        # room cannot keep the Beast excited. Track BOTH the session-unique counter and the lifetime
+        # counter and reset on either: SemanticEngine caps session_unique (~50k BSSIDs) and evicts
+        # on a very long wardrive, after which it is flat while the DB-backed lifetime counter keeps
+        # climbing -- keying on session alone would then stop registering new discoveries.
+        sess = self._num("wifi.encounters.session_unique")
+        life = self._num("wifi.encounters.lifetime_unique")
+        if sess is not None:
+            if self._sess_val is None:
+                self._sess_val = sess
+            elif sess > self._sess_val:
+                self._sess_val = sess
+                self._novel_t = now
+        if life is not None:
+            if self._life_val is None:
+                self._life_val = life
+            elif life > self._life_val:
+                self._life_val = life
                 self._novel_t = now
         quiet = max(0.0, now - self._novel_t)
 
@@ -142,7 +151,12 @@ class PersonalityEngine:
         phase = str(self.state.get("ambient.day_phase", "day") or "day")
         cpu = float(self.state.get("system.cpu.total", 0) or 0)
         lvl = int(self.state.get("progression.level", 1) or 1)
-        moving = str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
+        # GPS can stall: the collector stops, its last gps.* values are retained but marked stale,
+        # and ContextEngine still republishes context.motion.state from them as if live. Trusting it
+        # would let a stationary Beast keep entering hunting / gps-searching (ADR-0008: never treat
+        # stale data as live). The health loop publishes a fresh staleness flag, so gate on it.
+        gps_fresh = str(self.state.get("health.collector.gps.state", "ok") or "ok") != "stale"
+        moving = gps_fresh and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 
         cur_t = self._temp("curiosity")
@@ -176,7 +190,7 @@ class PersonalityEngine:
              (lonely is not None and lonely >= RESTLESS_MOOD) or \
              (restless is None and lonely is None and quiet > QUIET_BORED_SEC):
             raw = "bored"
-        elif gps_state == "connected_no_fix":
+        elif gps_fresh and gps_state == "connected_no_fix":
             raw = "gps-searching"
         else:
             raw = "idle"

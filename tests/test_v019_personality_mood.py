@@ -142,6 +142,38 @@ def test_hysteresis_holds_a_nonurgent_mood_but_urgent_preempts():
     assert e.tick()["beast.mood"] == "overheated"              # urgent preempts instantly, ignoring the dwell
 
 
+# --- freshness + counter-saturation robustness (Codex review on #50) -------------------------
+
+def test_stale_gps_motion_is_not_trusted_for_hunting_or_searching():
+    # GPS stalled: context.motion.state is frozen "walking" and gps.state frozen "connected_no_fix"
+    # (values retained, quality marked stale), but the health loop flags the collector stale. Mood
+    # must not treat that as live -> neither hunting nor gps-searching may fire (ADR-0008).
+    stale = {"health.collector.gps.state": "stale"}
+    assert _tick(**{**stale, "context.motion.state": "walking", "gps.state": "fixed",
+                    "wifi.ap_count": 20, "wifi.encounters.session_unique": 10})["beast.mood"] != "hunting"
+    assert _tick(**{**stale, "gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] != "gps-searching"
+    # the same signals while the collector is live DO drive those moods
+    assert _tick(**{"context.motion.state": "walking", "gps.state": "fixed", "wifi.ap_count": 20,
+                    "wifi.encounters.session_unique": 10})["beast.mood"] == "hunting"
+    assert _tick(**{"gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] == "gps-searching"
+
+
+def test_capped_session_counter_still_registers_novelty_via_lifetime():
+    # SemanticEngine bounds session_unique (~50k BSSIDs) and evicts, so on a long wardrive it sits
+    # flat while the DB-backed lifetime counter keeps climbing. A genuinely new AP then shows up only
+    # in lifetime_unique; quiet must still reset so discovery-driven moods keep firing.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "context.motion.state": "wardrive", "gps.state": "fixed",
+                   "wifi.encounters.session_unique": 50000, "wifi.encounters.lifetime_unique": 90000})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    clock[0] = 1000.0
+    assert e.tick()["beast.quiet_sec"] >= 900           # nothing new -> quiet grows
+    s["wifi.encounters.lifetime_unique"] = 90001        # a new AP: session capped/flat, lifetime ticks
+    clock[0] = 1001.0
+    assert e.tick()["beast.quiet_sec"] <= 1.0           # quiet resets off the lifetime counter
+
+
 # --- end to end: NeedsEngine + PersonalityEngine over a simulated day ------------------------
 
 def _world(t: float) -> dict:

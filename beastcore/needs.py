@@ -82,12 +82,15 @@ class NeedsEngine:
             rate = 0.5 + self._temp('curiosity') / 100.0  # curious Beasts hunger for novelty faster
             out['needs.curiosity_hunger'] = self._rise(now - self._novelty_t, self.RISE_SEC, rate)
 
-        # restlessness -- rises since real movement; unknown (unavailable) without a GPS fix.
+        # restlessness -- rises since real movement; unknown (unavailable) without a GPS fix, and
+        # also when the GPS collector has gone stale (its last values are retained but no longer
+        # live), so frozen distance cannot masquerade as "not moving" (ADR-0008).
         gps_state = str(self.state.get('gps.state', 'unavailable') or 'unavailable')
+        gps_fresh = str(self.state.get('health.collector.gps.state', 'ok') or 'ok') != 'stale'
         dist = self._num('gps.session_distance_m')
         if dist is None:
             dist = self._num('gps.trip_distance_m')
-        if gps_state == 'unavailable' or dist is None:
+        if gps_state == 'unavailable' or dist is None or not gps_fresh:
             out['needs.restlessness'] = None
         else:
             if self._move_val is None:
