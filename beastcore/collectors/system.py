@@ -21,6 +21,7 @@ class SystemCollector(Collector):
         self._static: dict[str, Any] | None = None
         self._throttle_value: str | None = None
         self._throttle_at = 0.0
+        self._throttle_tried = False  # distinguishes "never read" from "read and currently unavailable"
         self._clock_synced: bool | None = None
         self._clock_at = 0.0
         self._pi_clock_values: dict[str, Any] = {}
@@ -138,12 +139,15 @@ class SystemCollector(Collector):
         # These shell-outs are useful, but they do not need to run every second.
         # Keep fast telemetry fast while moving slow facts to appropriate cadences.
         mono = time.monotonic()
-        if mono - self._throttle_at >= 5.0 or self._throttle_value is None:
+        # Refresh on the 5s cadence (and once at startup). Gate on a "tried" flag, not on the value
+        # being None: a persistent failure must still honour the cadence, not re-shell every 1s tick.
+        if not self._throttle_tried or mono - self._throttle_at >= 5.0:
             rc, out, _ = run(["vcgencmd", "get_throttled"], timeout=1.5)
             # Clear on a failed refresh rather than retaining the last reading: a retained active bit
             # would keep driving derived fatigue as if live after the condition ended (ADR-0008).
             self._throttle_value = out.strip().split("=", 1)[1] if (rc == 0 and "=" in out) else None
             self._throttle_at = mono
+            self._throttle_tried = True
         # Publish even when None (unavailable) so a stale flag is not left looking live in the registry.
         values["system.throttle.flags"] = self._throttle_value
 

@@ -120,11 +120,14 @@ class PwnagotchiCollector(Collector):
         ap_count = client_count = handshake_count = hidden_count = 0
         cache = self.handshake_dir / "cache"
         # Derive presence in the SAME scan as the counts so a consumer never sees cache_present=True
-        # while the totals are still the cached zero (which would read a source mount as a live capture).
+        # while the totals are still the cached zero. Mark present only after the directory enumerates
+        # successfully: is_dir() passing but glob() failing is an incomplete scan, not a readable empty
+        # cache, and must not become a trustworthy zero baseline a later recovery reads as new captures.
         present = False
         try:
-            present = cache.is_dir()
-            for p in cache.glob("*.apcache"):
+            entries = list(cache.glob("*.apcache"))
+            present = True
+            for p in entries:
                 try:
                     obj = json.loads(p.read_text(errors="replace"))
                     ap_count += 1
@@ -134,7 +137,7 @@ class PwnagotchiCollector(Collector):
                 except Exception:
                     pass
         except Exception:
-            pass
+            present = False
         self._cache_summary_value = (ap_count, client_count, handshake_count, hidden_count, present)
         self._cache_summary_at = now
         return self._cache_summary_value

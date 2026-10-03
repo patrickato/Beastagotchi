@@ -33,3 +33,23 @@ def test_failed_throttle_refresh_clears_the_flag(monkeypatch):
     c._throttle_at = 0.0
     monkeypatch.setattr(sysmod, "run", lambda *a, **k: (1, "", ""))
     assert c.collect()["system.throttle.flags"] is None
+
+
+def test_persistent_throttle_failure_honours_the_cadence(monkeypatch):
+    # A failed read clears the flag, but must not re-shell vcgencmd every 1s tick (clearing to None
+    # must not trip an "is None -> re-read" path); the 5s cadence still applies.
+    c = SystemCollector()
+    monkeypatch.setattr(sysmod, "read_text", lambda *a, **k: "")
+    calls = {"n": 0}
+
+    def fake_run(cmd, *a, **k):
+        if "get_throttled" in cmd:
+            calls["n"] += 1
+        return (1, "", "")  # always fails
+
+    monkeypatch.setattr(sysmod, "run", fake_run)
+    c.collect()   # startup read (1 attempt), value None
+    c.collect()   # immediately after, within the 5s window -> must NOT re-shell
+    c.collect()
+    assert calls["n"] == 1
+    assert c.collect()["system.throttle.flags"] is None
