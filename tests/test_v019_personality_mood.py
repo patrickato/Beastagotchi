@@ -1,0 +1,216 @@
+"""Creature finding F1: the Beast's mood is now varied and needs-driven, not stuck.
+
+Before, the mood if-chain keyed on signals that were effectively constant -- ``quiet`` reset on any
+AP-count churn, ``hunting``/``gps-searching`` gated on the always-true ``expedition.active``,
+``celebrating`` on an unpublished signal, and ``gps-searching`` on a ``gps.state`` the collector
+never emits -- so the Beast sat in one or two moods. These tests lock in the live derivation:
+genuine-novelty ``quiet``, real-motion gating, real captures, the honest ``connected_no_fix``
+state, the live ``needs.*`` drives folded into mood, and the expression-hold hysteresis.
+"""
+from __future__ import annotations
+
+from beastcore.needs import NeedsEngine
+from beastcore.personality import CAPTURE_CELEBRATE_SEC, PersonalityEngine
+
+
+class FakeState(dict):
+    def get(self, key, default=None):
+        return dict.get(self, key, default)
+
+
+HEALTHY = {
+    "health.core.state": "healthy", "governor.mode": "FULL", "system.temp.cpu_c": 50.0,
+    "pwnagotchi.service.state": "active", "bettercap.state": "active",
+    "progression.level": 10, "ambient.day_phase": "day",
+}
+
+
+def _tick(**signals):
+    """One tick of a fresh engine (so no hysteresis history) at clock 0."""
+    return PersonalityEngine(FakeState({**HEALTHY, **signals}), clock=lambda: 0.0).tick()
+
+
+# --- genuine novelty, not AP-count churn, drives "quiet" -------------------------------------
+
+def test_ap_count_churn_alone_does_not_keep_the_beast_excited():
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.encounters.session_unique": 10, "wifi.ap_count": 20})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    out = {}
+    for i in range(1, 40):                       # churn the AP count, but discover nothing new
+        clock[0] = float(i * 10)
+        s["wifi.ap_count"] = 20 + (i % 5)
+        out = e.tick()
+    assert out["beast.quiet_sec"] >= 120          # quiet grew: re-seeing the room is not novelty
+    assert out["beast.mood"] not in {"curious", "hunting"}  # so the Beast is no longer stuck excited
+
+
+def test_a_new_network_resets_quiet():
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "wifi.encounters.session_unique": 10})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    clock[0] = 1000.0
+    assert e.tick()["beast.quiet_sec"] >= 900
+    s["wifi.encounters.session_unique"] = 11      # a genuinely new network
+    clock[0] = 1001.0
+    assert e.tick()["beast.quiet_sec"] <= 1.0
+
+
+def test_recent_new_network_drives_curious_when_stationary():
+    assert _tick(**{"gps.state": "fixed", "wifi.ap_count": 20, "wifi.encounters.session_unique": 10})["beast.mood"] == "curious"
+
+
+# --- real motion, real captures, real GPS state ---------------------------------------------
+
+def test_hunting_requires_real_motion_not_the_always_true_expedition_flag():
+    base = {"gps.state": "fixed", "wifi.ap_count": 20, "wifi.encounters.session_unique": 10, "expedition.active": True}
+    assert _tick(**base)["beast.mood"] == "curious"                                  # expedition True, not moving
+    assert _tick(**{**base, "context.motion.state": "walking"})["beast.mood"] == "hunting"
+    assert _tick(**{**base, "context.motion.state": "wardrive"})["beast.mood"] == "hunting"
+
+
+def test_celebrating_fires_on_a_new_capture_not_the_phantom_signal():
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 5, "semantic.capture.recent": True})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    assert e.tick()["beast.mood"] != "celebrating"          # the old phantom gate does nothing
+    s["captures.total"] = 6
+    clock[0] = 5.0
+    assert e.tick()["beast.mood"] == "celebrating"          # a genuinely new capture
+    clock[0] = 5.0 + CAPTURE_CELEBRATE_SEC + 1.0
+    assert e.tick()["beast.mood"] != "celebrating"          # and it is a brief window, not sticky
+
+
+def test_gps_searching_uses_the_real_connected_no_fix_state():
+    base = {"wifi.ap_count": 0}
+    assert _tick(**{**base, "gps.state": "connected_no_fix"})["beast.mood"] == "gps-searching"
+    assert _tick(**{**base, "gps.state": "unavailable"})["beast.mood"] == "idle"
+    assert _tick(**{**base, "gps.state": "searching"})["beast.mood"] == "idle"   # phantom state -> never fires
+
+
+# --- the live needs fold into mood and the expressed scalars ---------------------------------
+
+def test_high_tiredness_makes_sleepy_and_saps_energy():
+    base = {"gps.state": "fixed", "wifi.ap_count": 0}
+    assert _tick(**{**base, "needs.tiredness": 80})["beast.mood"] == "sleepy"
+    assert _tick(**{**base, "needs.tiredness": 100})["beast.energy"] < _tick(**{**base, "needs.tiredness": 65})["beast.energy"]
+
+
+def test_high_curiosity_hunger_drives_curious_and_sharpens_curiosity():
+    base = {"gps.state": "fixed", "wifi.ap_count": 0}
+    assert _tick(**{**base, "needs.curiosity_hunger": 90})["beast.mood"] == "curious"
+    # even below the mood threshold, hunger sharpens the expressed curiosity scalar
+    assert _tick(**{**base, "needs.curiosity_hunger": 50})["beast.curiosity"] > _tick(**{**base, "needs.curiosity_hunger": 0})["beast.curiosity"]
+
+
+def test_restlessness_or_loneliness_makes_bored():
+    base = {"gps.state": "fixed", "wifi.ap_count": 0}
+    assert _tick(**{**base, "needs.restlessness": 80})["beast.mood"] == "bored"
+    assert _tick(**{**base, "needs.loneliness": 80})["beast.mood"] == "bored"
+
+
+def test_unavailable_needs_fall_back_without_error():
+    # No needs.* in state at all -> every need is unavailable -> the engine uses its heuristics.
+    out = _tick(**{"gps.state": "fixed", "wifi.ap_count": 5, "wifi.encounters.session_unique": 10})
+    assert out["beast.mood"] in {"curious", "idle", "hunting", "gps-searching", "bored", "sleepy"}
+
+
+def test_tick_returns_the_stable_beast_contract_keys():
+    # The beast.* vocabulary is unchanged by the F1 rewrite (no new keys, none dropped).
+    assert set(_tick(**{"gps.state": "fixed"})) == {
+        "beast.mood", "beast.energy", "beast.curiosity", "beast.focus", "beast.confidence",
+        "beast.stress", "beast.quiet_sec", "beast.expression", "beast.personality.source",
+    }
+
+
+# --- hysteresis: steady expressions, but urgencies still preempt -----------------------------
+
+def test_hysteresis_holds_a_nonurgent_mood_but_urgent_preempts():
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 0})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    assert e.tick()["beast.mood"] == "idle"                     # establish idle at t0
+    s["wifi.ap_count"] = 5
+    s["wifi.encounters.session_unique"] = 10
+    clock[0] = 5.0
+    assert e.tick()["beast.mood"] == "idle"                     # curious conditions, but within the dwell
+    clock[0] = 30.0
+    assert e.tick()["beast.mood"] == "curious"                  # past the dwell -> it switches
+    s["system.temp.cpu_c"] = 85.0
+    clock[0] = 31.0
+    assert e.tick()["beast.mood"] == "overheated"              # urgent preempts instantly, ignoring the dwell
+
+
+# --- end to end: NeedsEngine + PersonalityEngine over a simulated day ------------------------
+
+def _world(t: float) -> dict:
+    """Real signals for a day stitched together: home -> walk -> wardrive -> hot -> night."""
+    H = 3600.0
+    base = {"health.core.state": "healthy", "governor.mode": "FULL", "pwnagotchi.service.state": "active",
+            "bettercap.state": "active", "progression.level": 7, "system.cpu.total": 18.0}
+    if t < 3 * H:                                   # home: GPS no fix, a few early new nets then nothing
+        new = 100 + min(3, int(t // 400))
+        base.update({"gps.state": "connected_no_fix", "gps.fix": False, "context.motion.state": "unknown",
+                     "wifi.ap_count": 24, "wifi.encounters.session_unique": new,
+                     "wifi.encounters.lifetime_unique": 1000 + new,
+                     "peerdex.last_seen_at": (60.0 if t >= 60 else None), "system.temp.cpu_c": 52.0,
+                     "power.battery.percent_estimate": 80.0, "ambient.day_phase": "day"})
+    elif t < 4 * H:                                 # walk: fixed + moving, steady new networks
+        u = t - 3 * H
+        new = 200 + int(u // 120)
+        base.update({"gps.state": "fixed", "gps.fix": True, "context.motion.state": "walking",
+                     "gps.session_distance_m": 1.4 * u, "wifi.ap_count": 30,
+                     "wifi.encounters.session_unique": new, "wifi.encounters.lifetime_unique": 2000 + new,
+                     "system.temp.cpu_c": 58.0, "power.battery.percent_estimate": 70.0, "ambient.day_phase": "day"})
+    elif t < 5 * H:                                 # wardrive: flood of new networks and a few captures
+        u = t - 4 * H
+        new = 300 + int(u // 20)
+        base.update({"gps.state": "fixed", "gps.fix": True, "context.motion.state": "wardrive",
+                     "gps.session_distance_m": 13.0 * u, "captures.total": int(u // 900),
+                     "wifi.ap_count": 45, "wifi.encounters.session_unique": new,
+                     "wifi.encounters.lifetime_unique": 3000 + new, "system.temp.cpu_c": 64.0,
+                     "power.battery.percent_estimate": 60.0, "ambient.day_phase": "day"})
+    else:                                           # hot spell then a long night, nothing new
+        u = t - 5 * H
+        hot = u < 1.5 * H
+        base.update({"governor.mode": "REDUCED" if hot else "FULL", "gps.state": "unavailable",
+                     "gps.fix": False, "context.motion.state": "unknown", "wifi.ap_count": 12,
+                     "wifi.encounters.session_unique": 400, "wifi.encounters.lifetime_unique": 4000,
+                     "system.temp.cpu_c": 86.0 if hot else 55.0,
+                     "power.battery.percent_estimate": max(8.0, 60.0 - u / H * 12.0),
+                     "ambient.day_phase": "day" if hot else "night"})
+    return base
+
+
+def _simulate_day(temperament: dict | None = None) -> dict[str, int]:
+    clock = [0.0]
+    state = FakeState({})
+    if temperament:
+        state.update({f"beast.temperament.{k}": v for k, v in temperament.items()})
+    needs = NeedsEngine(state, clock=lambda: clock[0])
+    pers = PersonalityEngine(state, clock=lambda: clock[0])
+    counts: dict[str, int] = {}
+    for sec in range(0, 8 * 3600, 10):
+        clock[0] = float(sec)
+        state.update(_world(sec))
+        for key, value in needs.tick().items():
+            state[key] = value
+        mood = pers.tick()["beast.mood"]
+        counts[mood] = counts.get(mood, 0) + 1
+    return counts
+
+
+def test_mood_is_varied_across_a_simulated_day():
+    counts = _simulate_day()
+    total = sum(counts.values())
+    assert len(counts) >= 5                                      # F1: no longer stuck in one or two moods
+    assert max(counts.values()) / total < 0.5                   # and nothing dominates the day
+    # the moods that were effectively impossible before all occur now
+    assert {"hunting", "celebrating", "overheated", "sleepy"} <= set(counts)
+
+
+def test_two_heritages_diverge_over_the_same_day():
+    neutral = _simulate_day()
+    curious_nocturnal = _simulate_day({"curiosity": 95, "nocturnal": 95, "social": 80})
+    assert neutral != curious_nocturnal
