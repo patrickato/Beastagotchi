@@ -4,6 +4,12 @@ This is a **front door, not an authority.** Beastagotchi's identity lives in the
 documents below; each one is the source of truth for its part. Start here, then
 read the real thing.
 
+## North star
+
+**Surface the full real power of the Pwnagotchi / Pi-4 field computer — everything the device genuinely knows and can do — made legible at a glance, with the Beast as the living surface that makes it engaging.** The creature is never a pasted-on mascot and never the point itself; it brings the real machine to life.
+
+*Tie-breaker:* when two good options compete, prefer the one that exposes or unlocks more *real* capability, shown truthfully — over the one that is merely prettier, busier, or a disconnected gimmick.
+
 | What | Where |
 |---|---|
 | **What it is** — the product definition and the non-negotiable principles | [`docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`](docs/Beastagotchi_Design_Architecture_Bible_v1.0.md) — §1 |

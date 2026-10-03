@@ -1,6 +1,7 @@
 # ADR 0005 — Optional growth uses Beast Packs
 
-**Status:** planned/accepted direction
+**Status:** Accepted
+**Implementation:** in progress (see the Completion Matrix).
 
 Themes, face packs, layouts, renderers, apps, hardware adapters, missions and large content should increasingly ship as versioned optional Beast Packs with manifests, compatibility/dependency metadata and resource expectations.
 

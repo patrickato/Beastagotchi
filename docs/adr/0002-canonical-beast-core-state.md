@@ -1,6 +1,6 @@
 # ADR 0002 — Canonical state flows through Beast Core
 
-**Status:** accepted
+**Status:** Accepted
 
 Multiple UIs/modules should consume canonical state/history from Beast Core instead of independently polling and interpreting the same OS/Pwnagotchi/Bettercap sources.
 

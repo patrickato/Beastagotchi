@@ -24,19 +24,19 @@ The visual identity must retain the strongest traits of the early Beastagotchi U
 
 ### Non-negotiable principles
 
-1. **Pwnagotchi remains protected.** Beastagotchi consumes its data and controls it through defined interfaces rather than repeatedly patching its internals.
+1. **Pwnagotchi remains protected.** Beastagotchi consumes its data and controls it through defined interfaces rather than repeatedly patching its internals. (ADR-0001)
 2. **Everything useful should be visible or reachable without SSH.** SSH remains the emergency/developer path, not the normal user interface.
-3. **Live data first.** If Linux, Pwnagotchi, Bettercap, GPS, hardware, or a plugin knows something useful, Beast Core should expose it.
+3. **Live data first.** If Linux, Pwnagotchi, Bettercap, GPS, hardware, or a plugin knows something useful, Beast Core should expose it. (ADR-0008)
 4. **Themes are structural, not recolors.** A theme may change panel geometry, face treatment, typography, icons, backgrounds, animations, graph appearance, audio, and transitions.
 5. **Layouts are separate from themes.** The same data can be presented in Minimal, Classic, Balanced, Dense, Field, Monster, or custom layouts under any compatible theme.
 6. **Renderers are separate from data.** A channel-activity data stream can become bars, line, area, waterfall, heatmap, polar, radar, or oscilloscope without changing the collector.
 7. **The Beast is a first-class subsystem.** Personality, state, face pack, evolution stage, animations, and theme treatment are independent layers.
 8. **Visual richness must degrade gracefully.** The device should remain readable and responsive under load.
-9. **Everything is modular.** Optional hardware and heavy services appear only when installed / available.
-10. **Extensions live at the correct layer.** Pwnagotchi hooks stay plugins; Beast content stays Packs; deeper tools stay Apps; mixed features become Companion Expansions.
+9. **Everything is modular.** Optional hardware and heavy services appear only when installed / available. (ADR-0005)
+10. **Extensions live at the correct layer.** Pwnagotchi hooks stay plugins; Beast content stays Packs; deeper tools stay Apps; mixed features become Companion Expansions. (ADR-0005)
 11. **Offline exchange is first-class.** Portable social/lineage/challenge data must not require cloud connectivity when an offline Capsule transport can do the job.
-12. **Nothing visually valuable is discarded.** Unused concepts become themes, layouts, idle modes, widgets, animation packs, or optional apps.
-13. **Live truth, never decorative fiction.** Production views show real, live, or persisted data, or an explicit *unavailable* — never faked telemetry, and unknown is never rendered as zero. Demo or replay data appears only when it is clearly labelled as such. (This is the product-level statement of the engineering golden rule in `AGENTS.md` §2.4.)
+12. **Nothing visually valuable is discarded.** Unused concepts become themes, layouts, idle modes, widgets, animation packs, or optional apps. (ADR-0007)
+13. **Live truth, never decorative fiction.** Production views show real, live, or persisted data, or an explicit *unavailable* — never faked telemetry, and unknown is never rendered as zero. Demo or replay data appears only when it is clearly labelled as such. (ADR-0008; the product-level statement of golden rule in `AGENTS.md` §2.4.)
 
 > **See also:** the project's values and "why" live in [`PROJECT_PHILOSOPHY.md`](PROJECT_PHILOSOPHY.md); the one-paragraph canonical statement is §33 below; the collaboration charter and golden rules are in [`AGENTS.md`](../AGENTS.md).
 
