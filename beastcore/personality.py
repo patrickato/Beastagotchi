@@ -51,7 +51,7 @@ class PersonalityEngine:
         else:
             mood='idle';energy=max(35,min(75,int(70-cpu*.25)));focus=50;curiosity=55
 
-        confidence=max(10,min(100,35 + lvl//2 + (20 if health=='healthy' else 0) + (10 if gps_state=='locked' else 0)))
+        confidence=max(10,min(100,35 + lvl//2 + (20 if health=='healthy' else 0) + (10 if gps_state=='fixed' else 0)))
         stress=max(0,min(100,(100-energy)//2 + (35 if gov in {'REDUCED','SURVIVAL'} else 0) + (45 if health not in {'healthy','starting'} else 0)))
         return {
             'beast.mood':mood,
