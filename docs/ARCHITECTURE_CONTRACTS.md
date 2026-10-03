@@ -8,11 +8,11 @@ This file is the **what-must-be-true** layer of Beastagotchi's architecture — 
 
 - **Contracts (this file)** — what must be true.
 - **ADRs** (`docs/adr/`) — the costly-to-reverse *decisions* behind specific contracts, with rationale (`docs/adr/README.md` is the index + rules map).
-- **Migration ledger** (`docs/architecture_migration_ledger.json`) — *how far* each contract is migrated in code, with runtime/legacy paths and test evidence.
+- **Migration ledger** (`docs/architecture_migration_ledger.json`) — a **partial foundation tracker**: how far the foundation items it covers are migrated in code (currently 13 items, not yet all 34 contracts), with runtime/legacy paths and test evidence.
 
 Where a contract maps to a decision we would not want to reverse silently, an ADR governs it and is authoritative: Pwnagotchi/Bettercap boundary → ADR-0001; canonical state via Beast Core → ADR-0002; one physical presentation owner → ADR-0003; TFT vs WebUI → ADR-0004; optional growth via Beast Packs → ADR-0005; recovery evidence persists → ADR-0006; no silent scope loss → ADR-0007; live data, never decorative fiction → ADR-0008; heritage temperament as a `beast.*` contract → ADR-0009.
 
-**Provenance & scope.** The eleven source reviews (`Architecture_Contract_Review_Part1..11`) remain archived under `docs/archive/from-branches/visual-reference-archive/` and are not edited here. This promotion reconciles the front matter and cross-links; the contract bodies below are the 2026-09-27 synthesis. Per-contract verification against current code is tracked incrementally in the migration ledger, not re-audited line-by-line here.
+**Provenance & scope.** The eleven source reviews (`Architecture_Contract_Review_Part1..11`) remain archived under `docs/archive/from-branches/visual-reference-archive/` and are not edited here. This promotion reconciles the front matter and cross-links; the contract bodies below are the 2026-09-27 synthesis. Verification against current code is tracked incrementally in the migration ledger — which so far covers 13 foundation items, not yet every contract — not re-audited line-by-line here.
 ---
 
 # 1. Product identity
@@ -569,7 +569,7 @@ Pwnagotchi custom-plugins stay lightweight/event-centric. Doctor, Broad AI, Secu
 ### Bettercap Provider
 Where structured Bettercap REST/session/event data exists, consume it directly rather than grepping console output.
 
-Bettercap Caplets may be cataloged/explained and, where appropriate, wrapped as Procedures. Unknown or sensitive caplets are never silently trusted or automatically elevated.
+Bettercap Caplets may be **cataloged and explained** (read-only). Beast does not execute them: running a caplet is an **Owner-Space** action the owner performs against Bettercap directly, never a Beast-managed Procedure — a Procedure executes Actions, and issuing caplet commands would cross the protected-engine boundary (ADR-0001). Unknown or sensitive caplets are never silently trusted or automatically elevated.
 
 ---
 
