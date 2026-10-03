@@ -12,6 +12,8 @@ NOVELTY_WARM_SEC = 120.0     # recently found something new -> curious (fallback
 QUIET_SLEEPY_SEC = 600.0     # fallback: quiet this long at night -> sleepy (tiredness unavailable)
 QUIET_BORED_SEC = 900.0      # fallback: quiet this long -> bored (needs unavailable)
 CAPTURE_CELEBRATE_SEC = 60.0  # celebrate for this long after a genuinely new capture
+CAPTURE_MAX_DELTA = 10        # a live capture adds a few handshakes per tick; a larger jump is the
+                              # capture source mounting/recovering, not a capture happening now
 DWELL_MIN_SEC = 10.0         # a non-urgent mood is held at least this long (hysteresis) ...
 DWELL_FOCUS_SEC = 20.0       # ... plus up to this much more at maximum focus temperament (-> ~30 s)
 
@@ -69,6 +71,7 @@ class PersonalityEngine:
         self._sess_val: float | None = None   # last-seen session-unique AP count (bounded; see tick)
         self._life_val: float | None = None   # last-seen lifetime-unique AP count (DB-backed, unbounded)
         self._novel_t = now                   # when either last rose -> ``quiet`` is measured from here
+        self._novel_seen = False              # has a counter actually risen? (boot is not a discovery)
         self._cap_val: float | None = None    # last-seen capture total
         self._cap_t: float | None = None      # when a capture was last added
         self._mood: str | None = None         # currently expressed mood (for hysteresis)
@@ -119,16 +122,21 @@ class PersonalityEngine:
             elif sess > self._sess_val:
                 self._sess_val = sess
                 self._novel_t = now
+                self._novel_seen = True
         if life is not None:
             if self._life_val is None:
                 self._life_val = life
             elif life > self._life_val:
                 self._life_val = life
                 self._novel_t = now
+                self._novel_seen = True
         quiet = max(0.0, now - self._novel_t)
 
         # ``celebrating`` fires on a real new capture (handshake); ``semantic.capture.recent`` --
         # the old gate -- has no producer, so it never fired. ``captures.total`` is the live count.
+        # Only a modest live increment counts as "a capture just happened": captures.total reads 0
+        # both for a genuinely empty cache and for an absent/unmounted one, so a later 0 -> N jump is
+        # the source recovering, not a capture now -- update the baseline but do not celebrate it.
         cap = self._num("captures.total")
         if cap is None:
             cap = self._num("pwnagotchi.handshakes")
@@ -136,8 +144,10 @@ class PersonalityEngine:
             if self._cap_val is None:
                 self._cap_val = cap
             elif cap > self._cap_val:
+                delta = cap - self._cap_val
                 self._cap_val = cap
-                self._cap_t = now
+                if delta <= CAPTURE_MAX_DELTA:
+                    self._cap_t = now
         recent_capture = self._cap_t is not None and (now - self._cap_t) <= CAPTURE_CELEBRATE_SEC
 
         # --- observed conditions ----------------------------------------------------------------
@@ -178,7 +188,7 @@ class PersonalityEngine:
             raw = "overheated"
         elif recent_capture:
             raw = "celebrating"
-        elif moving and quiet < NOVELTY_RECENT_SEC:
+        elif moving and self._novel_seen and quiet < NOVELTY_RECENT_SEC:
             raw = "hunting"
         elif (tiredness is not None and tiredness >= TIRED_MOOD) or \
              (tiredness is None and night and quiet > QUIET_SLEEPY_SEC):

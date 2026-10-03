@@ -30,6 +30,22 @@ def _tick(**signals):
     return PersonalityEngine(FakeState({**HEALTHY, **signals}), clock=lambda: 0.0).tick()
 
 
+def _after_new_network(**extra):
+    """Result after the engine observes a *genuine* new network (an edge), past the mood dwell.
+
+    Boot alone is not a discovery (finding on #50: ``_novel_t`` starts at "now"), so hunting needs an
+    actual counter increase -- this ticks a baseline, bumps session_unique, then ticks again.
+    """
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 20,
+                   "wifi.encounters.session_unique": 10, **extra})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()                                    # baseline: a count is seen but has not risen
+    s["wifi.encounters.session_unique"] = 11    # a genuinely new network appears
+    clock[0] = 25.0                             # past the ~20s hysteresis dwell
+    return e.tick()
+
+
 # --- genuine novelty, not AP-count churn, drives "quiet" -------------------------------------
 
 def test_ap_count_churn_alone_does_not_keep_the_beast_excited():
@@ -64,10 +80,10 @@ def test_recent_new_network_drives_curious_when_stationary():
 # --- real motion, real captures, real GPS state ---------------------------------------------
 
 def test_hunting_requires_real_motion_not_the_always_true_expedition_flag():
-    base = {"gps.state": "fixed", "wifi.ap_count": 20, "wifi.encounters.session_unique": 10, "expedition.active": True}
-    assert _tick(**base)["beast.mood"] == "curious"                                  # expedition True, not moving
-    assert _tick(**{**base, "context.motion.state": "walking"})["beast.mood"] == "hunting"
-    assert _tick(**{**base, "context.motion.state": "wardrive"})["beast.mood"] == "hunting"
+    # expedition.active is always True and must not drive hunting; real motion + a real discovery does.
+    assert _after_new_network(**{"expedition.active": True})["beast.mood"] != "hunting"          # not moving
+    assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
+    assert _after_new_network(**{"context.motion.state": "wardrive"})["beast.mood"] == "hunting"
 
 
 def test_celebrating_fires_on_a_new_capture_not_the_phantom_signal():
@@ -149,12 +165,10 @@ def test_stale_gps_motion_is_not_trusted_for_hunting_or_searching():
     # (values retained, quality marked stale), but the health loop flags the collector stale. Mood
     # must not treat that as live -> neither hunting nor gps-searching may fire (ADR-0008).
     stale = {"health.collector.gps.state": "stale"}
-    assert _tick(**{**stale, "context.motion.state": "walking", "gps.state": "fixed",
-                    "wifi.ap_count": 20, "wifi.encounters.session_unique": 10})["beast.mood"] != "hunting"
+    assert _after_new_network(**{**stale, "context.motion.state": "walking"})["beast.mood"] != "hunting"
     assert _tick(**{**stale, "gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] != "gps-searching"
     # the same signals while the collector is live DO drive those moods
-    assert _tick(**{"context.motion.state": "walking", "gps.state": "fixed", "wifi.ap_count": 20,
-                    "wifi.encounters.session_unique": 10})["beast.mood"] == "hunting"
+    assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
     assert _tick(**{"gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] == "gps-searching"
 
 
@@ -172,6 +186,30 @@ def test_capped_session_counter_still_registers_novelty_via_lifetime():
     s["wifi.encounters.lifetime_unique"] = 90001        # a new AP: session capped/flat, lifetime ticks
     clock[0] = 1001.0
     assert e.tick()["beast.quiet_sec"] <= 1.0           # quiet resets off the lifetime counter
+
+
+def test_fresh_start_motion_does_not_hunt_without_a_real_discovery():
+    # At boot `quiet` is 0 only because the engine just started, not because a network appeared.
+    # GPS motion alone must not read as hunting until a counter has actually risen (ADR-0008).
+    assert _tick(**{"gps.state": "fixed", "context.motion.state": "walking",
+                    "wifi.ap_count": 0})["beast.mood"] != "hunting"
+    # once a genuinely new network is observed while moving, hunting is correct
+    assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
+
+
+def test_celebrating_ignores_capture_source_recovery():
+    # captures.total reads 0 for an absent/unmounted cache too, so a later 0 -> N jump is the source
+    # recovering with pre-existing captures, not a capture happening now -> do not celebrate it.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 0})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["captures.total"] = 50                             # cache mounts with pre-existing captures
+    clock[0] = 5.0
+    assert e.tick()["beast.mood"] != "celebrating"
+    s["captures.total"] = 51                             # a real new capture (+1)
+    clock[0] = 10.0
+    assert e.tick()["beast.mood"] == "celebrating"
 
 
 # --- end to end: NeedsEngine + PersonalityEngine over a simulated day ------------------------

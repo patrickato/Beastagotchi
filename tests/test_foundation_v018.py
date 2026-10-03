@@ -47,7 +47,8 @@ def test_personality_is_derived_from_real_state():
     s=_S({'wifi.ap_count':5,'wifi.encounters.session_unique':10,'context.motion.state':'walking','health.core.state':'healthy','governor.mode':'FULL','system.temp.cpu_c':45,'gps.state':'fixed','pwnagotchi.service.state':'active','bettercap.state':'active','ambient.day_phase':'day','system.cpu.total':20,'progression.level':10})
     e=PersonalityEngine(s,clock=lambda:now[0]);first=e.tick();assert first['beast.mood'] in {'idle','hunting','curious'}
     # A genuinely new network while on the move -> hunting (not mere AP-count churn; finding F1).
-    s.d['wifi.encounters.session_unique']=11;now[0]+=2;row=e.tick();assert row['beast.mood']=='hunting' and row['beast.personality.source']=='derived_live'
+    # +25s steps past the focus-scaled mood dwell so the observed-novelty edge can switch the mood.
+    s.d['wifi.encounters.session_unique']=11;now[0]+=25;row=e.tick();assert row['beast.mood']=='hunting' and row['beast.personality.source']=='derived_live'
     s.d['system.temp.cpu_c']=82;s.d['governor.mode']='SURVIVAL';assert e.tick()['beast.mood']=='overheated'
     s.d['health.core.state']='critical';assert e.tick()['beast.mood']=='fault'
 
