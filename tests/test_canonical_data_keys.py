@@ -22,6 +22,7 @@ from pathlib import Path
 
 from beastcore.core import BeastCore
 from beastcore.heritage import TEMPERAMENT_AXES
+from beastcore.needs import NeedsEngine
 from beastcore.personality import PersonalityEngine
 from beastcore.roster import BeastRosterError
 from beastcore.state import StateRegistry
@@ -130,3 +131,10 @@ def test_legacy_keys_documented_and_not_live():
     assert not (set(LEGACY) & LIVE_KEYS)
     for k in ("beast.boredom", "beast.current_expression", "beast.current_animation"):
         assert k in LEGACY
+
+
+def test_needs_namespace_matches_the_engine():
+    # The needs namespace holds exactly the keys NeedsEngine produces (ADR-0010) -- producer-verified,
+    # like the beast namespace, so the spec can't drift from the engine.
+    produced = set(NeedsEngine(FakeState({}), clock=lambda: 0.0).tick())
+    assert set(NAMESPACES.get("needs", [])) == produced
