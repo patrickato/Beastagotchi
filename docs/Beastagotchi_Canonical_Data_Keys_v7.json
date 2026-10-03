@@ -49,6 +49,7 @@
       "capabilities.usb_devices"
     ],
     "captures": [
+      "captures.cache_present",
       "captures.duplicates",
       "captures.eapol",
       "captures.items",

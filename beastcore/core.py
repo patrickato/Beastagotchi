@@ -444,14 +444,17 @@ class BeastCore:
         while not self.stop_event.is_set():
             try:
                 self._sync_temperament()
-                personality_patch=self.personality.tick()
-                self.state.update_many("personality", personality_patch, priority=87)
-                self.memories.observe_personality(personality_patch)
+                # Needs are published before personality ticks because PersonalityEngine now
+                # consumes needs.* when deriving mood (finding F1), so mood reflects this cycle's
+                # needs rather than lagging a cycle behind.
                 needs_patch=self.needs.tick()
                 live_needs={k:v for k,v in needs_patch.items() if v is not None}
                 absent_needs=[k for k,v in needs_patch.items() if v is None]
                 if live_needs:self.state.update_many("needs", live_needs, priority=86)
                 if absent_needs:self.state.update_many("needs", {k:None for k in absent_needs}, quality="unavailable", priority=86)
+                personality_patch=self.personality.tick()
+                self.state.update_many("personality", personality_patch, priority=87)
+                self.memories.observe_personality(personality_patch)
                 self.state.update_many("operator_session", {"operator.session":self.actions.operator_sessions.current(),"operator.policy.level":self.actions.operator_sessions.current().get("level","observer")}, priority=96)
             except Exception as exc:
                 log.exception("personality engine failed")

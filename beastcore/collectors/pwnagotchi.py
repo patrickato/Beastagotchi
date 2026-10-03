@@ -60,7 +60,7 @@ class PwnagotchiCollector(Collector):
         self._cfg_sig: tuple[int, int] | None = None
         self._inventory_cache: dict[str, Any] = {}
         self._inventory_at = 0.0
-        self._cache_summary_value = (0, 0, 0, 0)
+        self._cache_summary_value = (0, 0, 0, 0, False)
         self._cache_summary_at = 0.0
         self._session_cache: dict[str, Any] = {}
         self._session_sig: tuple[str, int, int] | None = None
@@ -113,14 +113,21 @@ class PwnagotchiCollector(Collector):
         except Exception:
             return copy.deepcopy(self._session_cache)
 
-    def _cache_summary(self, *, max_age: float = 10.0) -> tuple[int, int, int, int]:
+    def _cache_summary(self, *, max_age: float = 10.0) -> tuple[int, int, int, int, bool]:
         now = time.monotonic()
         if now - self._cache_summary_at < max_age:
             return self._cache_summary_value
         ap_count = client_count = handshake_count = hidden_count = 0
         cache = self.handshake_dir / "cache"
+        # Derive presence in the SAME scan as the counts so a consumer never sees cache_present=True
+        # while the totals are still the cached zero. Mark present only after the directory enumerates
+        # successfully: is_dir() passing but glob() failing is an incomplete scan, not a readable empty
+        # cache, and must not become a trustworthy zero baseline a later recovery reads as new captures.
+        present = False
         try:
-            for p in cache.glob("*.apcache"):
+            entries = list(cache.glob("*.apcache"))
+            present = True
+            for p in entries:
                 try:
                     obj = json.loads(p.read_text(errors="replace"))
                     ap_count += 1
@@ -130,8 +137,8 @@ class PwnagotchiCollector(Collector):
                 except Exception:
                     pass
         except Exception:
-            pass
-        self._cache_summary_value = (ap_count, client_count, handshake_count, hidden_count)
+            present = False
+        self._cache_summary_value = (ap_count, client_count, handshake_count, hidden_count, present)
         self._cache_summary_at = now
         return self._cache_summary_value
 
@@ -209,13 +216,18 @@ class PwnagotchiCollector(Collector):
         # Pwnagotchi's on-disk cache is historical/capture metadata, not the
         # authoritative live AP list. Keep it in its own namespace so it can
         # never race Bettercap's live wifi.* keys.
-        aps, clients, cache_hs, hidden = self._cache_summary()
+        aps, clients, cache_hs, hidden, cache_present = self._cache_summary()
         values["pwnagotchi.cache.ap_count"] = aps
         values["pwnagotchi.cache.client_count"] = clients
         values["pwnagotchi.cache.handshake_ap_count"] = cache_hs
         values["pwnagotchi.cache.hidden_count"] = hidden
         values["captures.total"] = cache_hs
         values["captures.directory"] = str(self.handshake_dir)
+        # Whether the handshake cache was readable in the SAME scan that produced captures.total above
+        # (not a fresh is_dir()), so a consumer never sees cache_present=True while the count is still a
+        # cached zero. captures.total reads 0 both for an empty and an absent cache; this lets consumers
+        # tell a real first capture from the source merely becoming available (ADR-0008).
+        values["captures.cache_present"] = cache_present
         if "pwnagotchi.handshakes" not in values:
             values["pwnagotchi.handshakes"] = cache_hs
 
