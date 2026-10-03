@@ -36,6 +36,9 @@ The visual identity must retain the strongest traits of the early Beastagotchi U
 10. **Extensions live at the correct layer.** Pwnagotchi hooks stay plugins; Beast content stays Packs; deeper tools stay Apps; mixed features become Companion Expansions.
 11. **Offline exchange is first-class.** Portable social/lineage/challenge data must not require cloud connectivity when an offline Capsule transport can do the job.
 12. **Nothing visually valuable is discarded.** Unused concepts become themes, layouts, idle modes, widgets, animation packs, or optional apps.
+13. **Live truth, never decorative fiction.** Production views show real, live, or persisted data, or an explicit *unavailable* — never faked telemetry, and unknown is never rendered as zero. Demo or replay data appears only when it is clearly labelled as such. (This is the product-level statement of the engineering golden rule in `AGENTS.md` §2.4.)
+
+> **See also:** the project's values and "why" live in [`PROJECT_PHILOSOPHY.md`](PROJECT_PHILOSOPHY.md); the one-paragraph canonical statement is §33 below; the collaboration charter and golden rules are in [`AGENTS.md`](../AGENTS.md).
 
 ---
 
