@@ -198,3 +198,71 @@ def test_persisted_needs_do_not_cross_to_a_different_beast():
     mono2, wall2 = [0.0], [wall[0] + 30.0]
     after = _settle(_engine({**BASE, "progression.beast.id": "B"}, store, mono2, wall2))
     assert after["needs.curiosity_hunger"] == 0
+
+
+def test_restlessness_is_frozen_during_a_long_pre_fix_window():
+    # Codex round-2 P1: while waiting for the first boot fix, the restored restlessness age must be held
+    # constant, not advanced by the unknown pre-fix interval -- a 4h GPS-less uptime must not turn a
+    # restored ~50 into 100 on the first fix.
+    store = FakeStore()
+    mono, wall = [0.0], [1000.0]
+    e1 = _engine(BASE, store, mono, wall)
+    e1.tick()
+    mono[0], wall[0] = 2 * 3600.0, 1000.0 + 2 * 3600.0
+    before = e1.tick()
+    e1.save()
+    assert before["needs.restlessness"] >= 40
+    mono2, wall2 = [0.0], [wall[0] + 30.0]
+    st = FakeState({**BASE, "gps.state": "unavailable", "context.motion.state": "unknown"})
+    e2 = NeedsEngine(st, clock=lambda: mono2[0], wall_clock=lambda: wall2[0], store=store)
+    e2.tick()
+    mono2[0] = 4 * 3600.0                                     # 4h of GPS-unavailable uptime
+    assert e2.tick()["needs.restlessness"] is None
+    st["gps.state"] = "fixed"
+    st["context.motion.state"] = "stationary"
+    realized = e2.tick()["needs.restlessness"]
+    assert abs(realized - before["needs.restlessness"]) <= 5  # ~50, not the 100 a charged 4h gap gives
+
+
+def test_save_while_decay_pending_preserves_the_trusted_checkpoint():
+    # Codex round-2 P1: a behind boot clock must not overwrite the trusted checkpoint, or a later clock
+    # sync could no longer recover the real outage.
+    store = FakeStore()
+    mono, wall = [0.0], [10_000.0]
+    e1 = _engine(BASE, store, mono, wall)
+    e1.tick()
+    mono[0], wall[0] = 3 * 3600.0, 10_000.0 + 3 * 3600.0
+    e1.tick()
+    e1.save()
+    trusted_stamp = store.get_meta_json(NeedsEngine.META_KEY)["saved_at"]
+    mono2, wall2 = [0.0], [500.0]                             # RTC unset: behind the save stamp
+    e2 = _engine(BASE, store, mono2, wall2)
+    e2.tick()
+    mono2[0] = 120.0                                          # enough that a periodic save would fire
+    e2.tick()
+    e2.save()                                                 # must not overwrite with the untrusted stamp
+    assert store.get_meta_json(NeedsEngine.META_KEY)["saved_at"] == trusted_stamp
+
+
+def test_a_live_discovery_during_deferral_is_not_overwritten_by_decay():
+    # Codex round-2 P1: a lifetime-first discovery observed while decay is deferred eases hunger now;
+    # applying the deferred fade later must not resurrect the stale pre-restart hunger.
+    store = FakeStore()
+    mono, wall = [0.0], [10_000.0]
+    e1 = _engine(BASE, store, mono, wall)
+    e1.tick()
+    mono[0], wall[0] = 3 * 3600.0, 10_000.0 + 3 * 3600.0
+    before = e1.tick()
+    e1.save()
+    saved_wall = wall[0]
+    assert before["needs.curiosity_hunger"] >= 60
+    mono2, wall2 = [0.0], [500.0]                             # behind clock -> decay deferred
+    st = FakeState({**BASE})
+    e2 = NeedsEngine(st, clock=lambda: mono2[0], wall_clock=lambda: wall2[0], store=store)
+    e2.tick()
+    st["wifi.encounters.lifetime_unique"] = 11               # a brand-new discovery during the deferral
+    mono2[0] = 1.0
+    assert e2.tick()["needs.curiosity_hunger"] <= 5          # eased to ~0 by the fresh discovery
+    wall2[0] = saved_wall + 12 * 3600.0                      # clock finally syncs forward
+    mono2[0] = 2.0
+    assert e2.tick()["needs.curiosity_hunger"] <= 5          # decay must not resurrect the old hunger

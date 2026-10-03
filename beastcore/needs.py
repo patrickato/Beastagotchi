@@ -35,6 +35,7 @@ class NeedsEngine:
     TIRED_RISE_SEC = 2 * 3600.0  # full-swing of the tiredness integrator under sustained stress
     TIRED_FALL_SEC = 1 * 3600.0  # recovery time when conditions are good
     OFF_FADE_HALF_LIFE_SEC = 6 * 3600.0  # powered-off relaxation: needs halve for every ~6h off
+    MAX_OFF_SEC = 370 * 24 * 3600.0  # an off-duration beyond this (or negative) means an untrusted clock
     SAVE_INTERVAL_SEC = 60.0     # throttle for persisting need state to the Store
     META_KEY = "needs.persistence"
 
@@ -61,8 +62,8 @@ class NeedsEngine:
         self._peer_t = now
         self._tired = 0.0
         self._restlessness_restore_pending = False  # a restored restlessness age is awaiting the first GPS fix
+        self._restlessness_frozen_age: float | None = None  # that age, held constant until the first fix realizes it
         self._pending_decay: dict[str, Any] | None = None  # deferred powered-off fade (applied once wall clock is trusted)
-        self._decay_probe: tuple[float, float] | None = None  # (wall, mono) of the first trustworthy reading
 
     @staticmethod
     def _finite(x: Any) -> float | None:
@@ -112,49 +113,61 @@ class NeedsEngine:
         if pa is not None:
             self._peer_t = now - max(0.0, pa)
         self._tired = max(0.0, min(100.0, tired))
-        # A restored restlessness age must survive the pre-fix startup window (Codex P1): keep it pending
-        # until the first live fix realizes it, instead of the normal "re-baseline during an outage".
+        # A restored restlessness age must survive the pre-fix startup window and not advance during it
+        # (Codex P1): hold it frozen until the first live fix realizes it.
         self._restlessness_restore_pending = ma is not None
-        # Defer the fade; _maybe_decay applies it once the wall clock is confirmed trustworthy.
-        self._pending_decay = {"saved_at": saved_at, "restore_mono": now,
-                               "na": na, "ma": ma, "pa": pa, "tired0": self._tired}
+        self._restlessness_frozen_age = max(0.0, ma) if ma is not None else None
+        # nt0/pt0/mt0 are the restored baselines; a live observation that moves one before the fade is
+        # applied must win over the stale persisted value, so the fade skips a baseline that has changed.
+        pd = {"saved_at": saved_at, "restore_mono": now, "na": na, "ma": ma, "pa": pa,
+              "tired0": self._tired, "nt0": self._novelty_t, "pt0": self._peer_t, "mt0": self._move_t}
+        off = float(self.wall_clock()) - saved_at
+        if 0.0 <= off <= self.MAX_OFF_SEC:
+            self._apply_decay(now, pd)   # clock trusted now -> fade before any live tick (no window)
+        else:
+            self._pending_decay = pd     # untrusted clock -> preserve un-faded; _maybe_decay retries
 
     def _maybe_decay(self, now: float) -> None:
-        # Apply the deferred powered-off fade, but only once the wall clock is trustworthy. A clock
-        # behind the save stamp (unsynced/epoch at boot) is not trusted -- we keep the needs preserved
-        # and re-check next tick rather than treating skew as a huge outage. A single transient spike
-        # is rejected by requiring two consistent readings (wall advancing ~ like the monotonic clock),
-        # so a clock that briefly jumps far into the future cannot zero the needs (Codex P1).
+        # Apply the deferred powered-off fade once the wall clock is trustworthy. A clock behind the save
+        # stamp (unsynced/epoch at boot) or implausibly far ahead (a transient spike) is not trusted:
+        # keep the needs preserved and re-check next tick rather than baking skew in as a huge outage.
+        # A transient spike resolves itself -- the next in-range reading applies the real fade (Codex P1).
         pd = self._pending_decay
         if pd is None:
             return
-        w = float(self.wall_clock())
-        off = w - pd["saved_at"]
-        if off < 0.0:
-            self._decay_probe = None  # clock behind the stamp -> not trustworthy yet; preserve, revisit
+        off = float(self.wall_clock()) - pd["saved_at"]
+        if not (0.0 <= off <= self.MAX_OFF_SEC):
             return
-        probe = self._decay_probe
-        if probe is None:
-            self._decay_probe = (w, now)  # first trustworthy reading; confirm it is stable next tick
-            return
-        w0, mono0 = probe
-        if abs((w - w0) - (now - mono0)) > 5.0:
-            self._decay_probe = (w, now)  # clock jumped between readings -> re-probe, don't trust it
-            return
+        self._apply_decay(now, pd)
+        self._pending_decay = None
+
+    def _apply_decay(self, now: float, pd: dict[str, Any]) -> None:
+        # Fade the restored ages/value by the powered-off duration (caller has checked the clock is
+        # trusted). A need whose baseline was eased by a live observation since restore is left alone --
+        # the fresh value wins over the stale persisted one (Codex P1). Restlessness is faded via its
+        # frozen age so the first GPS fix realizes the decayed value.
+        off = max(0.0, float(self.wall_clock()) - pd["saved_at"])
         fade = 0.5 ** (off / self.OFF_FADE_HALF_LIFE_SEC)
         elapsed = max(0.0, now - pd["restore_mono"])  # real run-time since restore keeps accruing
-        if pd["na"] is not None:
+        if pd["na"] is not None and self._novelty_t == pd["nt0"]:
             self._novelty_t = now - (max(0.0, pd["na"]) * fade + elapsed)
-        if pd["ma"] is not None:
-            self._move_t = now - (max(0.0, pd["ma"]) * fade + elapsed)
-        if pd["pa"] is not None:
+        if pd["pa"] is not None and self._peer_t == pd["pt0"]:
             self._peer_t = now - (max(0.0, pd["pa"]) * fade + elapsed)
         self._tired = max(0.0, min(100.0, pd["tired0"] * fade))
-        self._pending_decay = None
-        self._decay_probe = None
+        if pd["ma"] is not None:
+            faded_ma = max(0.0, pd["ma"]) * fade
+            if self._restlessness_restore_pending:
+                self._restlessness_frozen_age = faded_ma          # still awaiting the first fix
+            elif self._move_t == pd["mt0"]:
+                self._move_t = now - (faded_ma + elapsed)         # realized, not live-eased since restore
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
+            return
+        if self._pending_decay is not None:
+            # The boot clock is not yet trusted (decay still pending): do not overwrite the trusted
+            # checkpoint with an untrusted stamp, or a later clock sync could no longer recover the real
+            # outage (Codex P1). Preserve the existing checkpoint until the fade has been applied.
             return
         try:
             self.store.set_meta_json(self.META_KEY, {
@@ -249,14 +262,20 @@ class NeedsEngine:
         # with no position, and a stale gps.state reads as "unknown" (per-key quality) -- neither is a fix.
         if motion == 'unknown' or str(self._live('gps.state') or 'unknown') != 'fixed':
             # Movement is unknowable now. Normally re-baseline so a real outage is not charged on recovery
-            # (a 4h GPS gap must not resume as an instant restlessness=100). But while a *restored*
-            # restlessness age is still waiting for the first boot fix, preserve it instead of erasing it
-            # (Codex P1: an unknown startup sample must not wipe known persisted state).
-            if not self._restlessness_restore_pending:
+            # (a 4h GPS gap must not resume as an instant restlessness=100). But while a *restored* age is
+            # still waiting for the first boot fix, hold it frozen -- neither erased nor advanced by the
+            # unknown pre-fix interval (Codex P1), so the first fix realizes exactly the persisted value.
+            if self._restlessness_restore_pending:
+                if self._restlessness_frozen_age is not None:
+                    self._move_t = now - self._restlessness_frozen_age
+            else:
                 self._move_t = now
             out['needs.restlessness'] = None
         else:
-            self._restlessness_restore_pending = False  # first live fix realizes the restored age
+            if self._restlessness_restore_pending:
+                self._move_t = now - (self._restlessness_frozen_age or 0.0)  # realize the frozen age
+                self._restlessness_restore_pending = False
+                self._restlessness_frozen_age = None
             if motion in _MOVING:
                 self._move_t = now  # moving now -> restlessness eases to 0
             out['needs.restlessness'] = self._rise(now - self._move_t, self.RISE_SEC, 1.0)
