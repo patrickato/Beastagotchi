@@ -14,6 +14,22 @@ class FakeState(dict):
         return dict.get(self, key, default)
 
 
+class MetaState(dict):
+    """FakeState that also exposes StateRegistry-style per-key quality metadata, so tests can mark a
+    key stale/unavailable (its collector stopped refreshing) and check the engine treats it as absent."""
+    def __init__(self, values=None, *, stale=(), unavailable=()):
+        super().__init__(values or {})
+        self._q = {**{k: "stale" for k in stale}, **{k: "unavailable" for k in unavailable}}
+
+    def get(self, key, default=None):
+        return dict.get(self, key, default)
+
+    def meta(self, key):
+        if key not in self:
+            return None
+        return {"quality": self._q.get(key, "live"), "value": self[key], "updated_at": 0.0}
+
+
 def _engine(state, clock_box):
     return NeedsEngine(FakeState(state), clock=lambda: clock_box[0])
 
@@ -57,11 +73,11 @@ def test_restlessness_unavailable_without_gps():
 
 
 def test_restlessness_unavailable_when_gps_is_stale():
-    # A stalled GPS collector keeps its last values (quality marked stale); frozen motion must not
-    # read as live -> restlessness is unavailable, same as no GPS at all (ADR-0008).
+    # A stalled GPS collector keeps its last values but the registry marks them stale; frozen motion
+    # must not read as live -> restlessness is unavailable, same as no GPS at all (ADR-0008).
     clock = [0.0]
-    e = _engine({"gps.state": "fixed", "context.motion.state": "walking",
-                 "health.collector.gps.state": "stale"}, clock)
+    s = MetaState({"gps.state": "fixed", "context.motion.state": "walking"}, stale=["gps.state"])
+    e = NeedsEngine(s, clock=lambda: clock[0])
     clock[0] = 3600.0
     assert e.tick()["needs.restlessness"] is None
 
@@ -100,7 +116,8 @@ def test_normal_throttle_string_does_not_accrue_fatigue():
     clock[0] = 3600.0
     assert e.tick()["needs.tiredness"] == 0          # cool + not throttled -> no fatigue
     clock2 = [0.0]
-    throttled = _engine({"system.temp.cpu_c": 50.0, "governor.throttle_current": True}, clock2)
+    throttled = _engine({"system.temp.cpu_c": 50.0, "system.throttle.flags": "0x4",
+                         "governor.throttle_current": True}, clock2)
     throttled.tick()
     clock2[0] = 3600.0
     assert throttled.tick()["needs.tiredness"] > 0   # a real throttle bit does accrue fatigue
@@ -121,12 +138,14 @@ def test_battery_fatigue_requires_available_telemetry():
 
 
 def test_stale_thermal_driver_is_not_treated_as_live():
-    # A stalled system collector retains a hot CPU temp; fatigue must not integrate from stale data.
+    # A stalled system collector retains a hot CPU temp (registry marks it stale); fatigue must not
+    # integrate from stale data, and with no other live driver tiredness is unavailable (ADR-0008).
     clock = [0.0]
-    e = _engine({"system.temp.cpu_c": 84.0, "health.collector.system.state": "stale"}, clock)
+    s = MetaState({"system.temp.cpu_c": 84.0}, stale=["system.temp.cpu_c"])
+    e = NeedsEngine(s, clock=lambda: clock[0])
     e.tick()
     clock[0] = 3600.0
-    assert e.tick()["needs.tiredness"] is None       # only driver is stale -> unavailable (ADR-0008)
+    assert e.tick()["needs.tiredness"] is None
 
 
 def test_need_state_resets_when_the_active_beast_changes():
@@ -145,18 +164,20 @@ def test_need_state_resets_when_the_active_beast_changes():
 
 
 def test_governor_stress_requires_fresh_system_telemetry():
-    # governor.mode / throttle derive from system telemetry; if the system collector is stale (but
-    # power is live, so tiredness is still published), their stress must not accrue (ADR-0008).
+    # governor.mode / throttle derive from system telemetry (system.throttle.flags); if that key is
+    # stale (but power is live, so tiredness is still published) their stress must not accrue (ADR-0008).
     clock = [0.0]
-    stale_sys = _engine({"power.battery.percent_estimate": 80.0, "power.telemetry.available": True,
-                         "governor.mode": "SURVIVAL", "governor.throttle_current": True,
-                         "health.collector.system.state": "stale"}, clock)
+    s = MetaState({"power.battery.percent_estimate": 80.0, "power.telemetry.available": True,
+                   "governor.mode": "SURVIVAL", "governor.throttle_current": True,
+                   "system.throttle.flags": "0x4"}, stale=["system.throttle.flags"])
+    stale_sys = NeedsEngine(s, clock=lambda: clock[0])
     stale_sys.tick()
     clock[0] = 3600.0
     assert stale_sys.tick()["needs.tiredness"] == 0
     clock2 = [0.0]
     fresh_sys = _engine({"power.battery.percent_estimate": 80.0, "power.telemetry.available": True,
-                         "governor.mode": "SURVIVAL", "governor.throttle_current": True}, clock2)
+                         "governor.mode": "SURVIVAL", "governor.throttle_current": True,
+                         "system.throttle.flags": "0x4"}, clock2)
     fresh_sys.tick()
     clock2[0] = 3600.0
     assert fresh_sys.tick()["needs.tiredness"] > 0

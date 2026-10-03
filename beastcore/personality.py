@@ -72,14 +72,26 @@ class PersonalityEngine:
         self._novel_seen = False              # has a counter actually risen? (boot is not a discovery)
         self._cap_val: float | None = None    # last-seen capture total
         self._cap_t: float | None = None      # when a capture was last added
+        self._cap_ready = False               # was the capture source readable last tick? (vs just mounted)
         self._mood: str | None = None         # currently expressed mood (for hysteresis)
         self._mood_since = now
         self._beast_id: Any = None            # active Beast, to reset the expression on a roster switch
 
+    def _live(self, key: str) -> Any:
+        # Per-key live-truth: return the value only while the registry considers the key live; a key
+        # marked stale (its collector stopped refreshing) or unavailable reads as absent, so mood is
+        # never driven by data that is no longer true (ADR-0008). Falls back to the plain value when
+        # the state exposes no metadata (e.g. tests).
+        meta = getattr(self.state, "meta", None)
+        if callable(meta):
+            m = meta(key)
+            if m is not None and m.get("quality") in ("stale", "unavailable"):
+                return None
+        return self.state.get(key, None)
+
     def _num(self, key: str) -> float | None:
-        v = self.state.get(key, None)
         try:
-            return float(v)
+            return float(self._live(key))
         except (TypeError, ValueError):
             return None
 
@@ -122,6 +134,7 @@ class PersonalityEngine:
             self._life_val = None
             self._cap_t = None
             self._cap_val = None
+            self._cap_ready = False
 
         # --- edge detectors: time since the last genuinely new network / capture ----------------
         # ``quiet`` keys on genuine novelty, not raw AP-count churn, so simply re-seeing the same
@@ -147,38 +160,44 @@ class PersonalityEngine:
                 self._novel_seen = True
         quiet = max(0.0, now - self._novel_t)
 
-        # ``celebrating`` fires on a real new capture (handshake); ``semantic.capture.recent`` --
-        # the old gate -- has no producer, so it never fired. ``captures.total`` is the live count.
-        # captures.total reads 0 both for a genuinely empty cache and for an absent/unmounted one, so
-        # a rise from a zero/uninitialized baseline (of any size) is the source becoming readable, not
-        # a capture happening now. Only an increase above an already-positive -- i.e. confirmed
-        # non-empty -- baseline counts as a live capture worth celebrating.
+        # ``celebrating`` fires on a real new capture (handshake); the old ``semantic.capture.recent``
+        # gate has no producer, so it never fired. captures.total reads 0 both for a genuinely empty
+        # cache and for an absent/unmounted one, so the collector publishes captures.cache_present to
+        # tell them apart: a capture counts only as an increase while the source was readable on the
+        # previous tick. That celebrates a real first handshake (0 -> 1 on a readable cache) but not the
+        # cache merely mounting with pre-existing captures (ADR-0008). When the signal is absent (older
+        # data / tests) readability is inferred from a positive count, so a 0 -> N jump never celebrates.
         cap = self._num("captures.total")
         if cap is None:
             cap = self._num("pwnagotchi.handshakes")
-        if cap is not None:
-            if self._cap_val is not None and self._cap_val > 0 and cap > self._cap_val:
+        present = self._live("captures.cache_present")
+        readable_now = bool(present) if present is not None else (cap is not None and cap > 0)
+        if cap is not None and readable_now:
+            if self._cap_ready and self._cap_val is not None and cap > self._cap_val:
                 self._cap_t = now
             self._cap_val = cap
+        else:
+            self._cap_val = None  # source not readable -> re-baseline when it returns
+        self._cap_ready = readable_now
         recent_capture = self._cap_t is not None and (now - self._cap_t) <= CAPTURE_CELEBRATE_SEC
 
         # --- observed conditions ----------------------------------------------------------------
         aps = int(self.state.get("wifi.ap_count", 0) or 0)
         health = str(self.state.get("health.core.state", "starting") or "starting")
         gov = str(self.state.get("governor.mode", "FULL") or "FULL")
-        temp = float(self.state.get("system.temp.cpu_c", 0) or 0)
-        gps_state = str(self.state.get("gps.state", "unknown") or "unknown")
+        temp = float(self._live("system.temp.cpu_c") or 0)   # stale/unavailable temp -> 0 (not overheated)
+        gps_val = self._live("gps.state")
+        gps_live = gps_val is not None                        # False when the gps.* keys are stale/unavailable
+        gps_state = str(gps_val or "unknown")
         pwn = str(self.state.get("pwnagotchi.service.state", "unknown") or "unknown")
         bc = str(self.state.get("bettercap.state", "unknown") or "unknown")
         phase = str(self.state.get("ambient.day_phase", "day") or "day")
         cpu = float(self.state.get("system.cpu.total", 0) or 0)
         lvl = int(self.state.get("progression.level", 1) or 1)
-        # GPS can stall: the collector stops, its last gps.* values are retained but marked stale,
-        # and ContextEngine still republishes context.motion.state from them as if live. Trusting it
-        # would let a stationary Beast keep entering hunting / gps-searching (ADR-0008: never treat
-        # stale data as live). The health loop publishes a fresh staleness flag, so gate on it.
-        gps_fresh = str(self.state.get("health.collector.gps.state", "ok") or "ok") != "stale"
-        moving = gps_fresh and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
+        # GPS can stall: ContextEngine still republishes context.motion.state from retained gps.* values
+        # as if live, so trust motion (and the connected_no_fix search state) only while the gps.* keys
+        # are themselves live per the registry (ADR-0008: never treat stale data as live).
+        moving = gps_live and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 
         cur_t = self._temp("curiosity")
@@ -212,7 +231,7 @@ class PersonalityEngine:
              (lonely is not None and lonely >= RESTLESS_MOOD) or \
              (restless is None and lonely is None and quiet > QUIET_BORED_SEC):
             raw = "bored"
-        elif gps_fresh and gps_state == "connected_no_fix":
+        elif gps_live and gps_state == "connected_no_fix":
             raw = "gps-searching"
         else:
             raw = "idle"

@@ -109,7 +109,10 @@ class SystemCollector(Collector):
         st = mem.get("SwapTotal", 0); sf = mem.get("SwapFree", 0)
         values["system.swap.used_pct"] = round((st - sf) / st * 100, 2) if st else 0.0
         temp = read_text("/sys/class/thermal/thermal_zone0/temp").strip()
-        if temp.isdigit(): values["system.temp.cpu_c"] = round(int(temp) / 1000.0, 2)
+        # Publish unavailable (None) on a failed read rather than omitting the key: omitting leaves the
+        # last reading in StateRegistry looking live, so a cooled CPU could keep driving derived
+        # tiredness/mood from a stale hot value (ADR-0008 live-truth).
+        values["system.temp.cpu_c"] = round(int(temp) / 1000.0, 2) if temp.isdigit() else None
         up = read_text("/proc/uptime").split()
         if up:
             try:

@@ -51,17 +51,23 @@ class NeedsEngine:
         self._peer_t = now
         self._tired = 0.0
 
+    def _live(self, key: str) -> Any:
+        # Per-key live-truth: return the value only while the registry considers the key live. A key
+        # marked stale (its collector stopped refreshing) or unavailable (a producer published it so)
+        # reads as absent, so a derived need is never driven by data that is no longer true (ADR-0008).
+        # Falls back to the plain value when the state exposes no metadata (e.g. tests).
+        meta = getattr(self.state, 'meta', None)
+        if callable(meta):
+            m = meta(key)
+            if m is not None and m.get('quality') in ('stale', 'unavailable'):
+                return None
+        return self.state.get(key, None)
+
     def _num(self, key: str) -> float | None:
-        v = self.state.get(key, None)
         try:
-            return float(v)
+            return float(self._live(key))
         except (TypeError, ValueError):
             return None
-
-    def _fresh(self, collector: str) -> bool:
-        # The health loop marks a collector "stale" once its data ages past its threshold while
-        # retaining the last values. Treat absent/ok/starting as fresh; only "stale" blocks a driver.
-        return str(self.state.get('health.collector.' + collector + '.state', 'ok') or 'ok') != 'stale'
 
     def _temp(self, axis: str) -> float:
         # Heritage temperament (0..100); absent/unavailable -> neutral 50 for the internal rate math.
@@ -108,7 +114,7 @@ class NeedsEngine:
         # usable GPS fix (motion "unknown") or when the GPS collector is stale, so frozen motion from
         # a stalled collector cannot masquerade as "not moving" (ADR-0008).
         motion = str(self.state.get('context.motion.state', 'unknown') or 'unknown')
-        if motion == 'unknown' or not self._fresh('gps'):
+        if motion == 'unknown' or self._live('gps.state') is None:
             # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
             # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100).
             self._move_t = now
@@ -138,12 +144,14 @@ class NeedsEngine:
         # input counts only while its collector is live and telemetry is available, so a stale CPU
         # temperature, a retained battery % from a dropped UPS, or the normal "0x0" throttle string
         # cannot drive apparently-live fatigue (ADR-0008).
-        temp_c = self._num('system.temp.cpu_c')
+        temp_c = self._num('system.temp.cpu_c')        # _num already drops a stale/unavailable reading
         batt = self._num('power.battery.percent_estimate')
-        sys_fresh = self._fresh('system')
-        use_temp = temp_c is not None and sys_fresh
+        # system.throttle.flags goes stale with the system collector; use it as the liveness proxy for
+        # the governor-derived stress below (the governor itself re-publishes those keys as live).
+        sys_live = self._live('system.throttle.flags') is not None
+        use_temp = temp_c is not None
         batt_available = bool(self.state.get('power.telemetry.available', True))
-        use_batt = batt is not None and batt_available and self._fresh('power')
+        use_batt = batt is not None and batt_available
         if not use_temp and not use_batt:
             out['needs.tiredness'] = None
         else:
@@ -159,9 +167,9 @@ class NeedsEngine:
             # governor mode / throttle both derive from system telemetry; the governor refreshes them
             # every second so they never look stale themselves -- gate on the system collector instead,
             # or a throttle that has ended keeps tiring the Beast off stale data (ADR-0008).
-            if sys_fresh and gov in {'REDUCED', 'SURVIVAL'}:
+            if sys_live and gov in {'REDUCED', 'SURVIVAL'}:
                 stress += 0.5
-            if sys_fresh and throttled:
+            if sys_live and throttled:
                 stress += 0.3
             if use_batt and batt < 25:
                 stress += (25.0 - batt) / 25.0

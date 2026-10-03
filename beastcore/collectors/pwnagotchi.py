@@ -216,6 +216,13 @@ class PwnagotchiCollector(Collector):
         values["pwnagotchi.cache.hidden_count"] = hidden
         values["captures.total"] = cache_hs
         values["captures.directory"] = str(self.handshake_dir)
+        # Whether the handshake cache is actually readable. captures.total reads 0 both for a genuinely
+        # empty cache and for an absent/unmounted one; this lets consumers tell a real first capture
+        # from the source merely becoming available (ADR-0008).
+        try:
+            values["captures.cache_present"] = (self.handshake_dir / "cache").is_dir()
+        except Exception:
+            values["captures.cache_present"] = False
         if "pwnagotchi.handshakes" not in values:
             values["pwnagotchi.handshakes"] = cache_hs
 

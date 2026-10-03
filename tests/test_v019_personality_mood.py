@@ -18,6 +18,22 @@ class FakeState(dict):
         return dict.get(self, key, default)
 
 
+class MetaState(dict):
+    """FakeState that also exposes StateRegistry-style per-key quality metadata, so tests can mark a
+    key stale/unavailable and check mood never treats a no-longer-live value as live."""
+    def __init__(self, values=None, *, stale=(), unavailable=()):
+        super().__init__(values or {})
+        self._q = {**{k: "stale" for k in stale}, **{k: "unavailable" for k in unavailable}}
+
+    def get(self, key, default=None):
+        return dict.get(self, key, default)
+
+    def meta(self, key):
+        if key not in self:
+            return None
+        return {"quality": self._q.get(key, "live"), "value": self[key], "updated_at": 0.0}
+
+
 HEALTHY = {
     "health.core.state": "healthy", "governor.mode": "FULL", "system.temp.cpu_c": 50.0,
     "pwnagotchi.service.state": "active", "bettercap.state": "active",
@@ -173,15 +189,48 @@ def test_mood_hysteresis_resets_on_active_beast_change():
 # --- freshness + counter-saturation robustness (Codex review on #50) -------------------------
 
 def test_stale_gps_motion_is_not_trusted_for_hunting_or_searching():
-    # GPS stalled: context.motion.state is frozen "walking" and gps.state frozen "connected_no_fix"
-    # (values retained, quality marked stale), but the health loop flags the collector stale. Mood
-    # must not treat that as live -> neither hunting nor gps-searching may fire (ADR-0008).
-    stale = {"health.collector.gps.state": "stale"}
-    assert _after_new_network(**{**stale, "context.motion.state": "walking"})["beast.mood"] != "hunting"
-    assert _tick(**{**stale, "gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] != "gps-searching"
-    # the same signals while the collector is live DO drive those moods
+    # GPS stalled: gps.* values are retained but the registry marks them stale, and ContextEngine still
+    # republishes context.motion.state as live. Mood must not treat that as live -> neither hunting nor
+    # gps-searching may fire (ADR-0008), even though motion.state itself still reads "walking".
+    clock = [0.0]
+    s = MetaState({**HEALTHY, "gps.state": "fixed", "context.motion.state": "walking", "wifi.ap_count": 20,
+                   "wifi.encounters.session_unique": 10}, stale=["gps.state"])
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["wifi.encounters.session_unique"] = 11
+    clock[0] = 25.0
+    assert e.tick()["beast.mood"] != "hunting"
+    s2 = MetaState({**HEALTHY, "gps.state": "connected_no_fix", "wifi.ap_count": 0}, stale=["gps.state"])
+    assert PersonalityEngine(s2, clock=lambda: 0.0).tick()["beast.mood"] != "gps-searching"
+    # the same signals while the gps.* keys are live DO drive those moods
     assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
     assert _tick(**{"gps.state": "connected_no_fix", "wifi.ap_count": 0})["beast.mood"] == "gps-searching"
+
+
+def test_stale_temperature_is_not_read_as_overheated():
+    # A stale hot CPU temp (collector stopped refreshing it) must not drive the overheated mood.
+    s = MetaState({**HEALTHY, "system.temp.cpu_c": 90.0, "gps.state": "fixed"}, stale=["system.temp.cpu_c"])
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "overheated"
+
+
+def test_first_capture_on_a_readable_cache_celebrates():
+    # With the capture-source signal, a genuine first handshake (0 -> 1 on an already-readable cache)
+    # celebrates -- while a cache that only just became present does not.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 0, "captures.cache_present": True})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["captures.total"] = 1
+    clock[0] = 2.0
+    assert e.tick()["beast.mood"] == "celebrating"
+    clock2 = [0.0]
+    s2 = FakeState({**HEALTHY, "gps.state": "fixed", "captures.total": 0, "captures.cache_present": False})
+    e2 = PersonalityEngine(s2, clock=lambda: clock2[0])
+    e2.tick()
+    s2["captures.cache_present"] = True       # cache just mounted with pre-existing captures
+    s2["captures.total"] = 50
+    clock2[0] = 2.0
+    assert e2.tick()["beast.mood"] != "celebrating"
 
 
 def test_capped_session_counter_still_registers_novelty_via_lifetime():
