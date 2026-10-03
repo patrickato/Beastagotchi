@@ -109,6 +109,9 @@ class NeedsEngine:
         # a stalled collector cannot masquerade as "not moving" (ADR-0008).
         motion = str(self.state.get('context.motion.state', 'unknown') or 'unknown')
         if motion == 'unknown' or not self._fresh('gps'):
+            # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
+            # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100).
+            self._move_t = now
             out['needs.restlessness'] = None
         else:
             if motion in _MOVING:
@@ -116,8 +119,11 @@ class NeedsEngine:
             out['needs.restlessness'] = self._rise(now - self._move_t, self.RISE_SEC, 1.0)
 
         # loneliness -- rises since the last peer encounter; social Beasts feel it faster.
+        # peerdex.last_seen_at is 0 on a fresh profile (sentinel for "no peer ever"), so <= 0 is
+        # unavailable, not a real encounter at the epoch; re-baseline so the first real peer reads ~0.
         peer = self._num('peerdex.last_seen_at')
-        if peer is None:
+        if peer is None or peer <= 0:
+            self._peer_t = now
             out['needs.loneliness'] = None
         else:
             if self._peer_val is None:
@@ -134,7 +140,8 @@ class NeedsEngine:
         # cannot drive apparently-live fatigue (ADR-0008).
         temp_c = self._num('system.temp.cpu_c')
         batt = self._num('power.battery.percent_estimate')
-        use_temp = temp_c is not None and self._fresh('system')
+        sys_fresh = self._fresh('system')
+        use_temp = temp_c is not None and sys_fresh
         batt_available = bool(self.state.get('power.telemetry.available', True))
         use_batt = batt is not None and batt_available and self._fresh('power')
         if not use_temp and not use_batt:
@@ -149,9 +156,12 @@ class NeedsEngine:
             if use_temp:
                 heat = max(0.0, (temp_c - 65.0) / 20.0)                  # 0 at 65C, 1 at 85C
                 stress += heat * (1.5 - self._temp('boldness') / 100.0)  # bold Beasts tire less from heat
-            if gov in {'REDUCED', 'SURVIVAL'}:
+            # governor mode / throttle both derive from system telemetry; the governor refreshes them
+            # every second so they never look stale themselves -- gate on the system collector instead,
+            # or a throttle that has ended keeps tiring the Beast off stale data (ADR-0008).
+            if sys_fresh and gov in {'REDUCED', 'SURVIVAL'}:
                 stress += 0.5
-            if throttled:
+            if sys_fresh and throttled:
                 stress += 0.3
             if use_batt and batt < 25:
                 stress += (25.0 - batt) / 25.0

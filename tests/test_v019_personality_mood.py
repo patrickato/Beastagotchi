@@ -158,6 +158,18 @@ def test_hysteresis_holds_a_nonurgent_mood_but_urgent_preempts():
     assert e.tick()["beast.mood"] == "overheated"              # urgent preempts instantly, ignoring the dwell
 
 
+def test_mood_hysteresis_resets_on_active_beast_change():
+    # A roster switch must not keep showing the previous Beast's expression through the dwell window.
+    clock = [0.0]
+    s = FakeState({**HEALTHY, "gps.state": "fixed", "wifi.ap_count": 0, "progression.beast.id": "A"})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    assert e.tick()["beast.mood"] == "idle"                   # Beast A settles to idle
+    s["needs.tiredness"] = 90                                 # raw mood for the next Beast is sleepy
+    s["progression.beast.id"] = "B"                           # roster.switch, within the dwell window
+    clock[0] = 2.0
+    assert e.tick()["beast.mood"] == "sleepy"                 # Beast B shows its own mood at once
+
+
 # --- freshness + counter-saturation robustness (Codex review on #50) -------------------------
 
 def test_stale_gps_motion_is_not_trusted_for_hunting_or_searching():

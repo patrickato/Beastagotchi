@@ -29,7 +29,7 @@ def test_absent_signals_are_unavailable_not_faked():
 def test_time_based_needs_rise_toward_full_over_hours():
     clock = [0.0]
     e = _engine({"wifi.encounters.lifetime_unique": 10, "gps.state": "fixed",
-                 "context.motion.state": "stationary", "peerdex.last_seen_at": 0.0}, clock)
+                 "context.motion.state": "stationary", "peerdex.last_seen_at": 1.0}, clock)
     assert e.tick()["needs.curiosity_hunger"] == 0
     clock[0] = 2 * 3600.0  # half of the ~4h neutral rise
     out = e.tick()
@@ -142,6 +142,50 @@ def test_need_state_resets_when_the_active_beast_changes():
     e.state["progression.beast.id"] = "B"            # roster.switch to a different Beast
     out = e.tick()
     assert out["needs.curiosity_hunger"] == 0 and out["needs.tiredness"] == 0  # fresh history
+
+
+def test_governor_stress_requires_fresh_system_telemetry():
+    # governor.mode / throttle derive from system telemetry; if the system collector is stale (but
+    # power is live, so tiredness is still published), their stress must not accrue (ADR-0008).
+    clock = [0.0]
+    stale_sys = _engine({"power.battery.percent_estimate": 80.0, "power.telemetry.available": True,
+                         "governor.mode": "SURVIVAL", "governor.throttle_current": True,
+                         "health.collector.system.state": "stale"}, clock)
+    stale_sys.tick()
+    clock[0] = 3600.0
+    assert stale_sys.tick()["needs.tiredness"] == 0
+    clock2 = [0.0]
+    fresh_sys = _engine({"power.battery.percent_estimate": 80.0, "power.telemetry.available": True,
+                         "governor.mode": "SURVIVAL", "governor.throttle_current": True}, clock2)
+    fresh_sys.tick()
+    clock2[0] = 3600.0
+    assert fresh_sys.tick()["needs.tiredness"] > 0
+
+
+def test_restlessness_does_not_charge_a_gps_outage_on_recovery():
+    # During an outage (motion unknown) restlessness is unavailable; on recovery it must start fresh,
+    # not instantly read 100 by charging the whole unobserved gap.
+    clock = [0.0]
+    e = _engine({"gps.state": "fixed", "context.motion.state": "unknown"}, clock)
+    e.tick()
+    clock[0] = 4 * 3600.0                             # a 4h gap with movement unknowable
+    assert e.tick()["needs.restlessness"] is None
+    e.state["context.motion.state"] = "stationary"    # GPS recovers; sitting still
+    clock[0] = 4 * 3600.0 + 1.0
+    assert e.tick()["needs.restlessness"] <= 5        # resumes from the recovery, not the outage
+
+
+def test_loneliness_unavailable_until_a_real_peer():
+    # peerdex.last_seen_at == 0 is the "no peer ever" sentinel, not an encounter at the epoch.
+    clock = [0.0]
+    e = _engine({"peerdex.last_seen_at": 0.0}, clock)
+    clock[0] = 3 * 3600.0
+    assert e.tick()["needs.loneliness"] is None
+    e.state["peerdex.last_seen_at"] = 1000.0          # first real peer observed
+    clock[0] = 3 * 3600.0 + 1.0
+    assert e.tick()["needs.loneliness"] == 0          # just saw a peer -> not lonely
+    clock[0] = 3 * 3600.0 + 1.0 + 2 * 3600.0
+    assert e.tick()["needs.loneliness"] > 0           # and it grows again afterwards
 
 
 def test_temperament_modulates_rates():

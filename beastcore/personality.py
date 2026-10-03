@@ -76,6 +76,7 @@ class PersonalityEngine:
         self._cap_t: float | None = None      # when a capture was last added
         self._mood: str | None = None         # currently expressed mood (for hysteresis)
         self._mood_since = now
+        self._beast_id: Any = None            # active Beast, to reset the expression on a roster switch
 
     def _num(self, key: str) -> float | None:
         v = self.state.get(key, None)
@@ -107,6 +108,14 @@ class PersonalityEngine:
 
     def tick(self) -> dict[str, Any]:
         now = self.clock()
+
+        # Expression belongs to the active Beast: clear the hysteresis hold on a roster switch so a
+        # newly activated Beast does not keep showing the previous one's mood through the dwell window.
+        beast_id = self.state.get("progression.beast.id", None)
+        if beast_id != self._beast_id:
+            self._beast_id = beast_id
+            self._mood = None
+            self._mood_since = now
 
         # --- edge detectors: time since the last genuinely new network / capture ----------------
         # ``quiet`` keys on genuine novelty, not raw AP-count churn, so simply re-seeing the same
