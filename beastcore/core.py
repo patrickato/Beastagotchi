@@ -413,27 +413,30 @@ class BeastCore:
         Hot-path safe: reads the already-published active-Beast id each tick and only recomputes
         when it changes. Deliberately does not call roster.active() (which bootstraps a founder).
 
-        When there is no active Beast, or its identity cannot be read, every axis is published as
-        neutral (50) instead of leaving the previous Beast's values live (ADR-0008: stale data must
-        never be shown as live). The resolved id -- empty or unreadable included -- is cached, so a
-        persistent condition does not re-query the roster on every 2 s tick. A real axis value of 0
-        is kept (it is a valid heritage minimum), never coerced to neutral.
+        A readable Beast publishes its real axes (live). When there is no active Beast, or its
+        identity cannot be read, the canonical beast.temperament.* keys are published as *unavailable*
+        (value absent) -- never a plausible neutral a consumer couldn't tell from a real all-50 Beast
+        (ADR-0008), and never the previous Beast's values (no stale). PersonalityEngine still falls
+        back to neutral (50) internally for the math, so a Beast with no heritage data behaves exactly
+        as pre-F5. A real axis value of 0 is a valid minimum and is kept. The resolved id is cached so
+        a persistent condition does not re-query the roster on every 2 s tick.
         """
         beast_id=str(self.state.get('progression.beast.id') or '')
         if beast_id==self._temperament_beast_id:
             return
-        temperament={}
+        values=None
         if beast_id:
             try:
-                temperament=normalize_parent_traits(self.roster.get(beast_id)).get('temperament',{}) or {}
+                temperament=normalize_parent_traits(self.roster.get(beast_id)).get('temperament',{})
+                values={'beast.temperament.'+a:max(0,min(100,int(temperament[a]))) for a in TEMPERAMENT_AXES}
             except Exception:
-                temperament={}
-        patch={}
-        for axis in TEMPERAMENT_AXES:
-            try:patch['beast.temperament.'+axis]=max(0,min(100,int(temperament[axis])))
-            except (KeyError,TypeError,ValueError):patch['beast.temperament.'+axis]=50
+                values=None
         self._temperament_beast_id=beast_id
-        self.state.update_many("personality", patch, priority=87)
+        if values is not None:
+            self.state.update_many("personality", values, priority=87)
+        else:
+            self.state.update_many("personality", {'beast.temperament.'+a:None for a in TEMPERAMENT_AXES},
+                                   quality="unavailable", priority=87)
 
     async def _personality_loop(self) -> None:
         while not self.stop_event.is_set():

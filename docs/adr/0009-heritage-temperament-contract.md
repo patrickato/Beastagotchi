@@ -24,11 +24,13 @@ The contract:
   "unknown".
 - **Source:** the real stored identity via `heritage.normalize_parent_traits` — never invented
   (ADR-0008).
-- **Unknown / absent:** when there is no active Beast, or its identity cannot be read, every axis
-  is published as **neutral (50)**; a consumer that finds an axis absent also treats it as 50.
-  Neutral reproduces the pre-F5 behaviour exactly, so Beasts without heritage data are unchanged.
+- **Unknown / absent:** when there is no active Beast, or its identity cannot be read, the canonical
+  `beast.temperament.*` keys are published as **unavailable** (value absent), never a plausible
+  neutral value (ADR-0008). `PersonalityEngine` uses neutral (50) as its **internal** fallback for
+  the math, so a Beast with no heritage data still behaves exactly as pre-F5 — but the published
+  readings tell the truth about what is known.
 - **No stale values:** when the active Beast changes (or becomes unreadable) the axes are
-  re-published for the new Beast, or cleared to neutral; a previous Beast's temperament is never
+  re-published for the new Beast, or marked **unavailable**; a previous Beast's temperament is never
   left showing as live (ADR-0008).
 - **Consumption:** `PersonalityEngine` applies modest, bounded, clamped biases from four axes
   (`curiosity`, `focus`, `boldness`, `nocturnal`) to the expressed drive scalars (`beast.energy`,
