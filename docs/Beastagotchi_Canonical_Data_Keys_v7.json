@@ -95,6 +95,7 @@
       "gps.latitude",
       "gps.longitude",
       "gps.mode",
+      "gps.satellites",
       "gps.satellites_used",
       "gps.satellites_visible",
       "gps.session_distance_m",

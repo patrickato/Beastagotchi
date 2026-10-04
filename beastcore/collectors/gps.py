@@ -16,6 +16,32 @@ class GPSCollector(Collector):
         self.host = host
         self.port = port
 
+    @staticmethod
+    def _satellites(sats: Any) -> list[dict[str, Any]] | None:
+        # Normalize gpsd SKY per-satellite records into the canonical skyplot. The SKY `satellites` array is
+        # optional (a SKY can arrive with only `class` before a skyview), so a non-list input -> None, i.e.
+        # the skyview is *unknown/unavailable* (ADR-0008), distinct from [] which is a genuinely empty sky.
+        # Faithful + live-honest: keep only entries with a real PRN, carry only the fields gpsd actually sent
+        # (a missing one stays None, never fabricated). This is the detail gps previously discarded (idea 11, F4).
+        if not isinstance(sats, list):
+            return None
+        out: list[dict[str, Any]] = []
+        for x in sats:
+            if not isinstance(x, dict):
+                continue
+            prn = x.get("PRN")
+            if prn is None:
+                continue
+            out.append({
+                "prn": prn,
+                "elevation_deg": x.get("el"),
+                "azimuth_deg": x.get("az"),
+                "snr_dbhz": x.get("ss"),
+                "used": bool(x.get("used")),
+                "gnssid": x.get("gnssid"),
+            })
+        return out
+
     def collect(self) -> dict[str, Any]:
         # Explicitly clear fix-derived fields when a fix disappears. This prevents a
         # previous HDOP/speed/location from looking current while gpsd reports no fix.
@@ -32,6 +58,9 @@ class GPSCollector(Collector):
             "gps.hdop": None,
             "gps.satellites_visible": 0,
             "gps.satellites_used": 0,
+            # Unavailable until a real SKY arrives (ADR-0008): None means "skyview unknown" (no gpsd / no
+            # SKY yet), distinct from [] which is set below only for an actual, genuinely empty satellite array.
+            "gps.satellites": None,
         }
         try:
             with socket.create_connection((self.host, self.port), timeout=1.5) as s:
@@ -90,6 +119,10 @@ class GPSCollector(Collector):
                 sats = sky.get("satellites") or []
                 values["gps.satellites_visible"] = len(sats)
                 values["gps.satellites_used"] = sum(1 for x in sats if x.get("used"))
+                # Surface the per-satellite skyplot gpsd already sent instead of discarding it (idea 11, F4).
+                # Pass the raw field (not `sats`): a SKY with no `satellites` key -> None (skyview unknown),
+                # not the [] that `sats` coerced it to, so "no skyview yet" stays distinct from an empty sky.
+                values["gps.satellites"] = self._satellites(sky.get("satellites"))
                 if "hdop" in sky and sky["hdop"] is not None:
                     values["gps.hdop"] = sky["hdop"]
         except Exception as exc:
