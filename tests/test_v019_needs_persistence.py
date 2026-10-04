@@ -101,6 +101,33 @@ def test_a_huge_restored_age_does_not_overflow():
     assert e.tick()["needs.curiosity_hunger"] == 100         # saturates cleanly, no crash
 
 
+def test_a_float_overflowing_integer_field_rejects_the_whole_blob():
+    # A JSON-valid but corrupt checkpoint can hold an integer too large to convert to float
+    # (float(10**400) raises OverflowError). It must reject the blob -> fresh session, not crash boot.
+    store = FakeStore({"needs.persistence": {"novelty_age": 3600.0, "novelty_val": 10.0, "tired": 10 ** 400}})
+    e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
+    assert e.tick()["needs.curiosity_hunger"] == 0           # construction survived, blob rejected -> fresh
+
+
+def test_an_out_of_range_tired_rejects_the_whole_blob():
+    # tired is 0..100 by definition; a finite-but-impossible value must reject the blob, not clamp to 0/100.
+    # Detected via curiosity: an accepted blob would restore novelty_age=3600 (curiosity > 0); a rejected
+    # one starts novelty fresh (curiosity 0).
+    for bad in (1e308, -1.0, 250.0):
+        store = FakeStore({"needs.persistence": {"novelty_age": 3600.0, "novelty_val": 10.0, "tired": bad}})
+        e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
+        assert e.tick()["needs.curiosity_hunger"] == 0
+
+
+def test_a_negative_novelty_field_rejects_the_whole_blob():
+    # novelty count and age are non-negative by construction; a negative value is corruption -> reject the
+    # whole blob, not clamp it. Detected via tiredness: a rejected blob starts fresh at 0 rather than 40.
+    for bad in ({"novelty_age": -5.0, "novelty_val": 10.0}, {"novelty_age": 3600.0, "novelty_val": -1.0}):
+        store = FakeStore({"needs.persistence": {**bad, "tired": 40.0}})
+        e = NeedsEngine(FakeState(HOT), clock=lambda: 0.0, store=store)
+        assert e.tick()["needs.tiredness"] == 0
+
+
 def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():
     class BrokenWriteStore(FakeStore):
         def set_meta_json(self, key, value):

@@ -63,11 +63,13 @@ class NeedsEngine:
 
     @staticmethod
     def _finite(x: Any) -> float | None:
-        # A real, finite number or None -- so a corrupt blob (NaN/inf/non-numeric) never reaches the
-        # tick-time float comparisons and raises there instead of taking the fresh-session fallback.
+        # A real, finite number or None -- so a corrupt blob (NaN/inf/non-numeric, or an int too large to
+        # convert to float) never reaches the tick-time float math and raises there instead of taking the
+        # fresh-session fallback. float() raises OverflowError on a huge int (e.g. a 400-digit JSON number),
+        # so catch it alongside the type/value errors and treat the field as corrupt.
         try:
             v = float(x)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
         return v if math.isfinite(v) else None
 
@@ -103,17 +105,24 @@ class NeedsEngine:
                 continue
             fv = self._finite(v)
             if fv is None:
-                return  # corrupt field -> reject the whole blob -> fresh session
+                return  # corrupt field (non-finite, or too large for float) -> reject the whole blob
             nums[k] = fv
         if nums["tired"] is None:
             return  # required field missing -> reject the whole blob
+        if not 0.0 <= nums["tired"] <= 100.0:
+            # tired is a 0..100 need level by definition (all _persist ever writes); a finite but out-of-range
+            # value is corruption -> reject the whole blob rather than clamp it into a plausible 0/100, which
+            # would fabricate a confident need from a bad record (ADR-0008).
+            return
         if (nums["novelty_val"] is None) != (nums["novelty_age"] is None):
             return  # inconsistent novelty pair -> reject
+        if nums["novelty_val"] is not None and (nums["novelty_val"] < 0.0 or nums["novelty_age"] < 0.0):
+            return  # the novelty count and age are non-negative by construction; negative -> corrupt -> reject
         self._beast_id = blob.get("beast_id", self._beast_id)
         self._novelty_val = nums["novelty_val"]
-        self._tired = max(0.0, min(100.0, nums["tired"]))
+        self._tired = nums["tired"]                       # validated to 0..100 above
         if nums["novelty_age"] is not None:
-            self._novelty_t = now - max(0.0, nums["novelty_age"])
+            self._novelty_t = now - nums["novelty_age"]   # novelty_age validated >= 0 above
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
