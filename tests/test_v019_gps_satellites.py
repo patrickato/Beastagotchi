@@ -42,3 +42,14 @@ def test_used_is_coerced_to_a_real_bool():
     out = GPSCollector._satellites([{"PRN": 3, "used": 1}, {"PRN": 4, "used": 0}])
     assert out[0]["used"] is True
     assert out[1]["used"] is False
+
+
+def test_satellites_unavailable_without_gpsd(monkeypatch):
+    # No gpsd / no SKY yet -> the skyview is unknown, so gps.satellites is unavailable (None), never a
+    # fake empty list that reads as a genuine zero-satellite sky (ADR-0008).
+    def boom(*a, **k):
+        raise OSError("no gpsd")
+    monkeypatch.setattr("beastcore.collectors.gps.socket.create_connection", boom)
+    out = GPSCollector().collect()
+    assert out["gps.satellites"] is None
+    assert out["gps.state"] == "unavailable"

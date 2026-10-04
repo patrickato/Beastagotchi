@@ -56,7 +56,9 @@ class GPSCollector(Collector):
             "gps.hdop": None,
             "gps.satellites_visible": 0,
             "gps.satellites_used": 0,
-            "gps.satellites": [],
+            # Unavailable until a real SKY arrives (ADR-0008): None means "skyview unknown" (no gpsd / no
+            # SKY yet), distinct from [] which is set below only for an actual, genuinely empty satellite array.
+            "gps.satellites": None,
         }
         try:
             with socket.create_connection((self.host, self.port), timeout=1.5) as s:
