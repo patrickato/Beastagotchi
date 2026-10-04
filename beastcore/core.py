@@ -120,7 +120,7 @@ class BeastCore:
         self.operator_policy = OperatorPolicy()
         self.personality = PersonalityEngine(self.state)
         self._temperament_beast_id = None
-        self.needs = NeedsEngine(self.state)
+        self.needs = NeedsEngine(self.state, store=self.store)
         self.presentation = PresentationBroker(self.state)
         self.missions = MissionPackEngine(self.state)
         self.packs = PackRegistryEngine(self.state, resolver=self.dependencies)
@@ -839,6 +839,10 @@ class BeastCore:
                 })
         except Exception:
             log.exception("could not checkpoint expedition")
+        try:
+            self.needs.save()  # flush the live needs so they persist across the restart
+        except Exception:
+            log.exception("could not persist needs")
         await self.action_server.stop()
         await self.api.stop()
         self.store.close()

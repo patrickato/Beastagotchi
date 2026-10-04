@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 
-**Implementation:** partial — `NeedsEngine` and the `needs.*` namespace land with the needs-system PR; cross-restart persistence and the needs→mood rewrite (which closes finding F1) are planned follow-ups.
+**Implementation:** implemented — `NeedsEngine` and the `needs.*` namespace (#48); the needs→mood rewrite that closes finding F1 (#50); and cross-restart **persist-and-resume** for **tiredness** (#53). Persisting curiosity-hunger, loneliness and restlessness — and **fading gently while powered off** — are tracked follow-ups (#56).
 
 Finding F1 showed the Beast's mood is effectively stuck on one or two states because it is an if-chain over a few instantaneous signals. Creature idea 1 replaces that with **needs**: a small set of drives that build up over hours and are eased by real events, so the Beast visibly *wants* things and two Beasts diverge over time. This ADR makes the needs a first-class, honest contract before anything consumes them.
 
@@ -19,8 +19,8 @@ The contract:
 - **Type / range:** each need is an integer `0..100`, or **unavailable** (ADR-0008) when its driving signal is not present — never a fabricated number. (This is the same honesty rule applied to temperament in ADR-0009.)
 - **Source:** derived live from canonical state the collectors already publish (`wifi.encounters.*`, `gps.*`, `peerdex.*`, `system.*`, `power.*`, `ambient.*`); the engine never changes Pwnagotchi behaviour.
 - **Temperament modulation (idea 2):** heritage axes shift the rates — `curiosity` → how fast curiosity-hunger rises; `social` → how fast loneliness rises; `nocturnal` → night sleepiness; `boldness` → how much heat tires the Beast. Two Beasts in the same room then differ at no runtime cost.
-- **Persistence:** needs are **session-live** in this first step (they start easing from boot). Cross-restart persistence — surviving restarts but fading gently while powered off (idea 1) — is a planned follow-up and does not change the key contract.
-- **Consumption:** nothing rewires mood from needs **yet**. The needs→mood rewrite with hysteresis and expression cooldowns (which fixes F1) is a separate follow-up, so this step is additive and non-behavioural.
+- **Persistence:** **tiredness persists across restarts and resumes where it was** (#53) via the Store's `meta` KV (`needs.persistence`) — it is a self-contained `0..100` value. The stored blob is validated on restore, so a corrupt, out-of-range or tampered one falls back to a fresh session rather than half-restoring a fabricated value (ADR-0008); a read error preserves the checkpoint and reports tiredness *unavailable* for that session, resuming from the preserved checkpoint on the next restart. **curiosity-hunger**, **loneliness** and **restlessness** stay session-live — their cross-restart resume (and **fading gently while powered off**) is deferred to #56 because it needs a trustworthy boot clock and a clock-robust, source-stable design: curiosity-hunger's baseline depends on which discovery counter sourced it and on agreeing with the live count across a restart, and loneliness (a peer wall-clock timestamp) and restlessness (GPS) depend on the boot clock. Without a Store the engine is session-live. None of this changes the key contract.
+- **Consumption:** mood is derived from the live needs (with hysteresis and expression cooldowns) in `PersonalityEngine` as of #50 — this is what closes F1.
 
 Rationale: needs are how the Beast becomes a creature that *wants, remembers and differs* rather than a readout — the north star (expose the real depth the platform computes, made engaging and shown truthfully). Publishing them honestly (unavailable, not faked) from the start keeps the creature layer credible.
 
