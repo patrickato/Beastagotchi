@@ -33,9 +33,15 @@ def test_entries_without_a_prn_or_malformed_are_dropped():
     assert [s["prn"] for s in GPSCollector._satellites(raw)] == [7]
 
 
-def test_non_list_input_is_empty():
-    assert GPSCollector._satellites(None) == []
-    assert GPSCollector._satellites({}) == []
+def test_absent_satellites_array_is_unavailable():
+    # gpsd's SKY `satellites` array is optional; absent (or not a list) -> skyview unknown (None), ADR-0008.
+    assert GPSCollector._satellites(None) is None
+    assert GPSCollector._satellites({}) is None
+
+
+def test_real_empty_skyview_is_empty_list():
+    # gpsd sent satellites: [] -> a genuine empty sky, which is a known [] (distinct from unavailable None).
+    assert GPSCollector._satellites([]) == []
 
 
 def test_used_is_coerced_to_a_real_bool():

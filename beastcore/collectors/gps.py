@@ -17,13 +17,15 @@ class GPSCollector(Collector):
         self.port = port
 
     @staticmethod
-    def _satellites(sats: Any) -> list[dict[str, Any]]:
-        # Normalize gpsd SKY per-satellite records into the canonical skyplot. Faithful + live-honest:
-        # keep only entries with a real PRN, and carry only the fields gpsd actually sent (a missing one
-        # stays None, never fabricated -- ADR-0008). This is the detail gps previously discarded (idea 11, F4).
-        out: list[dict[str, Any]] = []
+    def _satellites(sats: Any) -> list[dict[str, Any]] | None:
+        # Normalize gpsd SKY per-satellite records into the canonical skyplot. The SKY `satellites` array is
+        # optional (a SKY can arrive with only `class` before a skyview), so a non-list input -> None, i.e.
+        # the skyview is *unknown/unavailable* (ADR-0008), distinct from [] which is a genuinely empty sky.
+        # Faithful + live-honest: keep only entries with a real PRN, carry only the fields gpsd actually sent
+        # (a missing one stays None, never fabricated). This is the detail gps previously discarded (idea 11, F4).
         if not isinstance(sats, list):
-            return out
+            return None
+        out: list[dict[str, Any]] = []
         for x in sats:
             if not isinstance(x, dict):
                 continue
@@ -118,7 +120,9 @@ class GPSCollector(Collector):
                 values["gps.satellites_visible"] = len(sats)
                 values["gps.satellites_used"] = sum(1 for x in sats if x.get("used"))
                 # Surface the per-satellite skyplot gpsd already sent instead of discarding it (idea 11, F4).
-                values["gps.satellites"] = self._satellites(sats)
+                # Pass the raw field (not `sats`): a SKY with no `satellites` key -> None (skyview unknown),
+                # not the [] that `sats` coerced it to, so "no skyview yet" stays distinct from an empty sky.
+                values["gps.satellites"] = self._satellites(sky.get("satellites"))
                 if "hdop" in sky and sky["hdop"] is not None:
                     values["gps.hdop"] = sky["hdop"]
         except Exception as exc:
