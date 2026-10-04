@@ -36,3 +36,25 @@ def test_production_rare_moment_seed_location_is_unchanged():
     assert inspect.signature(BeastCore.__init__).parameters["db_path"].default == db_path
     default_root = inspect.signature(RareMomentEngine.__init__).parameters["root"].default
     assert Path(db_path).parent / "secrets" == Path(default_root)
+
+
+def test_stardex_step_catalogs_only_a_live_skyview(tmp_path):
+    # The StarDex loop records the currently-visible satellites, but only while gps.satellites is LIVE:
+    # a stalled GPS collector's retained list must not keep re-logging catches off stale data (ADR-0008).
+    core = BeastCore(db_path=str(tmp_path / "beast.db"), port=0)
+    try:
+        sats = [{"prn": 5, "snr_dbhz": 30.0, "gnssid": 0, "elevation_deg": 40,
+                 "azimuth_deg": 120, "used": True}]
+        # A live skyview is cataloged and the summary is published.
+        core.state.update_many("gps", {"gps.satellites": sats}, priority=70)
+        core._stardex_step()
+        assert core.state.get("stardex.total_prns") == 1
+        assert core.stardex.summary()["stardex.total_prns"] == 1
+
+        # The same list gone stale is a no-op -- no new catch, no re-log.
+        core.state.update_many("gps", {"gps.satellites": [{"prn": 9}]}, priority=70)
+        core.state.mark_source_stale("gps", 0.0)
+        core._stardex_step()
+        assert core.stardex.summary()["stardex.total_prns"] == 1   # PRN 9 not cataloged (stale skyview)
+    finally:
+        core.store.close()

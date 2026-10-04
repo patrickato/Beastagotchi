@@ -238,6 +238,12 @@
       "session.new_vendor_count",
       "session.started_at"
     ],
+    "stardex": [
+      "stardex.best_snr_dbhz",
+      "stardex.last_caught_at",
+      "stardex.recent",
+      "stardex.total_prns"
+    ],
     "storage": [
       "storage.archive.status",
       "storage.backup.last_success",

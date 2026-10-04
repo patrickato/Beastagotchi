@@ -47,6 +47,7 @@ from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .peerdex import PeerDex
+from .stardex import StarDex
 from .roster import BeastRoster
 from .heritage import TEMPERAMENT_AXES, normalize_parent_traits
 from .needs import NeedsEngine
@@ -129,6 +130,7 @@ class BeastCore:
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.doctor = BeastDoctor(self.state, self.store)
         self.peerdex = PeerDex(self.store)
+        self.stardex = StarDex(self.store)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
         self.owner_mode = OwnerModeManager()
@@ -157,6 +159,7 @@ class BeastCore:
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
         self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
+        self.state.update_many("stardex", self.stardex.summary(), priority=72)
 
     def _health_patch(self, c, state: str, duration_ms: float, error: str | None = None) -> dict[str, Any]:
         now = time.time()
@@ -354,6 +357,26 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=1.0)
             except asyncio.TimeoutError: pass
 
+    def _stardex_step(self) -> None:
+        # Catalog the currently-visible satellites into the StarDex (creature idea 11 increment 2). Only a
+        # *live* skyview is recorded: gps.satellites goes stale when the GPS collector stalls, and a retained
+        # list must not keep re-logging catches off data that is no longer true (ADR-0008). Absent/None skyview
+        # is a no-op inside observe(). (Discovery XP for result["new_prns"] is increment 3.)
+        meta = self.state.meta("gps.satellites")
+        if not (meta and meta.get("quality") == "live"):
+            return
+        result = self.stardex.observe(self.state.get("gps.satellites", None))
+        if result.get("accepted"):
+            self.state.update_many("stardex", self.stardex.summary(), priority=72)
+
+    async def _stardex_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                self._stardex_step()
+            except Exception:
+                log.exception("stardex failed")
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
+            except asyncio.TimeoutError: pass
 
     async def _semantic_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -795,6 +818,7 @@ class BeastCore:
         tasks += [
             asyncio.create_task(self._health_loop(), name="health"),
             asyncio.create_task(self._context_loop(), name="context"),
+            asyncio.create_task(self._stardex_loop(), name="stardex"),
             asyncio.create_task(self._sample_loop(), name="timeseries"),
             asyncio.create_task(self._semantic_loop(), name="semantic"),
             asyncio.create_task(self._dock_loop(), name="dock"),
