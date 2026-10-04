@@ -99,6 +99,13 @@ class NeedsEngine:
             if fv is None:
                 return  # corrupt field -> reject the whole blob -> fresh session
             nums[k] = fv
+        # Each baseline/age pair must be internally consistent: both present or both absent. A mismatch
+        # (e.g. an age with no baseline count) is an inconsistent blob -- reject it entirely rather than
+        # half-restore an age that the first tick would publish as a plausible live need (Codex; ADR-0008).
+        if (nums["novelty_val"] is None) != (nums["novelty_age"] is None):
+            return
+        if (nums["peer_val"] is None) != (nums["peer_age"] is None):
+            return
         self._beast_id = blob.get("beast_id", self._beast_id)
         self._novelty_val = nums["novelty_val"]
         self._peer_val = nums["peer_val"]

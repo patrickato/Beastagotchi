@@ -83,6 +83,17 @@ def test_a_corrupt_field_rejects_the_whole_blob_to_fresh():
     assert e.tick()["needs.curiosity_hunger"] == 0           # fresh baseline, not a half-restored ~25
 
 
+def test_an_inconsistent_null_age_pair_rejects_the_whole_blob():
+    # Codex: an age present with no paired baseline (or vice-versa) is inconsistent and must not
+    # half-restore -- the pair is validated together, so the whole blob falls back to a fresh session.
+    store = FakeStore({"needs.persistence": {
+        "beast_id": None, "novelty_age": 3600.0, "novelty_val": None,
+        "move_age": None, "peer_age": None, "peer_val": None, "tired": 0.0,
+    }})
+    e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
+    assert e.tick()["needs.curiosity_hunger"] == 0           # inconsistent pair -> fresh, not ~25
+
+
 def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():
     class BrokenStore(FakeStore):
         def set_meta_json(self, key, value):
