@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 
@@ -12,10 +13,12 @@ class NeedsEngine:
     Four needs rise over hours and are eased by a real satisfying signal; heritage temperament
     shifts the rates (idea 2). A need whose driving signal is not present -- or whose driver has gone
     stale or unavailable -- is reported *unavailable* (``None`` here, published with
-    ``quality="unavailable"`` by Core) rather than a fabricated number (ADR-0008). Needs are
-    session-live for now; they start easing from boot and reset when the active Beast changes.
-    Cross-restart persistence is a planned follow-up. This engine never changes Pwnagotchi
-    behaviour; it only interprets observed state.
+    ``quality="unavailable"`` by Core) rather than a fabricated number (ADR-0008). Needs reset when
+    the active Beast changes. Given a Store, need state **persists across restarts and resumes where it
+    was** (see ``_restore``): the Beast picks up its drives from the last save rather than starting
+    blank. (Fading them gently while powered off -- idea 1's refinement -- is a tracked follow-up; it
+    needs a trustworthy boot clock, so it is deliberately out of this step.) This engine never changes
+    Pwnagotchi behaviour; it only interprets observed state.
 
     Published under the ``needs.*`` namespace (each an int 0-100, or unavailable):
 
@@ -32,14 +35,21 @@ class NeedsEngine:
     RISE_SEC = 4 * 3600.0        # neutral time for a time-based need to climb 0 -> 100
     TIRED_RISE_SEC = 2 * 3600.0  # full-swing of the tiredness integrator under sustained stress
     TIRED_FALL_SEC = 1 * 3600.0  # recovery time when conditions are good
+    SAVE_INTERVAL_SEC = 60.0     # throttle for persisting need state to the Store
+    META_KEY = "needs.persistence"
 
-    def __init__(self, state, clock=time.monotonic) -> None:
+    def __init__(self, state, clock=time.monotonic, store=None) -> None:
         self.state = state
-        self.clock = clock
+        self.clock = clock              # monotonic: in-session rise/integration durations
+        self.store = store              # optional Store (meta KV); None -> session-live, no persistence
         now = clock()
         self._beast_id: Any = None
         self._last_tick = now
+        self._last_save = now
+        self._restore_failed = False     # a transient read error at boot -> suppress saves (preserve checkpoint)
         self._reset_session(now)
+        if self.store is not None:
+            self._restore(now)
 
     def _reset_session(self, now: float) -> None:
         # Session baselines/integrator. Reset on construction and whenever the active Beast changes,
@@ -50,6 +60,100 @@ class NeedsEngine:
         self._peer_val: float | None = None
         self._peer_t = now
         self._tired = 0.0
+        self._restlessness_restore_pending = False  # a restored restlessness age is awaiting the first GPS fix
+        self._restlessness_frozen_age: float | None = None  # that age, held constant until the first fix realizes it
+
+    @staticmethod
+    def _finite(x: Any) -> float | None:
+        # A real, finite number or None -- so a corrupt blob (NaN/inf/non-numeric) never reaches the
+        # tick-time float comparisons and raises there instead of taking the fresh-session fallback.
+        try:
+            v = float(x)
+        except (TypeError, ValueError):
+            return None
+        return v if math.isfinite(v) else None
+
+    def _restore(self, now: float) -> None:
+        # Load the last persisted need state and resume each need where it was. Needs are stored as their
+        # current *ages* (time since the last discovery/movement/peer) plus the tiredness value; restore
+        # re-anchors the timers to reproduce them, so the Beast picks up its drives from the last save
+        # rather than starting blank. Every field is validated (``_finite``) so a corrupt blob can never
+        # reach the tick-time float maths -- a bad field just falls back to the fresh session value
+        # (ADR-0008). Fading while powered off is a tracked follow-up, so no wall clock is used here.
+        try:
+            blob = self.store.get_meta_json(self.META_KEY, None)
+        except Exception:
+            # A transient read error (SQLite/FS hiccup) is NOT "no checkpoint": treating it as fresh and
+            # then letting the periodic save overwrite the real checkpoint 60s later would lose it.
+            # Suppress persistence this run so the stored checkpoint is preserved until a boot can read it.
+            self._restore_failed = True
+            return
+        if not isinstance(blob, dict):
+            return
+        # Validate the whole blob before applying any of it, so a partial / corrupt / tampered blob can
+        # never half-restore into plausible live telemetry (ADR-0008). Rules:
+        #  - any field present but non-finite -> corrupt -> reject;
+        #  - move_age and tired are always written by _persist, so they are required -> reject if absent;
+        #  - the novelty and peer (baseline, age) pairs are optional but must each be wholly present or
+        #    wholly absent. ``None`` is otherwise a legitimate "absent".
+        nums: dict[str, float | None] = {}
+        for k in ("novelty_age", "novelty_val", "move_age", "peer_age", "peer_val", "tired"):
+            v = blob.get(k)
+            if v is None:
+                nums[k] = None
+                continue
+            fv = self._finite(v)
+            if fv is None:
+                return  # corrupt field -> reject the whole blob -> fresh session
+            nums[k] = fv
+        if nums["move_age"] is None or nums["tired"] is None:
+            return  # a required field is missing -> reject the whole blob
+        if (nums["novelty_val"] is None) != (nums["novelty_age"] is None):
+            return  # inconsistent novelty pair
+        if (nums["peer_val"] is None) != (nums["peer_age"] is None):
+            return  # inconsistent peer pair
+        self._beast_id = blob.get("beast_id", self._beast_id)
+        self._novelty_val = nums["novelty_val"]
+        self._peer_val = nums["peer_val"]
+        self._tired = max(0.0, min(100.0, nums["tired"]))
+        if nums["novelty_age"] is not None:
+            self._novelty_t = now - max(0.0, nums["novelty_age"])
+        if nums["peer_age"] is not None:
+            self._peer_t = now - max(0.0, nums["peer_age"])
+        # A restored restlessness age must survive the pre-fix startup window and not advance during it:
+        # hold it frozen until the first live GPS fix realizes it, so an unknown startup sample can
+        # neither erase nor inflate the persisted value.
+        self._move_t = now - max(0.0, nums["move_age"])
+        self._restlessness_restore_pending = True
+        self._restlessness_frozen_age = max(0.0, nums["move_age"])
+
+    def _persist(self, now: float, *, strict: bool = False) -> None:
+        if self.store is None:
+            return
+        if self._restore_failed:
+            # We could not read the checkpoint at boot: do not overwrite it with this run's reset state
+            # (a transient read error must not become permanent loss on the next 60s save).
+            return
+        try:
+            self.store.set_meta_json(self.META_KEY, {
+                "beast_id": self._beast_id,
+                "novelty_age": (now - self._novelty_t) if self._novelty_val is not None else None,
+                "novelty_val": self._novelty_val,
+                "move_age": now - self._move_t,
+                "peer_age": (now - self._peer_t) if self._peer_val is not None else None,
+                "peer_val": self._peer_val,
+                "tired": self._tired,
+            })
+        except Exception:
+            # A periodic in-tick save swallows transient write errors so the loop never dies; the
+            # explicit clean-shutdown save (strict) propagates so BeastCore.run() can log a real
+            # failure instead of silently leaving a stale checkpoint.
+            if strict:
+                raise
+
+    def save(self) -> None:
+        """Flush need state to the Store now (e.g. on a clean shutdown); raises on a real write error."""
+        self._persist(self.clock(), strict=True)
 
     def _live(self, key: str) -> Any:
         # Per-key live-truth: return the value only while the registry considers the key live. A key
@@ -117,11 +221,21 @@ class NeedsEngine:
         # Only an actual fix is usable motion evidence: "unavailable"/"connected_no_fix" are live values
         # with no position, and a stale gps.state reads as "unknown" (per-key quality) -- neither is a fix.
         if motion == 'unknown' or str(self._live('gps.state') or 'unknown') != 'fixed':
-            # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
-            # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100).
-            self._move_t = now
+            # Movement is unknowable now. Normally re-baseline so a real outage is not charged on recovery
+            # (a 4h GPS gap must not resume as an instant restlessness=100). But while a *restored* age is
+            # still waiting for the first boot fix, hold it frozen -- neither erased nor advanced by the
+            # unknown pre-fix interval (Codex P1), so the first fix realizes exactly the persisted value.
+            if self._restlessness_restore_pending:
+                if self._restlessness_frozen_age is not None:
+                    self._move_t = now - self._restlessness_frozen_age
+            else:
+                self._move_t = now
             out['needs.restlessness'] = None
         else:
+            if self._restlessness_restore_pending:
+                self._move_t = now - (self._restlessness_frozen_age or 0.0)  # realize the frozen age
+                self._restlessness_restore_pending = False
+                self._restlessness_frozen_age = None
             if motion in _MOVING:
                 self._move_t = now  # moving now -> restlessness eases to 0
             out['needs.restlessness'] = self._rise(now - self._move_t, self.RISE_SEC, 1.0)
@@ -184,4 +298,7 @@ class NeedsEngine:
             out['needs.tiredness'] = int(round(self._tired))
 
         out['needs.source'] = 'derived_live'
+        if self.store is not None and (now - self._last_save) >= self.SAVE_INTERVAL_SEC:
+            self._persist(now)
+            self._last_save = now
         return out
