@@ -220,6 +220,108 @@ def test_stale_temperature_is_not_read_as_overheated():
     assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "overheated"
 
 
+def test_stale_motion_is_not_trusted_for_hunting_though_gps_is_fixed():
+    # The ContextEngine (motion) and GPS collector are separate producers. If the context engine stalls
+    # while GPS still reads a live "fixed", a retained "walking" must not drive hunting -- motion is read
+    # per-key-live, so a stale motion reads as "unknown" and hunting cannot fire (ADR-0008).
+    clock = [0.0]
+    s = MetaState({**HEALTHY, "gps.state": "fixed", "context.motion.state": "walking", "wifi.ap_count": 20,
+                   "wifi.encounters.session_unique": 10}, stale=["context.motion.state"])
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["wifi.encounters.session_unique"] = 11      # a genuinely new network while "moving"
+    clock[0] = 25.0
+    assert e.tick()["beast.mood"] != "hunting"
+    # the same signals with a live motion read DO drive hunting
+    assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
+
+
+def test_stale_governor_surfaces_as_fault_not_overheated():
+    # A stalled governor (its loop stopped refreshing -> source marked stale) is a Core subsystem failure:
+    # it must surface as fault -- never the healthy-looking mood a "FULL" fallback would give, and never a
+    # stale "overheated" off the retained SURVIVAL (ADR-0008).
+    s = MetaState({**HEALTHY, "governor.mode": "SURVIVAL", "gps.state": "fixed", "wifi.ap_count": 0},
+                  stale=["governor.mode"])
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] == "fault"
+    # a live SURVIVAL still drives overheated
+    assert _tick(**{"governor.mode": "SURVIVAL", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "overheated"
+
+
+def test_health_is_read_raw_because_the_watchdog_cannot_observe_itself():
+    # Unlike governor/motion, health.core.state is produced by the health/watchdog loop itself from the
+    # current collector states, so it is fresh whenever that loop runs and that same loop cannot mark its
+    # own source stale. It is therefore read raw: a live critical drives fault, and a "stale" critical --
+    # only reachable if the health loop itself stalls -- still surfaces as fault, which is acceptable (a
+    # dead health monitor is a real fault).
+    assert _tick(**{"health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "fault"
+    s = MetaState({**HEALTHY, "health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0},
+                  stale=["health.core.state"])
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] == "fault"  # raw read -> still fault
+
+
+def test_stale_governor_surfaces_as_fault_in_production():
+    # Production path (no synthetic MetaState): a real StateRegistry + the watchdog's own mark_source_stale
+    # (core._age_engine_sources). A live SURVIVAL overheats; once the governor loop stalls and its source is
+    # aged, the Beast surfaces fault rather than a healthy-looking mood (ADR-0008).
+    from beastcore.state import StateRegistry
+    reg = StateRegistry()
+    reg.update_many("health", {"health.core.state": "healthy"}, priority=100)
+    reg.update_many("pwnagotchi", {"pwnagotchi.service.state": "active"}, priority=70)
+    reg.update_many("bettercap", {"bettercap.state": "active"}, priority=70)
+    reg.update_many("system", {"system.temp.cpu_c": 50.0}, priority=60)
+    reg.update_many("gps", {"gps.state": "fixed"}, priority=70)
+    reg.update_many("governor", {"governor.mode": "SURVIVAL"}, priority=96)
+    reg.update_many("wifi", {"wifi.ap_count": 0}, priority=50)
+    e = PersonalityEngine(reg, clock=lambda: 0.0)
+    assert e.tick()["beast.mood"] == "overheated"            # live SURVIVAL -> overheated
+    reg.mark_source_stale("governor", 0.0)                   # governor loop stalled; watchdog ages it
+    assert e.tick()["beast.mood"] == "fault"                 # a stalled governor surfaces as fault
+
+
+def test_stale_context_motion_drops_hunting_in_production():
+    # Production path: with the governor healthy, a stalled context source makes motion unavailable so
+    # hunting falls through. Motion unknown is not a Core subsystem fault, so the mood is a benign
+    # fall-through (not fault), unlike the stalled governor above (ADR-0008).
+    from beastcore.state import StateRegistry
+    reg = StateRegistry()
+    for src, patch in [("health", {"health.core.state": "healthy"}),
+                       ("pwnagotchi", {"pwnagotchi.service.state": "active"}),
+                       ("bettercap", {"bettercap.state": "active"}),
+                       ("system", {"system.temp.cpu_c": 50.0}),
+                       ("governor", {"governor.mode": "FULL"}),
+                       ("gps", {"gps.state": "fixed"}),
+                       ("context", {"context.motion.state": "walking"}),
+                       ("wifi", {"wifi.ap_count": 20, "wifi.encounters.session_unique": 10})]:
+        reg.update_many(src, patch, priority=80)
+    clock = [0.0]
+    e = PersonalityEngine(reg, clock=lambda: clock[0])
+    e.tick()
+    reg.update_many("wifi", {"wifi.encounters.session_unique": 11}, priority=80)
+    clock[0] = 25.0
+    assert e.tick()["beast.mood"] == "hunting"               # live motion + fix + novelty -> hunting
+    reg.mark_source_stale("context", 0.0)                    # context loop stalled; watchdog ages it
+    clock[0] = 26.0
+    mood = e.tick()["beast.mood"]
+    assert mood != "hunting"                                 # motion input lost -> hunting dropped
+    assert mood != "fault"                                   # context stall is "motion unknown", not a fault
+
+
+def test_hunting_drops_immediately_when_motion_input_goes_stale():
+    # hunting asserts active movement; when its required live motion input goes stale it must drop at once,
+    # not be held by the non-urgent dwell (which would present movement off stale data for up to ~30s).
+    clock = [0.0]
+    s = MetaState({**HEALTHY, "gps.state": "fixed", "context.motion.state": "walking", "wifi.ap_count": 20,
+                   "wifi.encounters.session_unique": 10})
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()                                                 # baseline
+    s["wifi.encounters.session_unique"] = 11                 # a genuine new network while moving
+    clock[0] = 25.0
+    assert e.tick()["beast.mood"] == "hunting"               # established hunting
+    s._q["context.motion.state"] = "stale"                   # the context loop stalls; motion input lost
+    clock[0] = 26.0                                           # only 1s later -- well within the ~10-30s dwell
+    assert e.tick()["beast.mood"] != "hunting"               # dropped immediately, not held through the dwell
+
+
 def test_first_capture_on_a_readable_cache_celebrates():
     # With the capture-source signal, a genuine first handshake (0 -> 1 on an already-readable cache)
     # celebrates -- while a cache that only just became present does not.

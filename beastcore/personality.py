@@ -95,6 +95,16 @@ class PersonalityEngine:
         except (TypeError, ValueError):
             return None
 
+    def _is_stale(self, key: str) -> bool:
+        # True only when the key was published and has since gone stale (its producer stopped refreshing);
+        # an absent key (never produced -- meta is None) is not "stale". Used to surface a stalled engine
+        # loop (e.g. the governor) as a fault rather than silently mapping it to its healthiest default.
+        meta = getattr(self.state, "meta", None)
+        if callable(meta):
+            m = meta(key)
+            return bool(m and m.get("quality") == "stale")
+        return False
+
     def _temp(self, axis: str) -> int:
         # Neutral (50) only when the axis is absent / None / invalid. A real 0 is a valid heritage
         # minimum (0..100) and must be kept, so no truthiness ``or 50`` here (findings F5 / P2).
@@ -186,20 +196,37 @@ class PersonalityEngine:
 
         # --- observed conditions ----------------------------------------------------------------
         aps = int(self.state.get("wifi.ap_count", 0) or 0)
-        health = str(self.state.get("health.core.state", "starting") or "starting")
+        # governor.mode: the live mode drives the overheated gate, but a *stalled* governor must not be
+        # mapped to its healthiest mode -- that would hide a dead resource-protection subsystem behind a
+        # healthy-looking mood (neither stale "SURVIVAL" nor a fabricated "FULL" is honest). The health
+        # watchdog ages the "governor" source (core._age_engine_sources), so a stall is surfaced below as
+        # gov_stale -> fault; the raw value only matters while the governor is live (ADR-0008).
         gov = str(self.state.get("governor.mode", "FULL") or "FULL")
+        gov_stale = self._is_stale("governor.mode")  # governor loop stopped refreshing -> a Core fault
+        # health.core.state is read raw on purpose: it is produced by the health/watchdog loop itself from
+        # the current collector states, so it is fresh whenever that loop runs and cannot observe its own
+        # staleness. A stalled health loop surfacing as fault is acceptable (the health monitor is down).
+        health = str(self.state.get("health.core.state", "starting") or "starting")
         temp = float(self._live("system.temp.cpu_c") or 0)   # stale/unavailable temp -> 0 (not overheated)
         gps_state = str(self._live("gps.state") or "unknown")  # stale/absent -> "unknown"
+        # pwnagotchi/bettercap service states are read raw on purpose: their absent/"unknown" default
+        # itself triggers fault, so per-key-live gating would turn a merely stale read into an *asserted*
+        # fault -- a mood-contract call deferred to #60, not this honesty pass (Bible §11 still notes
+        # these inputs "aren't all quality-gated").
         pwn = str(self.state.get("pwnagotchi.service.state", "unknown") or "unknown")
         bc = str(self.state.get("bettercap.state", "unknown") or "unknown")
         phase = str(self.state.get("ambient.day_phase", "day") or "day")
         cpu = float(self.state.get("system.cpu.total", 0) or 0)
         lvl = int(self.state.get("progression.level", 1) or 1)
-        # Motion is trustworthy only with an actual fix: gps.state "unavailable"/"connected_no_fix" are
-        # live values but carry no usable position, and ContextEngine may preserve stale motion during a
-        # brief fix drop, so require "fixed" before trusting context.motion.state (ADR-0008). A stale
-        # gps.state reads as "unknown" here (per-key quality), which is likewise not "fixed".
-        moving = gps_state == "fixed" and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
+        # Motion is trustworthy only with a live fix AND a live motion read: gps.state
+        # "unavailable"/"connected_no_fix" are live values with no usable position, and the ContextEngine
+        # (an engine loop) can stall while GPS still reads fixed. The health watchdog ages the "context"
+        # source (core._age_engine_sources), so a stalled motion read goes stale and _live drops it.
+        # motion_live is whether that required input is live at all (used to drop hunting the instant the
+        # input is lost -- see the hysteresis block); moving additionally requires it to show real movement.
+        motion_val = self._live("context.motion.state")   # None when stale / unavailable
+        motion_live = gps_state == "fixed" and motion_val is not None
+        moving = motion_live and str(motion_val or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 
         cur_t = self._temp("curiosity")
@@ -215,7 +242,9 @@ class PersonalityEngine:
         # --- raw mood: physical urgencies, then real activity, then the Beast's live needs ------
         # Each needs-driven branch falls back to a time/condition heuristic when that need is
         # unavailable, so a Beast with no heritage/needs still behaves (just without the drives).
-        if health in {"critical", "failed"} or pwn not in {"active", "running"} or bc not in {"active", "running"}:
+        # gov_stale is itself a fault: a stalled resource governor is a Core subsystem failure and must
+        # surface, not be hidden behind the healthy-looking mood its "FULL" fallback would otherwise give.
+        if health in {"critical", "failed"} or gov_stale or pwn not in {"active", "running"} or bc not in {"active", "running"}:
             raw = "fault"
         elif temp >= 80 or gov == "SURVIVAL":
             raw = "overheated"
@@ -246,6 +275,12 @@ class PersonalityEngine:
         elif raw in URGENT_MOODS or self._mood in URGENT_MOODS:
             if raw != self._mood:
                 self._mood, self._mood_since = raw, now
+        elif self._mood == "hunting" and not motion_live:
+            # hunting asserts active movement; once its required live input is lost (motion gone
+            # stale/unavailable, or the GPS fix dropped) drop it with no dwell -- holding it would present
+            # movement off a stale reading (ADR-0008). A genuine live "stationary" keeps motion_live True,
+            # so an ordinary stop-moving still waits out the dwell below (anti-flicker preserved).
+            self._mood, self._mood_since = raw, now
         else:
             min_dwell = DWELL_MIN_SEC + DWELL_FOCUS_SEC * foc_t / 100.0
             if raw != self._mood and (now - self._mood_since) >= min_dwell:
