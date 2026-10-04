@@ -77,21 +77,34 @@ class StarDex:
             return {"accepted": False, "reason": "no skyview", "caught": [], "new_prns": [],
                     "catch_count": 0, "new_count": 0}
         now = float(ts if ts is not None else self.clock())
-        caught: list[int] = []
+        # Pre-aggregate the skyview by PRN before writing: a multiband receiver may report one satellite
+        # several times in a single SKY for different sigid (gpsd SKY contract), so the catch is counted once
+        # but we keep the *strongest* valid SNR and a known gnssid across those records -- discarding the later
+        # records (as a plain dedup would) could permanently understate best_snr_dbhz.
+        agg: dict[int, dict[str, Any]] = {}
+        order: list[int] = []
+        for sat in satellites:
+            if not isinstance(sat, dict):
+                continue
+            prn = self._prn(sat.get("prn"))
+            if prn is None:
+                continue
+            snr = self._snr(sat.get("snr_dbhz"))
+            gnssid = self._int_or_none(sat.get("gnssid"))
+            if prn not in agg:
+                agg[prn] = {"snr": snr, "gnssid": gnssid}
+                order.append(prn)
+            else:
+                cur = agg[prn]
+                if snr is not None and (cur["snr"] is None or snr > cur["snr"]):
+                    cur["snr"] = snr
+                if cur["gnssid"] is None and gnssid is not None:
+                    cur["gnssid"] = gnssid
         new_prns: list[int] = []
-        seen_this_call: set[int] = set()
         with self.conn:
-            for sat in satellites:
-                if not isinstance(sat, dict):
-                    continue
-                prn = self._prn(sat.get("prn"))
-                if prn is None or prn in seen_this_call:
-                    # Skip malformed entries and a PRN repeated within one skyview (count it once).
-                    continue
-                seen_this_call.add(prn)
-                caught.append(prn)
-                gnssid = self._int_or_none(sat.get("gnssid"))
-                snr = self._snr(sat.get("snr_dbhz"))
+            for prn in order:
+                snr = agg[prn]["snr"]
+                gnssid = agg[prn]["gnssid"]
                 row = self.conn.execute(
                     "SELECT first_seen, seen_events, best_snr_dbhz, gnssid FROM star_catches WHERE prn=?",
                     (prn,),
@@ -114,8 +127,8 @@ class StarDex:
                          seen_events=excluded.seen_events, best_snr_dbhz=excluded.best_snr_dbhz""",
                     (prn, gid, first, now, seen, best),
                 )
-        return {"accepted": True, "caught": caught, "new_prns": new_prns,
-                "catch_count": len(caught), "new_count": len(new_prns)}
+        return {"accepted": True, "caught": order, "new_prns": new_prns,
+                "catch_count": len(order), "new_count": len(new_prns)}
 
     def recent(self, limit: int = 20) -> list[dict[str, Any]]:
         rows = self.conn.execute(

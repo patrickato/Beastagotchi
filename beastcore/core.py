@@ -131,6 +131,7 @@ class BeastCore:
         self.doctor = BeastDoctor(self.state, self.store)
         self.peerdex = PeerDex(self.store)
         self.stardex = StarDex(self.store)
+        self._last_stardex_at = 0.0   # monotonic time of the last StarDex catalog (REDUCED-mode rate limit)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
         self.owner_mode = OwnerModeManager()
@@ -248,6 +249,11 @@ class BeastCore:
                 # loop happens to run again.
                 if c.name == "pwnagotchi" and any(k == "platform.plugins" for k, *_ in changed):
                     self.state.update_many("plugin_integration", self.plugin_integration.tick(), priority=82)
+                # Catalog each fresh SKY into the StarDex on the collector's own update (every ~1s), so a
+                # satellite present in only one short-lived SKY is still caught -- retain every PRN
+                # (idea 11). Governor-gated inside _stardex_catalog so it still sheds under thermal pressure.
+                if c.name == "gps" and any(k == "gps.satellites" for k, *_ in changed):
+                    self._stardex_catalog()
                 if changed:
                     keys = [x[0] for x in changed]
                     # State patches are streamed live but not persisted; otherwise the
@@ -369,17 +375,24 @@ class BeastCore:
         if absent:
             self.state.update_many("stardex", absent, quality="unavailable", priority=72)
 
-    def _stardex_step(self) -> None:
-        # Catalog the currently-visible satellites into the StarDex (creature idea 11 increment 2). This is
-        # optional work the thermal governor can shed: skip entirely under SURVIVAL (the loop also lengthens
-        # the cadence under REDUCED/SURVIVAL). Only a *live* skyview is recorded -- gps.satellites goes stale
-        # when the GPS collector stalls, and a retained list must not keep re-logging catches off data that is
-        # no longer true (ADR-0008); an absent/None skyview is a no-op inside observe().
-        if str(self.state.get("governor.mode", "FULL") or "FULL") == "SURVIVAL":
+    def _stardex_catalog(self) -> None:
+        # Catalog the current SKY into the StarDex (creature idea 11 increment 2). Driven from the GPS
+        # collector's own update path (_collector_loop, on a gps.satellites change) so a satellite present in
+        # only one short-lived 1s SKY is still caught -- not a 5s sampler that could miss it. Optional work the
+        # thermal governor can shed: skipped entirely under SURVIVAL, and rate-limited to ~30s under REDUCED,
+        # so it adds no SQLite/copy pressure precisely when the Pi is shedding thermal work (AGENTS.md). Only a
+        # *live* skyview is recorded -- gps.satellites goes stale when the collector stalls, and a retained
+        # list must not keep re-logging catches off data that is no longer true (ADR-0008).
+        gov = str(self.state.get("governor.mode", "FULL") or "FULL")
+        if gov == "SURVIVAL":
+            return
+        now = time.monotonic()
+        if gov == "REDUCED" and (now - self._last_stardex_at) < 30.0:
             return
         meta = self.state.meta("gps.satellites")
         if not (meta and meta.get("quality") == "live"):
             return
+        self._last_stardex_at = now
         try:
             result = self.stardex.observe(self.state.get("gps.satellites", None))
             if result.get("accepted"):
@@ -387,23 +400,10 @@ class BeastCore:
         except Exception:
             # A persistence failure (db full/locked/damaged) must not leave stardex.* looking live/current:
             # mark the namespace stale so consumers see it has stopped updating rather than trusting a stale
-            # total (ADR-0008). The next successful step republishes it live.
-            log.exception("stardex persistence step failed")
+            # total (ADR-0008). The next successful catalog republishes it live.
+            log.exception("stardex persistence catalog failed")
             try: self.state.mark_source_stale("stardex", 0.0)
             except Exception: pass
-
-    async def _stardex_loop(self) -> None:
-        while not self.stop_event.is_set():
-            try:
-                self._stardex_step()
-            except Exception:
-                log.exception("stardex loop failed")
-            # Shed optional cataloging under thermal pressure (AGENTS.md): a longer cadence in the
-            # constrained modes, the normal ~5s otherwise.
-            gov = str(self.state.get("governor.mode", "FULL") or "FULL")
-            delay = 30.0 if gov in {"REDUCED", "SURVIVAL"} else 5.0
-            try: await asyncio.wait_for(self.stop_event.wait(), timeout=delay)
-            except asyncio.TimeoutError: pass
 
     async def _semantic_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -845,7 +845,6 @@ class BeastCore:
         tasks += [
             asyncio.create_task(self._health_loop(), name="health"),
             asyncio.create_task(self._context_loop(), name="context"),
-            asyncio.create_task(self._stardex_loop(), name="stardex"),
             asyncio.create_task(self._sample_loop(), name="timeseries"),
             asyncio.create_task(self._semantic_loop(), name="semantic"),
             asyncio.create_task(self._dock_loop(), name="dock"),

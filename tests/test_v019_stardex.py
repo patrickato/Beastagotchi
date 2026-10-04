@@ -112,13 +112,15 @@ def test_empty_collection_reports_unavailable_not_zero(tmp_path):
     assert s["stardex.recent"] == []
 
 
-def test_duplicate_prn_in_one_skyview_counts_once(tmp_path):
+def test_duplicate_prn_in_one_skyview_counts_once_keeps_max_snr(tmp_path):
+    # A multiband receiver may report one satellite several times in a SKY (different sigid). Count the catch
+    # once, but keep the STRONGEST SNR across those records -- discarding the later ones would understate it.
     dex = StarDex(Store(str(tmp_path / "beast.db")))
     out = dex.observe([sat(5, snr=20.0), sat(5, snr=44.0)], ts=100.0)
     assert out["new_prns"] == [5] and out["catch_count"] == 1
     row = dex.recent(1)[0]
     assert row["seen_events"] == 1                       # one observation of PRN 5, not two
-    assert row["best_snr_dbhz"] == 20.0                  # the first entry won within the skyview
+    assert row["best_snr_dbhz"] == 44.0                  # max across the duplicate records, not the first
 
 
 def test_recent_orders_by_last_seen(tmp_path):
