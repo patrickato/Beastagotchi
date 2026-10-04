@@ -220,6 +220,42 @@ def test_stale_temperature_is_not_read_as_overheated():
     assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "overheated"
 
 
+def test_stale_motion_is_not_trusted_for_hunting_though_gps_is_fixed():
+    # The ContextEngine (motion) and GPS collector are separate producers. If the context engine stalls
+    # while GPS still reads a live "fixed", a retained "walking" must not drive hunting -- motion is read
+    # per-key-live, so a stale motion reads as "unknown" and hunting cannot fire (ADR-0008).
+    clock = [0.0]
+    s = MetaState({**HEALTHY, "gps.state": "fixed", "context.motion.state": "walking", "wifi.ap_count": 20,
+                   "wifi.encounters.session_unique": 10}, stale=["context.motion.state"])
+    e = PersonalityEngine(s, clock=lambda: clock[0])
+    e.tick()
+    s["wifi.encounters.session_unique"] = 11      # a genuinely new network while "moving"
+    clock[0] = 25.0
+    assert e.tick()["beast.mood"] != "hunting"
+    # the same signals with a live motion read DO drive hunting
+    assert _after_new_network(**{"context.motion.state": "walking"})["beast.mood"] == "hunting"
+
+
+def test_stale_survival_governor_is_not_read_as_overheated():
+    # A stale governor "SURVIVAL" (the governor producer stopped refreshing) must not keep driving the
+    # overheated mood indefinitely; it falls through to the live signals (ADR-0008).
+    s = MetaState({**HEALTHY, "governor.mode": "SURVIVAL", "gps.state": "fixed", "wifi.ap_count": 0},
+                  stale=["governor.mode"])
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "overheated"
+    # a live SURVIVAL still drives overheated
+    assert _tick(**{"governor.mode": "SURVIVAL", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "overheated"
+
+
+def test_stale_critical_health_is_not_read_as_fault():
+    # A stale health "critical"/"failed" (the health producer stopped refreshing) must not keep driving
+    # the fault mood indefinitely; it falls through to the live signals (ADR-0008).
+    s = MetaState({**HEALTHY, "health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0},
+                  stale=["health.core.state"])
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "fault"
+    # a live critical health still drives fault
+    assert _tick(**{"health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "fault"
+
+
 def test_first_capture_on_a_readable_cache_celebrates():
     # With the capture-source signal, a genuine first handshake (0 -> 1 on an already-readable cache)
     # celebrates -- while a cache that only just became present does not.

@@ -25,7 +25,7 @@ class NeedsEngine:
     - ``needs.curiosity_hunger`` -- time since a lifetime-first discovery (novelty); eased only by
       genuinely new networks/vendors, so re-seeing the same ones cannot fake it.
     - ``needs.restlessness`` -- time since real movement (``context.motion.state``); unavailable
-      without a usable GPS fix or when the GPS collector is stale.
+      without a usable GPS fix or when the GPS collector or ContextEngine (motion) is stale.
     - ``needs.loneliness`` -- time since the last peer encounter (PeerDex).
     - ``needs.tiredness`` -- accumulates under heat / throttling / low battery / night and recovers
       when good; each driver counts only while its collector is live (ADR-0008). Neglect should make
@@ -206,12 +206,14 @@ class NeedsEngine:
             out['needs.curiosity_hunger'] = self._rise(now - self._novelty_t, self.RISE_SEC, rate)
 
         # restlessness -- rises while the Beast stays put, eased by real movement. Driven by the
-        # produced context.motion.state (there is no gps.*_distance producer). Unavailable without a
-        # usable GPS fix (motion "unknown") or when the GPS collector is stale, so frozen motion from
-        # a stalled collector cannot masquerade as "not moving" (ADR-0008).
-        motion = str(self.state.get('context.motion.state', 'unknown') or 'unknown')
+        # produced context.motion.state (there is no gps.*_distance producer). Both drivers are read
+        # per-key-live (_live): unavailable without a usable GPS fix (motion "unknown"), when the GPS
+        # collector is stale, or when the ContextEngine itself stalls -- so a frozen "walking" from a
+        # stalled motion producer cannot masquerade as live movement while GPS still reads fixed, and a
+        # frozen "stationary" cannot accrue restlessness off stale data (ADR-0008).
+        motion = str(self._live('context.motion.state') or 'unknown')
         # Only an actual fix is usable motion evidence: "unavailable"/"connected_no_fix" are live values
-        # with no position, and a stale gps.state reads as "unknown" (per-key quality) -- neither is a fix.
+        # with no position, and a stale gps.state (or motion.state) reads as "unknown" (per-key quality).
         if motion == 'unknown' or str(self._live('gps.state') or 'unknown') != 'fixed':
             # Movement is unknowable now; re-baseline so a later recovery does not charge the whole
             # outage (e.g. a 4h GPS gap must not resume as an instant restlessness=100). restlessness is

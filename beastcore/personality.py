@@ -186,20 +186,30 @@ class PersonalityEngine:
 
         # --- observed conditions ----------------------------------------------------------------
         aps = int(self.state.get("wifi.ap_count", 0) or 0)
-        health = str(self.state.get("health.core.state", "starting") or "starting")
-        gov = str(self.state.get("governor.mode", "FULL") or "FULL")
+        # Urgent-mood gating inputs are read per-key-live (_live) where a stale reading must not keep
+        # asserting an urgent mood: state.get returns retained values with no expiry, so a stale health
+        # "critical"/"failed" or a stale governor "SURVIVAL" would otherwise drive fault/overheated
+        # indefinitely. Reading them live lets a stalled producer fall through to its neutral default
+        # ("starting"/"FULL"), which does not itself trigger an urgent mood (ADR-0008).
+        health = str(self._live("health.core.state") or "starting")
+        gov = str(self._live("governor.mode") or "FULL")
         temp = float(self._live("system.temp.cpu_c") or 0)   # stale/unavailable temp -> 0 (not overheated)
         gps_state = str(self._live("gps.state") or "unknown")  # stale/absent -> "unknown"
+        # pwnagotchi/bettercap service states are read raw on purpose: their absent/"unknown" default
+        # itself triggers fault, so per-key-live gating would turn a merely stale read into an *asserted*
+        # fault -- a mood-contract call deferred to #60, not this honesty pass (Bible §11 still notes
+        # these inputs "aren't all quality-gated").
         pwn = str(self.state.get("pwnagotchi.service.state", "unknown") or "unknown")
         bc = str(self.state.get("bettercap.state", "unknown") or "unknown")
         phase = str(self.state.get("ambient.day_phase", "day") or "day")
         cpu = float(self.state.get("system.cpu.total", 0) or 0)
         lvl = int(self.state.get("progression.level", 1) or 1)
-        # Motion is trustworthy only with an actual fix: gps.state "unavailable"/"connected_no_fix" are
-        # live values but carry no usable position, and ContextEngine may preserve stale motion during a
-        # brief fix drop, so require "fixed" before trusting context.motion.state (ADR-0008). A stale
-        # gps.state reads as "unknown" here (per-key quality), which is likewise not "fixed".
-        moving = gps_state == "fixed" and str(self.state.get("context.motion.state", "unknown") or "unknown") in MOTION_ACTIVE
+        # Motion is trustworthy only with an actual fix AND a live motion read: gps.state
+        # "unavailable"/"connected_no_fix" are live values with no usable position, and the ContextEngine
+        # can stall (or preserve stale motion during a brief fix drop) while GPS still reads fixed, so
+        # require gps.state "fixed" and read context.motion.state per-key-live (_live) -- a stale "walking"
+        # then reads "unknown" and cannot drive hunting (ADR-0008).
+        moving = gps_state == "fixed" and str(self._live("context.motion.state") or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 
         cur_t = self._temp("curiosity")
