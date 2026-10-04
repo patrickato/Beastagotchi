@@ -186,13 +186,15 @@ class PersonalityEngine:
 
         # --- observed conditions ----------------------------------------------------------------
         aps = int(self.state.get("wifi.ap_count", 0) or 0)
-        # Urgent-mood gating inputs are read per-key-live (_live) where a stale reading must not keep
-        # asserting an urgent mood: state.get returns retained values with no expiry, so a stale health
-        # "critical"/"failed" or a stale governor "SURVIVAL" would otherwise drive fault/overheated
-        # indefinitely. Reading them live lets a stalled producer fall through to its neutral default
-        # ("starting"/"FULL"), which does not itself trigger an urgent mood (ADR-0008).
-        health = str(self._live("health.core.state") or "starting")
+        # governor.mode is read per-key-live (_live): state.get returns retained values with no expiry, so
+        # a stale "SURVIVAL" would otherwise drive overheated forever. The governor is an engine loop (not a
+        # collector), so the health watchdog ages the "governor" source (core._age_engine_sources) -- a
+        # stalled governor then falls through to "FULL", which is not overheated (ADR-0008).
         gov = str(self._live("governor.mode") or "FULL")
+        # health.core.state is read raw on purpose: it is produced by the health/watchdog loop itself from
+        # the current collector states, so it is fresh whenever that loop runs and cannot observe its own
+        # staleness. A stalled health loop surfacing as fault is acceptable (the health monitor is down).
+        health = str(self.state.get("health.core.state", "starting") or "starting")
         temp = float(self._live("system.temp.cpu_c") or 0)   # stale/unavailable temp -> 0 (not overheated)
         gps_state = str(self._live("gps.state") or "unknown")  # stale/absent -> "unknown"
         # pwnagotchi/bettercap service states are read raw on purpose: their absent/"unknown" default
@@ -206,9 +208,10 @@ class PersonalityEngine:
         lvl = int(self.state.get("progression.level", 1) or 1)
         # Motion is trustworthy only with an actual fix AND a live motion read: gps.state
         # "unavailable"/"connected_no_fix" are live values with no usable position, and the ContextEngine
-        # can stall (or preserve stale motion during a brief fix drop) while GPS still reads fixed, so
-        # require gps.state "fixed" and read context.motion.state per-key-live (_live) -- a stale "walking"
-        # then reads "unknown" and cannot drive hunting (ADR-0008).
+        # (an engine loop) can stall while GPS still reads fixed. The health watchdog ages the "context"
+        # source (core._age_engine_sources), so a stalled motion read goes stale and _live drops it: require
+        # gps.state "fixed" and a per-key-live context.motion.state -- a stale "walking" reads "unknown" and
+        # cannot drive hunting (ADR-0008).
         moving = gps_state == "fixed" and str(self._live("context.motion.state") or "unknown") in MOTION_ACTIVE
         night = phase in {"night", "late_night"}
 

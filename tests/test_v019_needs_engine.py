@@ -101,6 +101,24 @@ def test_restlessness_unavailable_when_motion_is_stale_though_gps_is_fixed():
     assert live.tick()["needs.restlessness"] > 0
 
 
+def test_restlessness_unavailable_when_context_source_aged_stale_in_production():
+    # Production path (no synthetic MetaState): a real StateRegistry plus mark_source_stale -- exactly what
+    # core._age_engine_sources calls on the "context" source once its loop stalls -- must make a retained
+    # motion read go unavailable, so restlessness is not driven by stale data even while GPS reads fixed.
+    from beastcore.state import StateRegistry
+    reg = StateRegistry()
+    reg.update_many("gps", {"gps.state": "fixed"}, priority=70)
+    reg.update_many("context", {"context.motion.state": "stationary"}, priority=90)
+    clock = [0.0]
+    e = NeedsEngine(reg, clock=lambda: clock[0])
+    e.tick()
+    clock[0] = 3 * 3600.0
+    assert e.tick()["needs.restlessness"] > 0                # live motion + fix -> restlessness derives
+    reg.mark_source_stale("context", 0.0)                    # the context loop stalled; watchdog ages it
+    clock[0] = 3 * 3600.0 + 1.0
+    assert e.tick()["needs.restlessness"] is None            # stale motion -> unavailable (ADR-0008)
+
+
 def test_movement_eases_restlessness():
     clock = [0.0]
     e = _engine({"gps.state": "fixed", "context.motion.state": "stationary"}, clock)

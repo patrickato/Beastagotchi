@@ -208,9 +208,10 @@ class NeedsEngine:
         # restlessness -- rises while the Beast stays put, eased by real movement. Driven by the
         # produced context.motion.state (there is no gps.*_distance producer). Both drivers are read
         # per-key-live (_live): unavailable without a usable GPS fix (motion "unknown"), when the GPS
-        # collector is stale, or when the ContextEngine itself stalls -- so a frozen "walking" from a
-        # stalled motion producer cannot masquerade as live movement while GPS still reads fixed, and a
-        # frozen "stationary" cannot accrue restlessness off stale data (ADR-0008).
+        # collector is stale, or when the ContextEngine stalls (the health watchdog ages the "context"
+        # source, core._age_engine_sources) -- so a frozen "walking" from a stalled motion producer cannot
+        # masquerade as live movement while GPS still reads fixed, and a frozen "stationary" cannot accrue
+        # restlessness off stale data (ADR-0008).
         motion = str(self._live('context.motion.state') or 'unknown')
         # Only an actual fix is usable motion evidence: "unavailable"/"connected_no_fix" are live values
         # with no position, and a stale gps.state (or motion.state) reads as "unknown" (per-key quality).

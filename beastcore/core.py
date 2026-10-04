@@ -62,6 +62,16 @@ from .collectors import *
 
 log = logging.getLogger("beastcore")
 
+# Engine loops publish their keys directly (not through a registered collector), so the collector
+# staleness pass in _health_summary never ages them. These are the engine-loop sources whose keys are
+# consumed with a quality-aware read (NeedsEngine/PersonalityEngine `_live`), so a stalled loop must not
+# keep driving a live need/mood off a retained value (ADR-0008). The health loop ages them by the same
+# mechanism as collectors; thresholds are a generous multiple of the ~1s loop cadence so only a genuine
+# stall trips them. `health` is intentionally absent: it is produced by the watchdog loop itself, so it
+# cannot observe its own staleness, and a stalled health loop surfacing as fault is acceptable.
+_ENGINE_SOURCE_STALE_AFTER = {"context": 5.0, "governor": 5.0}
+
+
 class BeastCore:
     def __init__(self, db_path: str = "/var/lib/beastagotchi/beast.db", host: str = "127.0.0.1", port: int = 8090) -> None:
         self.state = StateRegistry()
@@ -331,11 +341,25 @@ class BeastCore:
             "health.core.critical_count": len(critical_failures),
         }
 
+    def _age_engine_sources(self) -> None:
+        """Mark engine-loop sources stale once their keys stop refreshing (ADR-0008).
+
+        Collectors are aged in _health_summary; engine loops publish directly and are not, so without
+        this a stalled context/governor loop keeps its last values at quality="live" forever and a
+        quality-aware consumer (NeedsEngine/PersonalityEngine) cannot tell the reading is no longer true.
+        mark_source_stale ages by each key's updated_at, which update_many refreshes every tick even when
+        the value is unchanged, so the threshold only trips on a real stall. Running in the health loop
+        means this watches the *other* engine loops; the health loop cannot age its own `health` source.
+        """
+        for source, stale_after in _ENGINE_SOURCE_STALE_AFTER.items():
+            self.state.mark_source_stale(source, stale_after)
+
     async def _health_loop(self) -> None:
         while not self.stop_event.is_set():
             now = time.time()
             uptime = time.monotonic() - self.started_mono
             self.state.update_many("health", self._health_summary(now, uptime), priority=100)
+            self._age_engine_sources()
             try:
                 await asyncio.wait_for(self.stop_event.wait(), timeout=1.0)
             except asyncio.TimeoutError:

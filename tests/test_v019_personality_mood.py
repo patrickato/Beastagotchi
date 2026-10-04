@@ -246,14 +246,43 @@ def test_stale_survival_governor_is_not_read_as_overheated():
     assert _tick(**{"governor.mode": "SURVIVAL", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "overheated"
 
 
-def test_stale_critical_health_is_not_read_as_fault():
-    # A stale health "critical"/"failed" (the health producer stopped refreshing) must not keep driving
-    # the fault mood indefinitely; it falls through to the live signals (ADR-0008).
+def test_health_is_read_raw_because_the_watchdog_cannot_observe_itself():
+    # Unlike governor/motion, health.core.state is produced by the health/watchdog loop itself from the
+    # current collector states, so it is fresh whenever that loop runs and that same loop cannot mark its
+    # own source stale. It is therefore read raw: a live critical drives fault, and a "stale" critical --
+    # only reachable if the health loop itself stalls -- still surfaces as fault, which is acceptable (a
+    # dead health monitor is a real fault).
+    assert _tick(**{"health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "fault"
     s = MetaState({**HEALTHY, "health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0},
                   stale=["health.core.state"])
-    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] != "fault"
-    # a live critical health still drives fault
-    assert _tick(**{"health.core.state": "critical", "gps.state": "fixed", "wifi.ap_count": 0})["beast.mood"] == "fault"
+    assert PersonalityEngine(s, clock=lambda: 0.0).tick()["beast.mood"] == "fault"  # raw read -> still fault
+
+
+def test_mood_falls_through_when_engine_sources_go_stale_in_production():
+    # Production path (no synthetic MetaState): a real StateRegistry plus the watchdog's own
+    # mark_source_stale (core._age_engine_sources) is what makes governor/context staleable. Publish them
+    # live, confirm the urgent mood fires, then age the sources exactly as the watchdog does and confirm a
+    # retained SURVIVAL/"walking" no longer drives overheated/hunting (ADR-0008).
+    from beastcore.state import StateRegistry
+    reg = StateRegistry()
+    reg.update_many("health", {"health.core.state": "healthy"}, priority=100)
+    reg.update_many("pwnagotchi", {"pwnagotchi.service.state": "active"}, priority=70)
+    reg.update_many("bettercap", {"bettercap.state": "active"}, priority=70)
+    reg.update_many("system", {"system.temp.cpu_c": 50.0}, priority=60)
+    reg.update_many("gps", {"gps.state": "fixed"}, priority=70)
+    reg.update_many("governor", {"governor.mode": "SURVIVAL"}, priority=96)
+    reg.update_many("context", {"context.motion.state": "walking"}, priority=90)
+    reg.update_many("wifi", {"wifi.ap_count": 20, "wifi.encounters.session_unique": 10}, priority=50)
+    clock = [0.0]
+    e = PersonalityEngine(reg, clock=lambda: clock[0])
+    assert e.tick()["beast.mood"] == "overheated"            # live SURVIVAL -> overheated
+    reg.mark_source_stale("governor", 0.0)                   # the governor/context loops stalled; the
+    reg.mark_source_stale("context", 0.0)                    # health watchdog ages their sources
+    reg.update_many("wifi", {"wifi.encounters.session_unique": 11}, priority=50)  # a genuine new network
+    clock[0] = 30.0
+    mood = e.tick()["beast.mood"]
+    assert mood != "overheated"                              # stale SURVIVAL no longer overheats
+    assert mood != "hunting"                                 # stale "walking" no longer hunts
 
 
 def test_first_capture_on_a_readable_cache_celebrates():
