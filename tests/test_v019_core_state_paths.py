@@ -58,3 +58,37 @@ def test_stardex_step_catalogs_only_a_live_skyview(tmp_path):
         assert core.stardex.summary()["stardex.total_prns"] == 1   # PRN 9 not cataloged (stale skyview)
     finally:
         core.store.close()
+
+
+def test_stardex_step_is_shed_under_survival_governor(tmp_path):
+    # Optional cataloging the thermal governor can shed (AGENTS.md): under SURVIVAL the step does no SQLite
+    # work at all, even with a live skyview.
+    core = BeastCore(db_path=str(tmp_path / "beast.db"), port=0)
+    try:
+        core.state.update_many("gps", {"gps.satellites": [{"prn": 5}]}, priority=70)
+        core.state.update_many("governor", {"governor.mode": "SURVIVAL"}, priority=96)
+        core._stardex_step()
+        assert core.stardex.summary()["stardex.total_prns"] == 0   # shed: nothing cataloged
+        # back to FULL -> cataloging resumes
+        core.state.update_many("governor", {"governor.mode": "FULL"}, priority=96)
+        core._stardex_step()
+        assert core.stardex.summary()["stardex.total_prns"] == 1
+    finally:
+        core.store.close()
+
+
+def test_stardex_step_marks_namespace_stale_on_persistence_failure(tmp_path):
+    # If a runtime SQLite op fails, stardex.* must not keep looking live/current: the step marks the
+    # namespace stale so consumers see it stopped updating (ADR-0008), rather than only logging.
+    core = BeastCore(db_path=str(tmp_path / "beast.db"), port=0)
+    try:
+        core.state.update_many("gps", {"gps.satellites": [{"prn": 5}]}, priority=70)
+        core._stardex_step()
+        assert core.state.meta("stardex.total_prns")["quality"] == "live"
+        def boom(*a, **k):
+            raise RuntimeError("database is locked")
+        core.stardex.observe = boom                      # simulate a persistence failure
+        core._stardex_step()
+        assert core.state.meta("stardex.total_prns")["quality"] == "stale"
+    finally:
+        core.store.close()

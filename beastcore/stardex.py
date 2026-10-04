@@ -28,14 +28,19 @@ class StarDex:
 
     @staticmethod
     def _prn(value: Any) -> int | None:
-        # The PRN is the collectible key: a positive integer gpsd satellite id. bool is an int subclass but
-        # never a PRN, so exclude it first; anything non-integer or <= 0 is not a catalogable PRN -> skip
-        # (record only what gpsd really identified, never a fabricated id).
+        # The PRN is the collectible key: a positive *integer* gpsd satellite id. Accept only an integral
+        # value -- a bool (int subclass) is never a PRN, and a fractional number (e.g. 5.9) is rejected rather
+        # than truncated: truncating would catalog a different satellite (5) and could pre-empt the real
+        # PRN 5's later discovery. Record only what gpsd really identified, never a fabricated id (ADR-0008).
         if isinstance(value, bool):
             return None
-        try:
+        if isinstance(value, int):
+            prn = value
+        elif isinstance(value, float):
+            if not (math.isfinite(value) and value.is_integer()):
+                return None
             prn = int(value)
-        except (TypeError, ValueError):
+        else:
             return None
         return prn if prn > 0 else None
 
@@ -125,12 +130,15 @@ class StarDex:
 
     def summary(self) -> dict[str, Any]:
         row = self.conn.execute(
-            "SELECT COUNT(*), COALESCE(MAX(last_seen),0), MAX(best_snr_dbhz) FROM star_catches"
+            "SELECT COUNT(*), MAX(last_seen), MAX(best_snr_dbhz) FROM star_catches"
         ).fetchone()
-        best = row[2]
+        last, best = row[1], row[2]
+        # last_caught_at / best_snr are *unavailable* (None) until the first catch, never a fabricated 0 that a
+        # consumer could not tell apart from a genuine epoch timestamp / signal (ADR-0008). total_prns == 0 is a
+        # real count, not unavailable.
         return {
             "stardex.total_prns": int(row[0] or 0),
-            "stardex.last_caught_at": float(row[1] or 0),
+            "stardex.last_caught_at": float(last) if last is not None else None,
             "stardex.best_snr_dbhz": float(best) if best is not None else None,
             "stardex.recent": self.recent(8),
         }

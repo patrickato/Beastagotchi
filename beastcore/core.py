@@ -159,7 +159,7 @@ class BeastCore:
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
         self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
-        self.state.update_many("stardex", self.stardex.summary(), priority=72)
+        self._publish_stardex()
 
     def _health_patch(self, c, state: str, duration_ms: float, error: str | None = None) -> dict[str, Any]:
         now = time.time()
@@ -357,25 +357,52 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=1.0)
             except asyncio.TimeoutError: pass
 
+    def _publish_stardex(self) -> None:
+        # Publish stardex.* splitting available vs unavailable (ADR-0008): a value the collection cannot yet
+        # provide (last_caught_at / best_snr before the first catch is None) is published *unavailable*, never
+        # a fabricated 0 a consumer could not tell from a genuine timestamp/signal.
+        summary = self.stardex.summary()
+        live = {k: v for k, v in summary.items() if v is not None}
+        absent = {k: None for k, v in summary.items() if v is None}
+        if live:
+            self.state.update_many("stardex", live, priority=72)
+        if absent:
+            self.state.update_many("stardex", absent, quality="unavailable", priority=72)
+
     def _stardex_step(self) -> None:
-        # Catalog the currently-visible satellites into the StarDex (creature idea 11 increment 2). Only a
-        # *live* skyview is recorded: gps.satellites goes stale when the GPS collector stalls, and a retained
-        # list must not keep re-logging catches off data that is no longer true (ADR-0008). Absent/None skyview
-        # is a no-op inside observe(). (Discovery XP for result["new_prns"] is increment 3.)
+        # Catalog the currently-visible satellites into the StarDex (creature idea 11 increment 2). This is
+        # optional work the thermal governor can shed: skip entirely under SURVIVAL (the loop also lengthens
+        # the cadence under REDUCED/SURVIVAL). Only a *live* skyview is recorded -- gps.satellites goes stale
+        # when the GPS collector stalls, and a retained list must not keep re-logging catches off data that is
+        # no longer true (ADR-0008); an absent/None skyview is a no-op inside observe().
+        if str(self.state.get("governor.mode", "FULL") or "FULL") == "SURVIVAL":
+            return
         meta = self.state.meta("gps.satellites")
         if not (meta and meta.get("quality") == "live"):
             return
-        result = self.stardex.observe(self.state.get("gps.satellites", None))
-        if result.get("accepted"):
-            self.state.update_many("stardex", self.stardex.summary(), priority=72)
+        try:
+            result = self.stardex.observe(self.state.get("gps.satellites", None))
+            if result.get("accepted"):
+                self._publish_stardex()            # (discovery XP for result["new_prns"] is increment 3)
+        except Exception:
+            # A persistence failure (db full/locked/damaged) must not leave stardex.* looking live/current:
+            # mark the namespace stale so consumers see it has stopped updating rather than trusting a stale
+            # total (ADR-0008). The next successful step republishes it live.
+            log.exception("stardex persistence step failed")
+            try: self.state.mark_source_stale("stardex", 0.0)
+            except Exception: pass
 
     async def _stardex_loop(self) -> None:
         while not self.stop_event.is_set():
             try:
                 self._stardex_step()
             except Exception:
-                log.exception("stardex failed")
-            try: await asyncio.wait_for(self.stop_event.wait(), timeout=5.0)
+                log.exception("stardex loop failed")
+            # Shed optional cataloging under thermal pressure (AGENTS.md): a longer cadence in the
+            # constrained modes, the normal ~5s otherwise.
+            gov = str(self.state.get("governor.mode", "FULL") or "FULL")
+            delay = 30.0 if gov in {"REDUCED", "SURVIVAL"} else 5.0
+            try: await asyncio.wait_for(self.stop_event.wait(), timeout=delay)
             except asyncio.TimeoutError: pass
 
     async def _semantic_loop(self) -> None:

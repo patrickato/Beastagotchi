@@ -92,6 +92,26 @@ def test_malformed_entries_are_skipped(tmp_path):
     assert dex.summary()["stardex.total_prns"] == 1
 
 
+def test_fractional_prn_is_rejected_not_truncated(tmp_path):
+    # A malformed fractional PRN (e.g. 5.9) must not be truncated to 5 -- that would catalog a wrong
+    # satellite and pre-empt the real PRN 5's later discovery. An integral float (12.0) is still a valid PRN.
+    dex = StarDex(Store(str(tmp_path / "beast.db")))
+    assert dex.observe([sat(5.9)], ts=100.0)["new_prns"] == []      # fractional -> not cataloged
+    assert dex.summary()["stardex.total_prns"] == 0
+    assert dex.observe([sat(5)], ts=200.0)["new_prns"] == [5]       # the genuine PRN 5 is still a discovery
+    assert dex.observe([sat(12.0)], ts=300.0)["new_prns"] == [12]   # integral float accepted as PRN 12
+
+
+def test_empty_collection_reports_unavailable_not_zero(tmp_path):
+    # A new StarDex has caught nothing: last_caught_at / best_snr must be unavailable (None), never a
+    # fabricated 0 a consumer could not tell from a real timestamp / signal (ADR-0008). total is a real 0.
+    s = StarDex(Store(str(tmp_path / "beast.db"))).summary()
+    assert s["stardex.total_prns"] == 0
+    assert s["stardex.last_caught_at"] is None
+    assert s["stardex.best_snr_dbhz"] is None
+    assert s["stardex.recent"] == []
+
+
 def test_duplicate_prn_in_one_skyview_counts_once(tmp_path):
     dex = StarDex(Store(str(tmp_path / "beast.db")))
     out = dex.observe([sat(5, snr=20.0), sat(5, snr=44.0)], ts=100.0)
