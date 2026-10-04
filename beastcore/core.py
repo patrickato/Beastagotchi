@@ -47,6 +47,7 @@ from .update_automation import UpdateAutomationEngine
 from .search import UniversalSearch
 from .incidents import IncidentEngine
 from .peerdex import PeerDex
+from .stardex import StarDex
 from .roster import BeastRoster
 from .heritage import TEMPERAMENT_AXES, normalize_parent_traits
 from .needs import NeedsEngine
@@ -129,6 +130,8 @@ class BeastCore:
         self.incidents = IncidentEngine(self.state, self.store, self.events)
         self.doctor = BeastDoctor(self.state, self.store)
         self.peerdex = PeerDex(self.store)
+        self.stardex = StarDex(self.store)
+        self._last_stardex_at = 0.0   # monotonic time of the last StarDex catalog (REDUCED-mode rate limit)
         self.global_sync = GlobalProfileSync(self.state,self.store,self.roster)
         self.memories = BeastMemoryEngine(self.state,self.store,self.roster)
         self.owner_mode = OwnerModeManager()
@@ -157,6 +160,7 @@ class BeastCore:
         self.action_server = LocalActionServer(self.actions)
         self.state.update_many("beastcore", {"system.beast_version": __version__}, priority=100)
         self.state.update_many("peerdex", self.peerdex.summary(), priority=83)
+        self._publish_stardex()
 
     def _health_patch(self, c, state: str, duration_ms: float, error: str | None = None) -> dict[str, Any]:
         now = time.time()
@@ -245,6 +249,11 @@ class BeastCore:
                 # loop happens to run again.
                 if c.name == "pwnagotchi" and any(k == "platform.plugins" for k, *_ in changed):
                     self.state.update_many("plugin_integration", self.plugin_integration.tick(), priority=82)
+                # Catalog each fresh SKY into the StarDex on the collector's own update (every ~1s), so a
+                # satellite present in only one short-lived SKY is still caught -- retain every PRN
+                # (idea 11). Governor-gated inside _stardex_catalog so it still sheds under thermal pressure.
+                if c.name == "gps" and any(k == "gps.satellites" for k, *_ in changed):
+                    self._stardex_catalog()
                 if changed:
                     keys = [x[0] for x in changed]
                     # State patches are streamed live but not persisted; otherwise the
@@ -354,6 +363,47 @@ class BeastCore:
             try: await asyncio.wait_for(self.stop_event.wait(), timeout=1.0)
             except asyncio.TimeoutError: pass
 
+    def _publish_stardex(self) -> None:
+        # Publish stardex.* splitting available vs unavailable (ADR-0008): a value the collection cannot yet
+        # provide (last_caught_at / best_snr before the first catch is None) is published *unavailable*, never
+        # a fabricated 0 a consumer could not tell from a genuine timestamp/signal.
+        summary = self.stardex.summary()
+        live = {k: v for k, v in summary.items() if v is not None}
+        absent = {k: None for k, v in summary.items() if v is None}
+        if live:
+            self.state.update_many("stardex", live, priority=72)
+        if absent:
+            self.state.update_many("stardex", absent, quality="unavailable", priority=72)
+
+    def _stardex_catalog(self) -> None:
+        # Catalog the current SKY into the StarDex (creature idea 11 increment 2). Driven from the GPS
+        # collector's own update path (_collector_loop, on a gps.satellites change) so a satellite present in
+        # only one short-lived 1s SKY is still caught -- not a 5s sampler that could miss it. Optional work the
+        # thermal governor can shed: skipped entirely under SURVIVAL, and rate-limited to ~30s under REDUCED,
+        # so it adds no SQLite/copy pressure precisely when the Pi is shedding thermal work (AGENTS.md). Only a
+        # *live* skyview is recorded -- gps.satellites goes stale when the collector stalls, and a retained
+        # list must not keep re-logging catches off data that is no longer true (ADR-0008).
+        gov = str(self.state.get("governor.mode", "FULL") or "FULL")
+        if gov == "SURVIVAL":
+            return
+        now = time.monotonic()
+        if gov == "REDUCED" and (now - self._last_stardex_at) < 30.0:
+            return
+        meta = self.state.meta("gps.satellites")
+        if not (meta and meta.get("quality") == "live"):
+            return
+        self._last_stardex_at = now
+        try:
+            result = self.stardex.observe(self.state.get("gps.satellites", None))
+            if result.get("accepted"):
+                self._publish_stardex()            # (discovery XP for result["new_prns"] is increment 3)
+        except Exception:
+            # A persistence failure (db full/locked/damaged) must not leave stardex.* looking live/current:
+            # mark the namespace stale so consumers see it has stopped updating rather than trusting a stale
+            # total (ADR-0008). The next successful catalog republishes it live.
+            log.exception("stardex persistence catalog failed")
+            try: self.state.mark_source_stale("stardex", 0.0)
+            except Exception: pass
 
     async def _semantic_loop(self) -> None:
         while not self.stop_event.is_set():

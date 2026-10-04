@@ -269,6 +269,15 @@ CREATE TABLE IF NOT EXISTS peer_encounters (
   data_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_peer_encounters_last_seen ON peer_encounters(last_seen DESC);
+CREATE TABLE IF NOT EXISTS star_catches (
+  prn INTEGER PRIMARY KEY,
+  gnssid INTEGER,
+  first_seen REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  seen_events INTEGER NOT NULL DEFAULT 0,
+  best_snr_dbhz REAL
+);
+CREATE INDEX IF NOT EXISTS idx_star_catches_last_seen ON star_catches(last_seen DESC);
 CREATE TABLE IF NOT EXISTS beast_memories (
   id TEXT PRIMARY KEY,
   beast_id TEXT NOT NULL,
