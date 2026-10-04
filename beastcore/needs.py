@@ -83,8 +83,11 @@ class NeedsEngine:
             blob = self.store.get_meta_json(self.META_KEY, None)
         except Exception:
             # A transient read error (SQLite/FS hiccup) is NOT "no checkpoint". Flag it so the engine
-            # reports the persisted needs *unavailable* this run and _persist does not overwrite the real
-            # checkpoint with reset state; tick() retries the read until it succeeds.
+            # reports the persisted needs *unavailable* for this session and _persist does not overwrite the
+            # real checkpoint with reset state. A checkpoint is applied only at construction, before any live
+            # derivation; injecting it mid-session would publish it for the wrong Beast for a tick and clobber
+            # live-evolved fatigue, so recovery waits for the next restart -- which resumes cleanly from the
+            # preserved checkpoint.
             self._restore_failed = True
             return
         self._restore_failed = False
@@ -185,11 +188,6 @@ class NeedsEngine:
             self._beast_id = beast_id
             self._reset_session(now)
 
-        # If the checkpoint read failed at boot, retry it (storage may have recovered). Until it
-        # succeeds the persisted needs are reported unavailable at the end of this tick.
-        if self._restore_failed and self.store is not None:
-            self._restore(now)
-
         # curiosity_hunger -- rises since the last lifetime-first discovery; eased by novelty.
         novelty = self._num('wifi.encounters.lifetime_unique')
         if novelty is None:
@@ -281,8 +279,9 @@ class NeedsEngine:
             out['needs.tiredness'] = int(round(self._tired))
 
         if self._restore_failed:
-            # The checkpoint is unreadable this run: the persisted needs are unknown, so report them
-            # unavailable rather than a confident fresh value (ADR-0008). Live needs are unaffected.
+            # The checkpoint was unreadable at boot: the persisted needs are unknown for this session, so
+            # report them unavailable rather than a confident fresh value (ADR-0008); the next restart
+            # resumes from the preserved checkpoint. Live needs (restlessness, loneliness) are unaffected.
             out['needs.curiosity_hunger'] = None
             out['needs.tiredness'] = None
         out['needs.source'] = 'derived_live'

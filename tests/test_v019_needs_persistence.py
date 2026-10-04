@@ -9,7 +9,9 @@ The whole persisted blob is validated before any of it is applied, so a partial 
 blob falls back to a fresh session rather than half-restoring into plausible live telemetry (ADR-0008):
 a non-finite field, a missing required field (tired), or an inconsistent novelty (baseline, age) pair
 each reject the blob. A pathologically large restored age cannot overflow the need math. A transient
-read error preserves the checkpoint and reports the persisted needs unavailable until a read succeeds.
+read error preserves the checkpoint and reports the persisted needs unavailable for that session; the next
+restart resumes cleanly from the preserved checkpoint (a checkpoint is applied only at construction, never
+injected mid-session).
 """
 from __future__ import annotations
 
@@ -110,7 +112,7 @@ def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():
         e.save()                                             # clean-shutdown save surfaces it
 
 
-def test_a_read_error_preserves_the_checkpoint_and_reports_unavailable():
+def test_a_read_error_preserves_the_checkpoint_and_resumes_on_restart():
     saved = {"beast_id": None, "novelty_age": 3600.0, "novelty_val": 5.0, "tired": 40.0}
 
     class FlakyReadStore(FakeStore):
@@ -130,8 +132,13 @@ def test_a_read_error_preserves_the_checkpoint_and_reports_unavailable():
     assert out["needs.tiredness"] is None
     e._persist(0.0)                                          # must NOT overwrite the checkpoint while failed
     assert store._d["needs.persistence"] == saved
-    store.fail = False                                       # storage recovers
-    assert e.tick()["needs.curiosity_hunger"] is not None    # retry restores -> needs available again
+    store.fail = False                                       # storage recovers mid-session...
+    out2 = e.tick()
+    assert out2["needs.curiosity_hunger"] is None            # ...but a checkpoint is applied only at
+    assert out2["needs.tiredness"] is None                   # construction, never injected mid-session
+    resumed = NeedsEngine(FakeState(HOT), clock=lambda: 0.0, store=store).tick()  # the next restart
+    assert resumed["needs.curiosity_hunger"] is not None     # resumes cleanly from the preserved checkpoint
+    assert resumed["needs.tiredness"] is not None
 
 
 def test_persisted_needs_do_not_cross_to_a_different_beast():
