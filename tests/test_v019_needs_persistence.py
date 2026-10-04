@@ -71,14 +71,16 @@ def test_corrupt_persisted_state_falls_back_to_fresh():
     assert e.tick()["needs.curiosity_hunger"] == 0           # corrupt fields ignored -> fresh baseline
 
 
-def test_nonnumeric_persisted_baseline_does_not_crash_the_tick():
-    # A blob with a non-numeric novelty_val must not reach the tick-time comparison and raise TypeError.
+def test_a_corrupt_field_rejects_the_whole_blob_to_fresh():
+    # Codex: a non-numeric baseline paired with a still-valid age must NOT half-restore into a plausible
+    # live value. A present-but-corrupt field rejects the whole blob, so the session starts fresh (and
+    # the tick never reaches the comparison that would TypeError).
     store = FakeStore({"needs.persistence": {
         "beast_id": None, "novelty_age": 3600.0, "novelty_val": "not-a-number",
         "move_age": 10.0, "peer_age": None, "peer_val": None, "tired": 0.0,
     }})
     e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
-    assert e.tick()["needs.curiosity_hunger"] is not None    # must not raise
+    assert e.tick()["needs.curiosity_hunger"] == 0           # fresh baseline, not a half-restored ~25
 
 
 def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():

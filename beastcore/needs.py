@@ -85,24 +85,35 @@ class NeedsEngine:
             blob = None
         if not isinstance(blob, dict):
             return
+        # Validate the whole blob atomically: a field that is present but not a finite number is
+        # corruption, so the blob is ignored entirely and the fresh session kept -- a corrupt value with
+        # a still-valid paired age can never half-restore into plausible live telemetry (ADR-0008).
+        # ``None`` is a legitimate "absent" (no novelty/peer baseline yet), not corruption.
+        nums: dict[str, float | None] = {}
+        for k in ("novelty_age", "novelty_val", "move_age", "peer_age", "peer_val", "tired"):
+            v = blob.get(k)
+            if v is None:
+                nums[k] = None
+                continue
+            fv = self._finite(v)
+            if fv is None:
+                return  # corrupt field -> reject the whole blob -> fresh session
+            nums[k] = fv
         self._beast_id = blob.get("beast_id", self._beast_id)
-        self._novelty_val = self._finite(blob.get("novelty_val"))
-        self._peer_val = self._finite(blob.get("peer_val"))
-        na = self._finite(blob.get("novelty_age"))
-        ma = self._finite(blob.get("move_age"))
-        pa = self._finite(blob.get("peer_age"))
-        self._tired = max(0.0, min(100.0, self._finite(blob.get("tired")) or 0.0))
-        if na is not None:
-            self._novelty_t = now - max(0.0, na)
-        if pa is not None:
-            self._peer_t = now - max(0.0, pa)
+        self._novelty_val = nums["novelty_val"]
+        self._peer_val = nums["peer_val"]
+        self._tired = max(0.0, min(100.0, nums["tired"] or 0.0))
+        if nums["novelty_age"] is not None:
+            self._novelty_t = now - max(0.0, nums["novelty_age"])
+        if nums["peer_age"] is not None:
+            self._peer_t = now - max(0.0, nums["peer_age"])
         # A restored restlessness age must survive the pre-fix startup window and not advance during it:
         # hold it frozen until the first live GPS fix realizes it, so an unknown startup sample can
         # neither erase nor inflate the persisted value.
-        if ma is not None:
-            self._move_t = now - max(0.0, ma)
+        if nums["move_age"] is not None:
+            self._move_t = now - max(0.0, nums["move_age"])
             self._restlessness_restore_pending = True
-            self._restlessness_frozen_age = max(0.0, ma)
+            self._restlessness_frozen_age = max(0.0, nums["move_age"])
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
