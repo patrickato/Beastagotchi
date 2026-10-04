@@ -66,10 +66,14 @@ class NeedsEngine:
 
     @staticmethod
     def _finite(x: Any) -> float | None:
-        # A real, finite number or None -- so a corrupt blob (NaN/inf/non-numeric, or an int too large to
-        # convert to float) never reaches the tick-time float math and raises there instead of taking the
-        # fresh-session fallback. float() raises OverflowError on a huge int (e.g. a 400-digit JSON number),
-        # so catch it alongside the type/value errors and treat the field as corrupt.
+        # A real, finite JSON number, or None for anything corrupt -- so a bad blob takes the fresh-session
+        # fallback instead of reaching the tick-time float math. _persist only ever writes a JSON number, so:
+        #   - reject a bool (float(True) == 1.0) and a non-number like a numeric string (float("90") == 90.0)
+        #     by type before coercion -- bool is an int subclass, so exclude it explicitly and first;
+        #   - NaN / inf are not finite -> None;
+        #   - a huge int (e.g. a 400-digit JSON number) overflows float() -> OverflowError -> None.
+        if isinstance(x, bool) or not isinstance(x, (int, float)):
+            return None
         try:
             v = float(x)
         except (TypeError, ValueError, OverflowError):
@@ -97,16 +101,20 @@ class NeedsEngine:
         self._restore_failed = False
         if not isinstance(blob, dict):
             return
+        if "beast_id" not in blob or blob.get("beast_id") != self._beast_id:
+            # The checkpoint must prove it belongs to the active Beast. A missing owner (no provenance) or a
+            # different Beast's id takes the fresh-session fallback rather than bleeding another Beast's (or an
+            # unattributable) fatigue into this one (ADR-0008). _beast_id was seeded from the active Beast.
+            return
         tired = self._finite(blob.get("tired"))
         if tired is None:
-            return  # tired is required and must be finite (and not a too-large int) -> reject the whole blob
+            return  # tired is required and must be a finite JSON number -> reject the whole blob
         if not 0.0 <= tired <= 100.0:
             # tired is a 0..100 need level by definition (all _persist ever writes); a finite but out-of-range
             # value is corruption -> reject the whole blob rather than clamp it into a plausible 0/100, which
             # would fabricate a confident need from a bad record (ADR-0008).
             return
-        self._beast_id = blob.get("beast_id", self._beast_id)
-        self._tired = tired                               # validated to 0..100 above
+        self._tired = tired                               # validated to 0..100 above; owner matches above
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:

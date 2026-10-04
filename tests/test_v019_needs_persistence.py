@@ -106,6 +106,24 @@ def test_an_out_of_range_tired_rejects_the_whole_blob():
         assert e.tick()["needs.tiredness"] == 0
 
 
+def test_a_checkpoint_without_a_valid_owner_is_rejected():
+    # A checkpoint must prove it belongs to the active Beast: a missing beast_id (no provenance) or a
+    # different Beast's id must take the fresh fallback, not bleed fatigue into the active Beast.
+    for blob in ({"tired": 90.0}, {"beast_id": "A", "tired": 90.0}):
+        store = FakeStore({"needs.persistence": blob})
+        e = NeedsEngine(FakeState({**HOT, "progression.beast.id": "B"}), clock=lambda: 0.0, store=store)
+        assert e.tick()["needs.tiredness"] == 0              # rejected -> Beast B starts fresh, not 90
+
+
+def test_a_boolean_or_string_tired_is_rejected():
+    # _persist emits a JSON number; a bool or numeric string is tampering. float() would coerce True->1.0
+    # and "90"->90.0, so the type must be rejected before coercion (ADR-0008 fresh fallback).
+    for bad in (True, "90"):
+        store = FakeStore({"needs.persistence": {"beast_id": None, "tired": bad}})
+        e = NeedsEngine(FakeState(HOT), clock=lambda: 0.0, store=store)
+        assert e.tick()["needs.tiredness"] == 0              # type-confused tired -> rejected -> fresh
+
+
 def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():
     class BrokenWriteStore(FakeStore):
         def set_meta_json(self, key, value):
