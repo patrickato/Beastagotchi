@@ -46,6 +46,7 @@ class NeedsEngine:
         self._beast_id: Any = None
         self._last_tick = now
         self._last_save = now
+        self._restore_failed = False     # a transient read error at boot -> suppress saves (preserve checkpoint)
         self._reset_session(now)
         if self.store is not None:
             self._restore(now)
@@ -82,13 +83,19 @@ class NeedsEngine:
         try:
             blob = self.store.get_meta_json(self.META_KEY, None)
         except Exception:
-            blob = None
+            # A transient read error (SQLite/FS hiccup) is NOT "no checkpoint": treating it as fresh and
+            # then letting the periodic save overwrite the real checkpoint 60s later would lose it.
+            # Suppress persistence this run so the stored checkpoint is preserved until a boot can read it.
+            self._restore_failed = True
+            return
         if not isinstance(blob, dict):
             return
-        # Validate the whole blob atomically: a field that is present but not a finite number is
-        # corruption, so the blob is ignored entirely and the fresh session kept -- a corrupt value with
-        # a still-valid paired age can never half-restore into plausible live telemetry (ADR-0008).
-        # ``None`` is a legitimate "absent" (no novelty/peer baseline yet), not corruption.
+        # Validate the whole blob before applying any of it, so a partial / corrupt / tampered blob can
+        # never half-restore into plausible live telemetry (ADR-0008). Rules:
+        #  - any field present but non-finite -> corrupt -> reject;
+        #  - move_age and tired are always written by _persist, so they are required -> reject if absent;
+        #  - the novelty and peer (baseline, age) pairs are optional but must each be wholly present or
+        #    wholly absent. ``None`` is otherwise a legitimate "absent".
         nums: dict[str, float | None] = {}
         for k in ("novelty_age", "novelty_val", "move_age", "peer_age", "peer_val", "tired"):
             v = blob.get(k)
@@ -99,17 +106,16 @@ class NeedsEngine:
             if fv is None:
                 return  # corrupt field -> reject the whole blob -> fresh session
             nums[k] = fv
-        # Each baseline/age pair must be internally consistent: both present or both absent. A mismatch
-        # (e.g. an age with no baseline count) is an inconsistent blob -- reject it entirely rather than
-        # half-restore an age that the first tick would publish as a plausible live need (Codex; ADR-0008).
+        if nums["move_age"] is None or nums["tired"] is None:
+            return  # a required field is missing -> reject the whole blob
         if (nums["novelty_val"] is None) != (nums["novelty_age"] is None):
-            return
+            return  # inconsistent novelty pair
         if (nums["peer_val"] is None) != (nums["peer_age"] is None):
-            return
+            return  # inconsistent peer pair
         self._beast_id = blob.get("beast_id", self._beast_id)
         self._novelty_val = nums["novelty_val"]
         self._peer_val = nums["peer_val"]
-        self._tired = max(0.0, min(100.0, nums["tired"] or 0.0))
+        self._tired = max(0.0, min(100.0, nums["tired"]))
         if nums["novelty_age"] is not None:
             self._novelty_t = now - max(0.0, nums["novelty_age"])
         if nums["peer_age"] is not None:
@@ -117,13 +123,16 @@ class NeedsEngine:
         # A restored restlessness age must survive the pre-fix startup window and not advance during it:
         # hold it frozen until the first live GPS fix realizes it, so an unknown startup sample can
         # neither erase nor inflate the persisted value.
-        if nums["move_age"] is not None:
-            self._move_t = now - max(0.0, nums["move_age"])
-            self._restlessness_restore_pending = True
-            self._restlessness_frozen_age = max(0.0, nums["move_age"])
+        self._move_t = now - max(0.0, nums["move_age"])
+        self._restlessness_restore_pending = True
+        self._restlessness_frozen_age = max(0.0, nums["move_age"])
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
+            return
+        if self._restore_failed:
+            # We could not read the checkpoint at boot: do not overwrite it with this run's reset state
+            # (a transient read error must not become permanent loss on the next 60s save).
             return
         try:
             self.store.set_meta_json(self.META_KEY, {

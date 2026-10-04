@@ -86,12 +86,41 @@ def test_a_corrupt_field_rejects_the_whole_blob_to_fresh():
 def test_an_inconsistent_null_age_pair_rejects_the_whole_blob():
     # Codex: an age present with no paired baseline (or vice-versa) is inconsistent and must not
     # half-restore -- the pair is validated together, so the whole blob falls back to a fresh session.
+    # (Required fields move_age/tired are valid here, so this isolates the pair check.)
     store = FakeStore({"needs.persistence": {
         "beast_id": None, "novelty_age": 3600.0, "novelty_val": None,
-        "move_age": None, "peer_age": None, "peer_val": None, "tired": 0.0,
+        "move_age": 10.0, "peer_age": None, "peer_val": None, "tired": 0.0,
     }})
     e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
     assert e.tick()["needs.curiosity_hunger"] == 0           # inconsistent pair -> fresh, not ~25
+
+
+def test_a_null_required_field_rejects_the_whole_blob():
+    # Codex: move_age and tired are always written by _persist, so a null one means a partial/tampered
+    # blob -- reject it whole rather than restore novelty while silently resetting restlessness/tiredness.
+    store = FakeStore({"needs.persistence": {
+        "beast_id": None, "novelty_age": 3600.0, "novelty_val": 10.0,
+        "move_age": None, "peer_age": None, "peer_val": None, "tired": 0.0,
+    }})
+    e = NeedsEngine(FakeState({"wifi.encounters.lifetime_unique": 10}), clock=lambda: 0.0, store=store)
+    assert e.tick()["needs.curiosity_hunger"] == 0           # null move_age -> whole blob rejected -> fresh
+
+
+def test_a_restore_read_error_preserves_the_checkpoint():
+    # Codex: a transient read error at boot must not look like "no checkpoint" and let the 60s periodic
+    # save clobber the real one. Persistence is suppressed for the run, so the stored blob is preserved.
+    saved = {"beast_id": None, "novelty_age": None, "novelty_val": None,
+             "move_age": 7200.0, "peer_age": None, "peer_val": None, "tired": 0.0}
+
+    class FlakyReadStore(FakeStore):
+        def get_meta_json(self, key, default=None):
+            raise OSError("temporary read error")
+
+    store = FlakyReadStore({"needs.persistence": dict(saved)})
+    e = NeedsEngine(FakeState(BASE), clock=lambda: 0.0, store=store)
+    e._persist(0.0)                                          # would overwrite; must be suppressed
+    e.save()                                                 # clean shutdown too -> still suppressed, no raise
+    assert store._d["needs.persistence"] == saved           # checkpoint preserved, not reset
 
 
 def test_save_surfaces_a_write_failure_but_periodic_persist_does_not():
