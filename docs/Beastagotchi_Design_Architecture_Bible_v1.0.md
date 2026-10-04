@@ -369,6 +369,33 @@ beast.current_expression
 beast.current_animation
 ```
 
+### Needs namespace
+
+The live drives (creature idea 1, ADR-0010). Each is an integer `0..100`, or **unavailable** (ADR-0008) when its driver is absent or stale — never a fabricated number.
+
+```text
+needs.curiosity_hunger
+needs.restlessness
+needs.loneliness
+needs.tiredness
+needs.source
+```
+
+### Creature-era namespaces (added since v1.0)
+
+The creature, context and power-governor work added canonical namespaces not in the original v1.0 sketch above. They follow the same live-truth rule (unavailable, not faked). The authoritative key list is `tests/test_canonical_data_keys.py`; the main additions are:
+
+- `beast.temperament.*` — stable heritage axes `curiosity` / `social` / `nocturnal` / `boldness`, each `0..100` (ADR-0009).
+- `needs.*` — the live drives above (ADR-0010).
+- `progression.*` — level / XP, `progression.beast.id`, and discovery + field-time XP accounting (#55).
+- `peerdex.*` — persistent peer social memory (`peerdex.last_seen_at`, totals) that backs loneliness.
+- `context.*` — derived motion / context (`context.motion.state`, mode).
+- `ambient.*` — day-phase / season / weather context (`ambient.day_phase`).
+- `governor.*` — power-governor mode and throttle state (`governor.mode`, `governor.throttle_current`).
+- `power.*` — battery / UPS telemetry (`power.battery.percent_estimate`, `power.telemetry.available`).
+
+Consumer note: the needs engine reads novelty from `wifi.encounters.lifetime_unique` (a monotonic unique-discovery count) and GPS fix status from `gps.state` (`"fixed"` when a usable fix exists). The older `wifi.encounters.{session,lifetime}` and `gps.fix` names sketched above should be reconciled against the live keys in the full §5 "v7" pass.
+
 ### Service / plugin namespace
 
 ```text
@@ -620,21 +647,15 @@ Every theme must define a fallback skin for every core widget. Optional highly b
 
 ## 11. Beast / Personality Engine
 
-### Personality values
+### Temperament, needs and mood
 
-The Beast can track derived states such as:
+Three layers, from stable to live. All are derived from real device events — never fabricated; an input that is absent or stale is reported **unavailable**, not guessed (ADR-0008):
 
-- mood
-- energy
-- curiosity
-- confidence
-- boredom
-- hunger-for-discovery
-- stress / fault state
-- sleepiness
-- excitement
+- **Temperament (ADR-0009)** — stable heritage traits that make two Beasts differ, published under `beast.temperament.*` as four axes, each `0..100`: **curiosity**, **social**, **nocturnal**, **boldness**. Set from lineage/heritage; they do not drift during a session, and they modulate the rates below at no runtime cost.
+- **Needs (ADR-0010)** — live drives that build up over hours and are eased by a real satisfying event, published under `needs.*` (each an int `0..100`, or unavailable): **curiosity_hunger** (time since a lifetime-first discovery), **restlessness** (time since real GPS movement), **loneliness** (time since the last peer encounter), **tiredness** (integrates heat / throttle / low battery / night). Temperament shifts the rates — `curiosity` → how fast curiosity_hunger rises, `social` → loneliness, `nocturnal` → night sleepiness, `boldness` → how much heat tires the Beast. Only the clock-independent need, **tiredness**, persists across restarts (#53); the others are session-live, with cross-restart resume deferred to #56.
+- **Mood / expression** — the Beast's visible mood is **derived from the live needs** (with hysteresis and expression cooldowns) in `PersonalityEngine`, replacing the earlier instantaneous if-chain over a few signals (finding F1, #50). Mood is experiential, but it is computed from the honest needs above rather than invented, so two Beasts diverge over time.
 
-These are cosmetic / experiential values derived from real device events and usage.
+Legacy single-value fields (`beast.mood`, `beast.energy`, `beast.curiosity`, `beast.boredom`, `beast.confidence`) predate this model; the canonical creature truth is now `beast.temperament.*` + `needs.*` → derived mood.
 
 ### Expression states
 
