@@ -369,6 +369,24 @@ beast.current_expression
 beast.current_animation
 ```
 
+### Needs namespace
+
+The live drives (creature idea 1, ADR-0010). The four drive keys are each an integer `0..100`, or **unavailable** — never a fabricated number (the per-need availability rules, and a known raw-read gap for one input, live in `NeedsEngine` and ADR-0008; tracked in #60, not restated here). `needs.source` is a provenance string (e.g. `derived_live`), not a number.
+
+```text
+needs.curiosity_hunger
+needs.restlessness
+needs.loneliness
+needs.tiredness
+needs.source
+```
+
+### Creature-era namespaces (added since v1.0)
+
+Beyond the namespaces sketched above, the creature / context / governor / power work publishes more — among them `needs.*` (ADR-0010, *proposed*), `beast.temperament.*` (ADR-0009), and `progression.*`, `peerdex.*`, `context.*`, `ambient.*`, `governor.*`, `power.*`. **This section is a high-level map only.** For the exact, complete and current keys — their types, honesty (unavailable) semantics and per-key quality behaviour, which vary by producer (e.g. `governor.*` falls back rather than reporting unavailable) — consult the producers in `beastcore/` and the drift-guarded spec `docs/Beastagotchi_Canonical_Data_Keys_v7.json` (guarded by `tests/test_canonical_data_keys.py`).
+
+The v7 spec lags several runtime producers today, so a full §5 ↔ v7 reconciliation — enumerating the producer-only keys and resolving naming drift (e.g. the older `wifi.encounters.{session,lifetime}` sketch vs the live `wifi.encounters.lifetime_unique`) — is a tracked follow-up, not attempted inline here.
+
 ### Service / plugin namespace
 
 ```text
@@ -620,21 +638,15 @@ Every theme must define a fallback skin for every core widget. Optional highly b
 
 ## 11. Beast / Personality Engine
 
-### Personality values
+### Temperament, needs and mood
 
-The Beast can track derived states such as:
+Three layers, from stable identity to live state. **Temperament** and **needs** are reported honestly — a value or **unavailable**, never fabricated (ADR-0008 / ADR-0009) — differing in *source*: temperament is persisted heritage identity (from lineage, not device telemetry); needs are derived live from device events. **Mood** is always a concrete expression (never unavailable), derived from those plus some direct device signals that aren't all quality-gated:
 
-- mood
-- energy
-- curiosity
-- confidence
-- boredom
-- hunger-for-discovery
-- stress / fault state
-- sleepiness
-- excitement
+- **Temperament (ADR-0009)** — stable heritage traits that make two Beasts differ, published under `beast.temperament.*` as five axes, each `0..100` **or unavailable** (published unavailable when no Beast is active or its roster identity can't be read — ADR-0009): **curiosity**, **social**, **focus**, **boldness**, **nocturnal**. Set from stored lineage/heritage (persisted identity, not derived from device events); they do not drift during a session and modulate behaviour at no runtime cost — `curiosity` / `social` / `nocturnal` / `boldness` shape the need rates below, and `focus` scales how long an expression is held (the mood dwell).
+- **Needs (ADR-0010)** — live drives that build up over hours and are eased by a real satisfying event, published under `needs.*` (each an int `0..100`, or unavailable): **curiosity_hunger** (time since a lifetime-first discovery), **restlessness** (time since real GPS movement), **loneliness** (time since the last peer encounter), **tiredness** (integrates heat / throttle / low battery / night). Temperament shifts the rates — `curiosity` → how fast curiosity_hunger rises, `social` → loneliness, `nocturnal` → night sleepiness, `boldness` → how much heat tires the Beast. Only the clock-independent need, **tiredness**, persists across restarts (#53); the others are session-live, with cross-restart resume deferred to #56.
+- **Mood / expression** — the Beast's visible mood (`beast.mood`, with expression scalars like `beast.energy` / `beast.focus` / `beast.curiosity`) is chosen by a cascade in `PersonalityEngine`: physical urgencies (fault / overheated / celebrating) and real activity (hunting) first, then the **live needs** (sleepy / curious / bored — each need-branch falling back to a time/condition heuristic when that need is unavailable), then `gps-searching` / `idle`. #50 (finding F1) wove the needs into that cascade so mood reflects the Beast's drives rather than a couple of instantaneous signals; it always resolves to a concrete mood (`beast.mood` is never *unavailable*), and non-urgent moods are held with **hysteresis** (a focus-scaled minimum dwell, preempted by urgent moods). The urgency/activity inputs (health, pwnagotchi/bettercap service, `governor.mode`) are read directly from state and aren't all quality-gated, so a stale failure or `SURVIVAL` reading can keep producing a `fault`/`overheated` mood until a fresh read replaces it (no expiry; the exact quality-gating rules live in `PersonalityEngine` / `ResourceGovernor` and ADR-0008). Mood is experiential but computed from real signals, so two Beasts diverge over time.
 
-These are cosmetic / experiential values derived from real device events and usage.
+The live expression outputs — `beast.mood`, `beast.energy`, `beast.focus`, `beast.curiosity`, `beast.confidence`, `beast.stress`, `beast.expression` — remain canonical and are what consumers read; underneath them `beast.temperament.*` (identity) and `needs.*` (drives) feed the mood cascade above. A few older `beast.*` names (e.g. `beast.boredom`, `beast.current_expression`) are legacy / not emitted — see `legacy_keys` in the v7 canonical-keys spec.
 
 ### Expression states
 
