@@ -14,11 +14,11 @@ class NeedsEngine:
     shifts the rates (idea 2). A need whose driving signal is not present -- or whose driver has gone
     stale or unavailable -- is reported *unavailable* (``None`` here, published with
     ``quality="unavailable"`` by Core) rather than a fabricated number (ADR-0008). Needs reset when
-    the active Beast changes. Given a Store, need state **persists across restarts and resumes where it
-    was** (see ``_restore``): the Beast picks up its drives from the last save rather than starting
-    blank. (Fading them gently while powered off -- idea 1's refinement -- is a tracked follow-up; it
-    needs a trustworthy boot clock, so it is deliberately out of this step.) This engine never changes
-    Pwnagotchi behaviour; it only interprets observed state.
+    the active Beast changes. Given a Store, **tiredness persists across restarts and resumes where it was**
+    (see ``_restore``) -- it is a self-contained 0..100 value. curiosity-hunger, loneliness and restlessness
+    stay session-live: their cross-restart resume (and fading gently while powered off) needs a clock-robust,
+    source-stable design and is deferred to #56. This engine never changes Pwnagotchi behaviour; it only
+    interprets observed state.
 
     Published under the ``needs.*`` namespace (each an int 0-100, or unavailable):
 
@@ -43,7 +43,10 @@ class NeedsEngine:
         self.clock = clock              # monotonic: in-session rise/integration durations
         self.store = store              # optional Store (meta KV); None -> session-live, no persistence
         now = clock()
-        self._beast_id: Any = None
+        # Seed the active-Beast id up front so a boot read-failure (which leaves _restore early) does not look
+        # like an identity change on the first tick -- that would wrongly clear the read-fault flag and treat
+        # the booted Beast as fresh instead of reporting its persisted need unavailable.
+        self._beast_id: Any = self.state.get('progression.beast.id', None)
         self._last_tick = now
         self._last_save = now
         self._restore_failed = False     # a transient read error at boot -> suppress saves (preserve checkpoint)
@@ -74,55 +77,36 @@ class NeedsEngine:
         return v if math.isfinite(v) else None
 
     def _restore(self, now: float) -> None:
-        # Resume the *persisted* needs where they were. Only the clock-independent needs persist:
-        # curiosity-hunger (its baseline is a monotonic discovery count) and tiredness (a stored value).
-        # loneliness (peer wall-clock timestamp) and restlessness (GPS) are deliberately NOT persisted --
-        # their cross-restart resume, and fading while off, are deferred to #56 with the clock-robust
-        # design. The whole blob is validated before any of it is applied, so a partial / corrupt /
-        # tampered blob falls back to the fresh session and never half-restores into plausible live
-        # telemetry (ADR-0008).
+        # Resume the *persisted* need where it was. Scope C persists only **tiredness** -- a self-contained
+        # stored 0..100 value. curiosity-hunger, loneliness and restlessness stay session-live: curiosity's
+        # baseline depends on which discovery counter sourced it and on agreeing with the live count across a
+        # restart, so it joins loneliness (peer wall-clock) and restlessness (GPS) in the clock-robust,
+        # source-stable cross-restart work deferred to #56. The blob is validated before any of it is applied,
+        # so a corrupt / out-of-range / tampered one falls back to the fresh session rather than half-restoring
+        # a fabricated value (ADR-0008).
         try:
             blob = self.store.get_meta_json(self.META_KEY, None)
         except Exception:
-            # A transient read error (SQLite/FS hiccup) is NOT "no checkpoint". Flag it so the engine
-            # reports the persisted needs *unavailable* for this session and _persist does not overwrite the
+            # A transient read error (SQLite/FS hiccup) is NOT "no checkpoint". Flag it so the engine reports
+            # the persisted need (tiredness) *unavailable* for this session and _persist does not overwrite the
             # real checkpoint with reset state. A checkpoint is applied only at construction, before any live
-            # derivation; injecting it mid-session would publish it for the wrong Beast for a tick and clobber
-            # live-evolved fatigue, so recovery waits for the next restart -- which resumes cleanly from the
-            # preserved checkpoint.
+            # derivation; recovery waits for the next restart, which resumes cleanly from the preserved
+            # checkpoint.
             self._restore_failed = True
             return
         self._restore_failed = False
         if not isinstance(blob, dict):
             return
-        # tired is always written -> required. The novelty (baseline, age) pair is optional but must be
-        # wholly present or wholly absent. Any field present but non-finite is corruption -> reject.
-        nums: dict[str, float | None] = {}
-        for k in ("novelty_age", "novelty_val", "tired"):
-            v = blob.get(k)
-            if v is None:
-                nums[k] = None
-                continue
-            fv = self._finite(v)
-            if fv is None:
-                return  # corrupt field (non-finite, or too large for float) -> reject the whole blob
-            nums[k] = fv
-        if nums["tired"] is None:
-            return  # required field missing -> reject the whole blob
-        if not 0.0 <= nums["tired"] <= 100.0:
+        tired = self._finite(blob.get("tired"))
+        if tired is None:
+            return  # tired is required and must be finite (and not a too-large int) -> reject the whole blob
+        if not 0.0 <= tired <= 100.0:
             # tired is a 0..100 need level by definition (all _persist ever writes); a finite but out-of-range
             # value is corruption -> reject the whole blob rather than clamp it into a plausible 0/100, which
             # would fabricate a confident need from a bad record (ADR-0008).
             return
-        if (nums["novelty_val"] is None) != (nums["novelty_age"] is None):
-            return  # inconsistent novelty pair -> reject
-        if nums["novelty_val"] is not None and (nums["novelty_val"] < 0.0 or nums["novelty_age"] < 0.0):
-            return  # the novelty count and age are non-negative by construction; negative -> corrupt -> reject
         self._beast_id = blob.get("beast_id", self._beast_id)
-        self._novelty_val = nums["novelty_val"]
-        self._tired = nums["tired"]                       # validated to 0..100 above
-        if nums["novelty_age"] is not None:
-            self._novelty_t = now - nums["novelty_age"]   # novelty_age validated >= 0 above
+        self._tired = tired                               # validated to 0..100 above
 
     def _persist(self, now: float, *, strict: bool = False) -> None:
         if self.store is None:
@@ -134,8 +118,6 @@ class NeedsEngine:
         try:
             self.store.set_meta_json(self.META_KEY, {
                 "beast_id": self._beast_id,
-                "novelty_age": (now - self._novelty_t) if self._novelty_val is not None else None,
-                "novelty_val": self._novelty_val,
                 "tired": self._tired,
             })
         except Exception:
@@ -196,6 +178,9 @@ class NeedsEngine:
         if beast_id != self._beast_id:
             self._beast_id = beast_id
             self._reset_session(now)
+            # A boot read-fault belonged to the previously-active Beast; a newly activated Beast starts a
+            # fresh, persistable session, so clear the flag rather than carrying the old fault into it.
+            self._restore_failed = False
 
         # curiosity_hunger -- rises since the last lifetime-first discovery; eased by novelty.
         novelty = self._num('wifi.encounters.lifetime_unique')
@@ -288,10 +273,10 @@ class NeedsEngine:
             out['needs.tiredness'] = int(round(self._tired))
 
         if self._restore_failed:
-            # The checkpoint was unreadable at boot: the persisted needs are unknown for this session, so
-            # report them unavailable rather than a confident fresh value (ADR-0008); the next restart
-            # resumes from the preserved checkpoint. Live needs (restlessness, loneliness) are unaffected.
-            out['needs.curiosity_hunger'] = None
+            # The tiredness checkpoint was unreadable at boot: its value is unknown for this session, so report
+            # tiredness unavailable rather than a confident fresh value (ADR-0008); the next restart resumes
+            # from the preserved checkpoint. The session-live needs (curiosity-hunger, restlessness,
+            # loneliness) are derived fresh and unaffected.
             out['needs.tiredness'] = None
         out['needs.source'] = 'derived_live'
         if self.store is not None and (now - self._last_save) >= self.SAVE_INTERVAL_SEC:
