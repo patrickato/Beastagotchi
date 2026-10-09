@@ -70,7 +70,7 @@ def _allowed_lines(path: Path, permitted: frozenset[str]) -> tuple[list[str], in
             if len(line) > 65536:
                 continue
             parts = line.rstrip("\r\n").split("*")
-            if len(parts) < 6 or parts[0] != "WPA" or parts[1] not in {"01", "02"} or not HEX12.fullmatch(parts[3]):
+            if len(parts) != 9 or parts[0] != "WPA" or parts[1] not in {"01", "02"} or not HEX12.fullmatch(parts[3]):
                 continue
             seen += 1
             if parts[3].lower() in permitted:
@@ -94,8 +94,12 @@ def _snapshot(c: sqlite3.Connection, workdir: Path) -> dict:
 def scan(cfg: dict) -> dict:
     inbox = Path(cfg["inbox"]).resolve()
     workdir = Path(cfg["workdir"]).resolve()
+    if workdir == Path(workdir.anchor) or workdir == inbox:
+        raise ValueError("workdir must be a dedicated directory separate from inbox")
+    newly_created = not workdir.exists()
     workdir.mkdir(parents=True, exist_ok=True)
-    os.chmod(workdir, 0o700)
+    if newly_created:
+        os.chmod(workdir, 0o700)
     lock = workdir / ".worker.lock"
     with lock.open("w") as held:
         fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -165,7 +169,8 @@ def scan(cfg: dict) -> dict:
                              "--potfile-path", str(workdir / "audit.potfile"),
                              str(output), str(wordlist)],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                            timeout=int(cfg.get("hashcat_timeout_seconds", 3600)), check=False)
+                            timeout=int(cfg.get("hashcat_timeout_seconds", 3600)), check=False,
+                            cwd=str(workdir))
                         if result.returncode in (0, 1):
                             state = "audited"
                         else:
