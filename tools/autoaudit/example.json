@@ -1,0 +1,12 @@
+{
+  "inbox": "./inbox",
+  "workdir": "./work",
+  "approved_bssids": ["02:11:22:33:44:55"],
+  "acknowledged_authorized": true,
+  "auto_run_hashcat": false,
+  "wordlist": "/home/your-user/lab-test-words.txt",
+  "settle_seconds": 45,
+  "max_per_scan": 3,
+  "convert_timeout_seconds": 90,
+  "hashcat_timeout_seconds": 3600
+}
