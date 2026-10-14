@@ -1,5 +1,7 @@
 # Beastagotchi v0.19 Unified Experience — Active Checkpoint Delta
 
+> **Historical milestone, not the current branch-status source of truth (reviewed 2026-10-14).** The branch and PR details below describe the earlier `v0.19-unified-experience`/Draft PR #9 stage. The reviewed convergence branch is now `integration/v0.19` at `3e34794b` (latest independently preserved green source/CI: 785 passed, 2026-10-04). Do not interpret this historical snapshot as owner off-screen, target-Pi, physical, or long-duration acceptance. Preserve its original per-milestone counts and design evidence.
+
 ## Branch / PR
 - Branch: `v0.19-unified-experience`
 - Draft PR: #9
