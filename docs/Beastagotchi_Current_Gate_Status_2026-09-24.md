@@ -1,5 +1,7 @@
 # Beastagotchi Current Gate Status — 2026-09-24
 
+> **Historical gate snapshot (2026-09-24), not live branch status.** Its 415-test gate belongs to this dated milestone. The last independently verified integration CI result is 785 tests passing on 2026-10-04 at `3e34794b` (Actions #976). Owner off-screen, physical and long-duration acceptance are separate, still-open gates.
+
 This is the concise current gate ledger for Beastagotchi.
 
 Authoritative detail remains in:
