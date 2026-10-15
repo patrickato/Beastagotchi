@@ -4,6 +4,11 @@ The project intentionally preserves historical specifications and roadmaps becau
 
 ## Start here
 
+- `ARCHITECTURE_CONTRACTS.md` — canonical engineering invariants.
+- `adr/README.md` — accepted/proposed architectural decisions.
+- `architecture_migration_ledger.json` — scoped foundation migration progress, not all contracts.
+- Source/CI evidence, owner off-screen approval, physical TFT validation, and long-duration acceptance are separate gates.
+
 - `Beastagotchi_Design_Architecture_Bible_v1.0.md` — product/architecture principles.
 - `Beastagotchi_Master_Continuity_Ledger_v1.0.md` — explicit anti-forgetting ledger.
 - `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
