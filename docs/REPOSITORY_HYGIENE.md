@@ -29,6 +29,9 @@ Use these before historical snapshots:
 
 - `README.md`
 - `ROADMAP.md`
+- `docs/ARCHITECTURE_CONTRACTS.md` — current engineering invariants
+- `docs/adr/README.md` — architecture decision status
+- `docs/architecture_migration_ledger.json` — scoped migration progress, not global acceptance
 - `docs/README.md`
 - `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
 - `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
@@ -46,12 +49,12 @@ These are intentionally **not** removed yet.
 
 ### Canonical data-key version family
 
-Multiple canonical-data-key revisions remain in active documentation along with the JSON key inventory.
+The authoritative active key inventory is `docs/Beastagotchi_Canonical_Data_Keys_v7.json`. Revisions v1–v6 are already preserved under `docs/archive/superseded-specs/`; do not re-archive them or describe them as active.
 
-Action:
-- identify the current authoritative schema/revision;
-- audit runtime/tests/install/docs references;
-- move superseded revisions to archive only after references are migrated.
+Follow-up:
+- audit runtime/tests/install/docs consumers of the v7 inventory and any historical paths;
+- keep historical links intact or migrate references with validation;
+- re-evaluate the active version only if a new reviewed schema revision is adopted.
 
 ### Touch calibration naming collision
 
