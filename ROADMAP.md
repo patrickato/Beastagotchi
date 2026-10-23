@@ -52,11 +52,12 @@ native-responsive Dashboard/Board renderer.
 are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
-Development lives on `integration/v0.19`. The last green
-pre-reconstruction checkpoint passed **415 tests** plus Python compile/shell
-validation. Gate 1 has since been intentionally reopened for visual reconstruction
-and contract consolidation, so the active head must return to a new green source
-gate before any physical acceptance claim.
+Development lives on `integration/v0.19`. The **historical pre-reconstruction**
+checkpoint passed 415 tests. The **latest verified integration source/CI gate**
+passed **785 tests** plus Python compile/shell checks on **2026-10-04** at
+`3e34794b`. Gate 1 remains open for visual reconstruction and contract
+consolidation; source/CI success is not owner target off-screen approval,
+physical TFT/touch/QR acceptance, or long-duration reliability evidence.
 
 v0.19 is deliberately doing two jobs at once:
 
