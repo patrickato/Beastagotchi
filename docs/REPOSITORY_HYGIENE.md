@@ -36,12 +36,18 @@ Use these before historical snapshots:
 - `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
 - `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
 - `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
-- `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
-- `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`
-- `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
+- `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — preservation workflow and source-order context (dated; not live validation)
+- `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md` — sanitized design provenance (dated; not live validation)
 - `docs/Beastagotchi_Preservation_Recovery_Workflow.md`
 - `docs/Beastagotchi_Development_Release_Workflow.md`
 - `docs/REPOSITORY_MAP.md`
+
+## Dated historical references kept at their existing paths
+
+- `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md` — older v0.19 milestone / Draft PR #9 evidence; despite its filename it is **not** the active branch-status authority.
+- `docs/Beastagotchi_Current_Gate_Status_2026-09-24.md` — 2026-09-24 gate snapshot, not current source/target/physical acceptance.
+
+Do not relocate these documents until inbound links and runtime/install/test consumers have been checked. The latest verified integration source/CI evidence is **785 passing tests on 2026-10-04 at `3e34794b`**; it does not certify owner off-screen, physical TFT/touch/QR or long-duration acceptance.
 
 ## Open hygiene candidates
 
