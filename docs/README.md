@@ -87,7 +87,7 @@ documentation root:
 - `archive/drafts/` — old draft documents retained for provenance.
 - `archive/continuity/` — superseded continuity audits.
 
-Historical files are evidence, not current instructions. Follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`.
+Historical files are evidence, not current instructions. For current engineering authority, start with [`ARCHITECTURE_CONTRACTS.md`](ARCHITECTURE_CONTRACTS.md), [`adr/README.md`](adr/README.md), the scoped [`architecture_migration_ledger.json`](architecture_migration_ledger.json), the current completion matrix, and [`../ROADMAP.md`](../ROADMAP.md). The dated `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` remains a preservation and source-reconciliation record, not live gate evidence.
 
 ## Collaboration / review
 
