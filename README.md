@@ -97,7 +97,7 @@ New readers should start here:
 2. [`docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`](docs/Beastagotchi_Design_Architecture_Bible_v1.0.md) — architectural intent
 3. [`docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`](docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md) — anti-forgetting ledger
 4. [`docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`](docs/Beastagotchi_Master_Completion_Matrix_v5.0.md) — current implementation/deferred status
-5. [`docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`](docs/Beastagotchi_v019_Active_Checkpoint_Delta.md) — active v0.19 milestone delta
+5. [`docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`](docs/Beastagotchi_v019_Active_Checkpoint_Delta.md) — **historical** v0.19 milestone snapshot (not current branch or acceptance status)
 6. [`docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`](docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md) — recovered project/history/validation continuity snapshot
 7. [`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`](docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md) — sanitized recovered design/provenance decisions
 8. [`docs/Beastagotchi_Preservation_Recovery_Workflow.md`](docs/Beastagotchi_Preservation_Recovery_Workflow.md) — required long-term backup/continuity process
