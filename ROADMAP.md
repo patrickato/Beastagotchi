@@ -505,8 +505,11 @@ GitHub Releases are updated only for meaningful validated milestones.
 
 - Detailed status: `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
 - Anti-forgetting scope: `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
-- Architecture: `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
-- Active checkpoint: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
+- Canonical architecture contracts: `docs/ARCHITECTURE_CONTRACTS.md`
+- Architectural decisions: `docs/adr/README.md`
+- Scoped implementation migration: `docs/architecture_migration_ledger.json` (not a global acceptance ledger)
+- Design intent: `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
+- Historical v0.19 milestone snapshot: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md` (not live branch/gate status)
 - UX gate: `docs/UX_POLISH_MILESTONE_v0.19.md`
 - Development/release workflow: `docs/Beastagotchi_Development_Release_Workflow.md`
 - Recovered design/provenance: `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
