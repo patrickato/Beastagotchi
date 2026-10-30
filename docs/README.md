@@ -4,11 +4,16 @@ The project intentionally preserves historical specifications and roadmaps becau
 
 ## Start here
 
+- [`ARCHITECTURE_CONTRACTS.md`](ARCHITECTURE_CONTRACTS.md) — canonical engineering invariants.
+- [`adr/README.md`](adr/README.md) — accepted/proposed architectural decisions.
+- [`architecture_migration_ledger.json`](architecture_migration_ledger.json) — scoped foundation migration progress, not all contracts.
+- Source/CI evidence, owner off-screen approval, physical TFT validation, and long-duration acceptance are separate gates.
+
 - `Beastagotchi_Design_Architecture_Bible_v1.0.md` — product/architecture principles.
 - `Beastagotchi_Master_Continuity_Ledger_v1.0.md` — explicit anti-forgetting ledger.
 - `Beastagotchi_Master_Completion_Matrix_v5.0.md` — current implementation/deferred status.
-- `Beastagotchi_v019_Active_Checkpoint_Delta.md` — active v0.19 implementation checkpoint.
-- `Beastagotchi_Current_Gate_Status_2026-09-24.md` — concise finished-vs-remaining gate ledger and immediate physical closure path.
+- `Beastagotchi_v019_Active_Checkpoint_Delta.md` — **historical** v0.19 milestone snapshot (not live branch status).
+- `Beastagotchi_Current_Gate_Status_2026-09-24.md` — **historical** 2026-09-24 gate snapshot; consult the current matrix and dated CI evidence.
 - `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — recovered chats/Library/repository continuity and supersession record.
 - `Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md` — sanitized recovered v0.19 design/provenance decisions from the pinned-chat reconstruction.
 - `Beastagotchi_Preservation_Recovery_Workflow.md` — required multi-layer long-term preservation process.
@@ -82,7 +87,7 @@ documentation root:
 - `archive/drafts/` — old draft documents retained for provenance.
 - `archive/continuity/` — superseded continuity audits.
 
-Historical files are evidence, not current instructions. Follow the explicit source-of-truth order in `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`.
+Historical files are evidence, not current instructions. For current engineering authority, start with [`ARCHITECTURE_CONTRACTS.md`](ARCHITECTURE_CONTRACTS.md), [`adr/README.md`](adr/README.md), the scoped [`architecture_migration_ledger.json`](architecture_migration_ledger.json), the current completion matrix, and [`../ROADMAP.md`](../ROADMAP.md). The dated `Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` remains a preservation and source-reconciliation record, not live gate evidence.
 
 ## Collaboration / review
 

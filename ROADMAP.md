@@ -4,14 +4,18 @@ This is the public orientation layer. The current detailed checklist is
 `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`. The continuity ledger
 remains the anti-forgetting authority.
 
-For a concise current **finished vs remaining gate view**, see
-`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`.
+For the current **finished-versus-remaining gate view**, use the completion
+matrix and this roadmap, cross-checked against dated CI and acceptance evidence.
+`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md` is a **historical**
+September 24 snapshot, not a live gate-status page.
 
-The current post-preservation architecture decisions are recorded in
-`docs/Beastagotchi_Maturity_Architecture_Review_2026-09-24.md`. This review is
-an active design authority for contract consolidation, Scene/Visual Runtime work,
-Experience compilation and incremental monolith decomposition; it does not erase
-the continuity ledger or completion matrix.
+Current engineering invariants and decision status live in
+`docs/ARCHITECTURE_CONTRACTS.md` and `docs/adr/README.md`; the
+`docs/architecture_migration_ledger.json` records only scoped migration progress.
+The dated `docs/Beastagotchi_Maturity_Architecture_Review_2026-09-24.md`
+remains design provenance for contract consolidation, Scene/Visual Runtime,
+Experience compilation and incremental monolith decomposition, not a replacement
+for current contracts, the continuity ledger or the completion matrix.
 
 The open-ecosystem expansion direction is preserved in
 `docs/Beastagotchi_External_Software_Integration_Strategy_2026-09-24.md` and
@@ -52,11 +56,12 @@ native-responsive Dashboard/Board renderer.
 are not yet claimed as native-responsive.
 
 ### Active development — v0.19 Unified Experience
-Development lives on `integration/v0.19`. The last green
-pre-reconstruction checkpoint passed **415 tests** plus Python compile/shell
-validation. Gate 1 has since been intentionally reopened for visual reconstruction
-and contract consolidation, so the active head must return to a new green source
-gate before any physical acceptance claim.
+Development lives on `integration/v0.19`. The **historical pre-reconstruction**
+checkpoint passed 415 tests. The **latest verified integration source/CI gate**
+passed **785 tests** plus Python compile/shell checks on **2026-10-04** at
+`3e34794b`. Gate 1 remains open for visual reconstruction and contract
+consolidation; source/CI success is not owner target off-screen approval,
+physical TFT/touch/QR acceptance, or long-duration reliability evidence.
 
 v0.19 is deliberately doing two jobs at once:
 
@@ -504,8 +509,11 @@ GitHub Releases are updated only for meaningful validated milestones.
 
 - Detailed status: `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
 - Anti-forgetting scope: `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
-- Architecture: `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
-- Active checkpoint: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
+- Canonical architecture contracts: `docs/ARCHITECTURE_CONTRACTS.md`
+- Architectural decisions: `docs/adr/README.md`
+- Scoped implementation migration: `docs/architecture_migration_ledger.json` (not a global acceptance ledger)
+- Design intent: `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
+- Historical v0.19 milestone snapshot: `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md` (not live branch/gate status)
 - UX gate: `docs/UX_POLISH_MILESTONE_v0.19.md`
 - Development/release workflow: `docs/Beastagotchi_Development_Release_Workflow.md`
 - Recovered design/provenance: `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`

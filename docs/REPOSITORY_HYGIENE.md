@@ -29,16 +29,25 @@ Use these before historical snapshots:
 
 - `README.md`
 - `ROADMAP.md`
+- `docs/ARCHITECTURE_CONTRACTS.md` — current engineering invariants
+- `docs/adr/README.md` — architecture decision status
+- `docs/architecture_migration_ledger.json` — scoped migration progress, not global acceptance
 - `docs/README.md`
 - `docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`
 - `docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`
 - `docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`
-- `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`
-- `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`
-- `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`
+- `docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md` — preservation workflow and source-order context (dated; not live validation)
+- `docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md` — sanitized design provenance (dated; not live validation)
 - `docs/Beastagotchi_Preservation_Recovery_Workflow.md`
 - `docs/Beastagotchi_Development_Release_Workflow.md`
 - `docs/REPOSITORY_MAP.md`
+
+## Dated historical references kept at their existing paths
+
+- `docs/Beastagotchi_v019_Active_Checkpoint_Delta.md` — older v0.19 milestone / Draft PR #9 evidence; despite its filename it is **not** the active branch-status authority.
+- `docs/Beastagotchi_Current_Gate_Status_2026-09-24.md` — 2026-09-24 gate snapshot, not current source/target/physical acceptance.
+
+Do not relocate these documents until inbound links and runtime/install/test consumers have been checked. The latest verified integration source/CI evidence is **785 passing tests on 2026-10-04 at `3e34794b`**; it does not certify owner off-screen, physical TFT/touch/QR or long-duration acceptance.
 
 ## Open hygiene candidates
 
@@ -46,12 +55,12 @@ These are intentionally **not** removed yet.
 
 ### Canonical data-key version family
 
-Multiple canonical-data-key revisions remain in active documentation along with the JSON key inventory.
+The authoritative active key inventory is `docs/Beastagotchi_Canonical_Data_Keys_v7.json`. Revisions v1–v6 are already preserved under `docs/archive/superseded-specs/`; do not re-archive them or describe them as active.
 
-Action:
-- identify the current authoritative schema/revision;
-- audit runtime/tests/install/docs references;
-- move superseded revisions to archive only after references are migrated.
+Follow-up:
+- audit runtime/tests/install/docs consumers of the v7 inventory and any historical paths;
+- keep historical links intact or migrate references with validation;
+- re-evaluate the active version only if a new reviewed schema revision is adopted.
 
 ### Touch calibration naming collision
 

@@ -855,7 +855,7 @@ the pre-stage Beast DB backup is evidence/recovery material, not an automatic
 schema rollback. Automatic database rollback across unknown future migrations
 must not be invented casually.
 
-Final code-bearing gate for this block:
+Historical code-bearing gate for this 2026-09-24 block (not the latest integration source gate):
 - source `89e88277c351c1b60f1af3e01a3002d84d46ed63`;
 - run `35981407684` (#384);
 - 415 tests;
@@ -871,8 +871,8 @@ parallel provenance system.
 
 ## Gate-status interpretation / pre-physical visual hold — 2026-09-24
 
-A concise current gate ledger is now maintained at
-`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`.
+The dated gate interpretation was recorded on 2026-09-24 in
+`docs/Beastagotchi_Current_Gate_Status_2026-09-24.md`. That file is a historical snapshot, not live branch or physical-acceptance status. The later verified integration source/CI gate passed 785 tests on 2026-10-04 at `3e34794b`; target off-screen, physical TFT/touch/QR and long-duration acceptance remain separate.
 
 Durable roadmap interpretation:
 - the project gate numbers are execution tracks, not a claim that every gate

@@ -3,7 +3,7 @@
 **Status date:** 2026-09-24  
 **Stable baseline:** v0.18.1 on `main`  
 **Active development:** `integration/v0.19`  
-**Current v0.19 source gate:** **415 automated tests passing** + Python compile + shell syntax
+**Latest verified v0.19 integration source/CI gate (2026-10-04, `3e34794b`):** **785 automated tests passing** + Python compile + shell syntax. This is a dated source gate, not new physical or target acceptance. The matrix's 2026-09-24 status date is historical; check newer implementation evidence before treating individual checkboxes as freshly validated.
 
 This is the current implementation checklist and anti-forgetting execution
 matrix. It supersedes v4.7 for status tracking but does not delete any earlier

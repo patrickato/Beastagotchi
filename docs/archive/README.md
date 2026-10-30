@@ -22,5 +22,10 @@ to masquerade as current project state.
 - `drafts/` — historical drafts.
 - `continuity/` — superseded continuity/recovery audits.
 
-For current status start at `../README.md`, `../Beastagotchi_Master_Completion_Matrix_v5.0.md`,
-`../Beastagotchi_v019_Active_Checkpoint_Delta.md`, and the repository `ROADMAP.md`.
+For current status start at [`../README.md`](../README.md),
+[`../ARCHITECTURE_CONTRACTS.md`](../ARCHITECTURE_CONTRACTS.md),
+[`../adr/README.md`](../adr/README.md),
+[`../Beastagotchi_Master_Completion_Matrix_v5.0.md`](../Beastagotchi_Master_Completion_Matrix_v5.0.md),
+and the repository [`ROADMAP.md`](../../ROADMAP.md). The active-path
+`../Beastagotchi_v019_Active_Checkpoint_Delta.md` is retained for historical
+milestone provenance only; its filename does not establish current status.

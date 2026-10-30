@@ -6,7 +6,7 @@ The project is not intended to be a single theme or a fixed dashboard. Its long-
 
 **Start here:** [`IDENTITY.md`](IDENTITY.md) is the front door to what Beastagotchi is, why it exists, and how we work.
 
-> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `integration/v0.19`. The current preserved v0.19 source gate is **415 automated tests + Python compile + shell syntax**; physical v0.19 UX and real multi-owner presentation switching remain separate gates.
+> **Current status:** pre-1.0 development. The validated runtime baseline is **v0.18.1** on `main`. Active development is **v0.19 Unified Experience** on `integration/v0.19`. The latest verified integration source/CI gate is **785 passing automated tests + Python compile + shell syntax**, dated **2026-10-04** at commit `3e34794b`; this is historical evidence, not a new run. Target off-screen, physical TFT/touch/QR, multi-owner presentation switching, and long-duration acceptance remain separate unfinished gates.
 
 ![Classic dashboard](docs/images/v018-dashboard-classic.png)
 
@@ -90,11 +90,14 @@ A more detailed map is in [`docs/REPOSITORY_MAP.md`](docs/REPOSITORY_MAP.md).
 
 New readers should start here:
 
-1. [`docs/README.md`](docs/README.md) — documentation index
+1. [`docs/README.md`](docs/README.md) — documentation index, including active-versus-historical navigation
+   - [`docs/ARCHITECTURE_CONTRACTS.md`](docs/ARCHITECTURE_CONTRACTS.md) — current architecture contracts
+   - [`docs/adr/README.md`](docs/adr/README.md) — accepted architecture decision records
+   - [`docs/architecture_migration_ledger.json`](docs/architecture_migration_ledger.json) — scoped migration status (not blanket acceptance)
 2. [`docs/Beastagotchi_Design_Architecture_Bible_v1.0.md`](docs/Beastagotchi_Design_Architecture_Bible_v1.0.md) — architectural intent
 3. [`docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md`](docs/Beastagotchi_Master_Continuity_Ledger_v1.0.md) — anti-forgetting ledger
 4. [`docs/Beastagotchi_Master_Completion_Matrix_v5.0.md`](docs/Beastagotchi_Master_Completion_Matrix_v5.0.md) — current implementation/deferred status
-5. [`docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`](docs/Beastagotchi_v019_Active_Checkpoint_Delta.md) — active v0.19 milestone delta
+5. [`docs/Beastagotchi_v019_Active_Checkpoint_Delta.md`](docs/Beastagotchi_v019_Active_Checkpoint_Delta.md) — **historical** v0.19 milestone snapshot (not current branch or acceptance status)
 6. [`docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md`](docs/Beastagotchi_Project_Continuity_Preservation_2026-09-23.md) — recovered project/history/validation continuity snapshot
 7. [`docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md`](docs/Beastagotchi_Recovered_Conversation_Continuity_Addendum_2026-09-23.md) — sanitized recovered design/provenance decisions
 8. [`docs/Beastagotchi_Preservation_Recovery_Workflow.md`](docs/Beastagotchi_Preservation_Recovery_Workflow.md) — required long-term backup/continuity process
@@ -116,7 +119,7 @@ python3 -m compileall -q beastcore beastui beaststudio
 bash -n install.sh install_ui.sh install_bridge.sh remove_bridge.sh uninstall.sh validate_v018.sh tools/v019_physical_acceptance.sh
 ```
 
-Current preserved v0.19 source gate: **400 automated tests passing + Python compile + shell syntax**. Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
+Latest verified integration source gate: **785 automated tests passing + Python compile + shell syntax** (2026-10-04, `integration/v0.19` at `3e34794b`; not rerun as part of documentation hygiene). Documentation-only preservation commits do not by themselves constitute a new physical or target-runtime validation.
 
 See [`docs/TESTING.md`](docs/TESTING.md) for the difference between source validation, off-screen Pi validation and physical hardware gates.
 

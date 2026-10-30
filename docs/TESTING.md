@@ -1,6 +1,6 @@
 # Testing and Validation Model
 
-Beastagotchi deliberately separates three levels of validation.
+Beastagotchi deliberately separates four acceptance gates. A green source/CI result does not imply that target off-screen, physical interaction, or long-duration acceptance has passed.
 
 ## 1. Source / CI validation
 
@@ -59,6 +59,14 @@ phone-camera scan reliability or overall physical polish for the user.
 
 See `Beastagotchi_v019_Physical_Acceptance_Package.md`.
 
+## 4. Long-duration acceptance
+
+This is a **separate** sustained target-hardware gate after bounded off-screen and physical checks. A short successful TFT session, render proof, or CI run is not evidence of long-duration stability.
+
+Record the exact target build/SHA, hardware/display configuration, start and end times, workload and environmental conditions. Capture sustained CPU, memory, temperature/throttling, storage/write-wear indicators, service health, rendering responsiveness, and any errors or restarts. Exercise persistence and restart/recovery behavior, with rollback available. Define the acceptance window and pass/fail thresholds **before** the run; do not infer a pass from an unobserved interval.
+
+Keep raw target evidence private when it contains captures, identifiers, configuration, credentials or unrelated personal data. Publish only a sanitized summary with provenance, observed results, unresolved issues and the explicit acceptance decision.
+
 ## Rule
 
-Passing source tests does **not** mean physical hardware is validated. Passing an off-screen Pi test does **not** mean a display/touch change should be enabled automatically.
+Track **source/CI**, **target Pi off-screen**, **physical TFT/touch/QR and presentation ownership**, and **long-duration acceptance** as independent gates. A passing earlier gate does not automatically approve a later gate. Report missing evidence as **not validated**, not as a pass.
